@@ -1,0 +1,1 @@
+# lct-hackaton-2026-case-06
