@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Game edition: the window behind the room is the deep brand purple, so launch shows no flash. -->
+    <color name="finny_background">#310F53</color>
+</resources>

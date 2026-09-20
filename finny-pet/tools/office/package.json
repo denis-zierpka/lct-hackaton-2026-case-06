@@ -1,0 +1,18 @@
+{
+  "name": "office",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@material/material-color-utilities": "^0.2.7",
+    "docx": "^9.7.1",
+    "pptxgenjs": "^4.0.1"
+  }
+}
