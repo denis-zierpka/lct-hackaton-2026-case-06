@@ -1,0 +1,10 @@
+# Состояние текущего раунда контура — не артефакт репозитория.
+# На свежем клоне файла нет, и guard-paths.js (fail-closed) не даст спавнить
+# кодера, пока оркестратор не запишет скоуп задачи. Это ожидаемо.
+.claude/task-scope.json
+.claude/prompts/
+.claude/settings.local.json
+
+# Python-кэш инструментов (tools/art и др.)
+__pycache__/
+*.pyc

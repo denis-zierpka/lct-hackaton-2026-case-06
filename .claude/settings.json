@@ -1,0 +1,34 @@
+{
+  "permissions": {
+    "deny": [
+      "Agent(Explore)"
+    ]
+  },
+  "env": {
+    "CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH": "1"
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|NotebookEdit|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/guard-paths.js"
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "matcher": "^coder$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/assert-oracle-intact.js"
+          }
+        ]
+      }
+    ]
+  }
+}
