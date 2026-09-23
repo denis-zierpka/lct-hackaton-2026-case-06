@@ -8,3 +8,6 @@
 # Python-кэш инструментов (tools/art и др.)
 __pycache__/
 *.pyc
+
+# Скриншоты эмулятора — рабочий материал, не артефакт
+finny-pet/screenshots/emu_*.png
