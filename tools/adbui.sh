@@ -18,6 +18,7 @@ SDK="${ANDROID_HOME:-${LOCALAPPDATA:-$HOME}/Android/Sdk}"
 [ -d "$SDK" ] || SDK="$HOME/android-sdk"
 ADB="$SDK/platform-tools/adb"; [ -x "$ADB.exe" ] && ADB="$ADB.exe"
 OUT="$(cd "$(dirname "$0")/.." && pwd)/finny-pet/screenshots"
+command -v cygpath >/dev/null 2>&1 && OUT="$(cygpath -m "$OUT")"  # Windows Python не понимает /c/…
 PY=python; command -v python >/dev/null 2>&1 || PY=python3
 
 nodes() {  # печатает: text \t desc \t cx \t cy \t selected
