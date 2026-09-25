@@ -242,7 +242,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---- mini-game
     fun startMiniGame() {
-        match = Match3.newGame(moves = content.rules.miniGameMoves, bombs = state.bombs)
+        match = Match3.newGame(moves = content.rules.miniGameMoves, bombs = state.bombs, seed = System.nanoTime())
         matchBombsUsed = 0
         navigate(Screen.MiniGame)
     }

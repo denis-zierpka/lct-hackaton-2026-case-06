@@ -1,7 +1,7 @@
 {
   "rules": {
     "allowance": 100,
-    "rewardCorrect": 20,
+    "rewardCorrect": 10,
     "rewardWrong": 5,
     "decayHunger": 30,
     "decayClean": 25,
@@ -27,7 +27,21 @@
     "miniGameCap": 30,
     "miniGameScorePerCoin": 20,
     "miniGameMoves": 15,
-    "quizMoodBonus": 3
+    "quizMoodBonus": 3,
+    "parentBonusAmount": 10,
+    "parentBonusPerPeriod": 3,
+    "quizBombReward": 1,
+    "startStat": 70,
+    "faceSadBelow": 30,
+    "faceHappyAvg": 60,
+    "needLowBelow": 40,
+    "planStep": 10,
+    "savingsAmounts": [
+      10,
+      20,
+      30,
+      50
+    ]
   },
   "species": [
     {
@@ -406,7 +420,7 @@
       "title": "Внезапная трата",
       "type": "CHOICE",
       "unlockPeriod": 4,
-      "situation": "Питомец промок под дождём и чихает. Лекарство стоит 25 монет. Ровно столько ты собирался потратить на бантик. Что сделать?",
+      "situation": "Питомец промок под дождём и чихает. Лекарство стоит 15 монет. Ровно столько ты собирался потратить на бантик. Что сделать?",
       "options": [
         {
           "text": "Купить лекарство, а бантик перенести на следующую неделю",
@@ -674,5 +688,11 @@
       "Сначала обязательное, потом желаемое!",
       "Маленькие взносы каждую неделю делают цель ближе."
     ]
-  }
+  },
+  "parentBonusReasons": [
+    "Помог по дому",
+    "Довёл дело до конца",
+    "Сам навёл порядок",
+    "Придумал, как сэкономить"
+  ]
 }

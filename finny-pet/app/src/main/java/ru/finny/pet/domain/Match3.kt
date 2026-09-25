@@ -36,7 +36,7 @@ data class Turn(val state: Match3State, val steps: List<Step>)
  * Scoring: 3 tiles = 10, each extra tile +10; cascade n multiplies by n.
  */
 object Match3 {
-    fun newGame(width: Int = 7, height: Int = 6, moves: Int = 15, bombs: Int = 0, seed: Long = Random.nextLong()): Match3State {
+    fun newGame(width: Int = 7, height: Int = 6, moves: Int = 15, bombs: Int = 0, seed: Long): Match3State {
         val rnd = Random(seed)
         val tiles = ArrayList<Tile?>(width * height)
         for (row in 0 until height) for (col in 0 until width) {
