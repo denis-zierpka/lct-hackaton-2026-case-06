@@ -76,7 +76,7 @@ class MvpRulesTest {
 
     @Test
     fun `причин бонуса взрослого ровно четыре`() = assertEquals(
-        listOf("Помог по дому", "Довёл дело до конца", "Сам навёл порядок", "Придумал, как сэкономить"),
+        listOf("Помощь по дому", "Дело доведено до конца", "Порядок в комнате", "Идея, как сэкономить"),
         content.parentBonusReasons,
     )
 
@@ -494,7 +494,7 @@ class MvpRulesTest {
         val r = e.parentBonus(s, 2).ok()
         assertEquals(s.plan, r.plan)
         assertTrue(r.plan.confirmed)
-        assertEquals("Бонус от взрослого: Сам навёл порядок", r.ledger.last().text)
+        assertEquals("Бонус от взрослого: Порядок в комнате", r.ledger.last().text)
     }
 
     @Test
@@ -526,7 +526,7 @@ class MvpRulesTest {
         val r = custom.parentBonus(s, 3) as Outcome.Ok
         assertEquals(s.balance + 7, r.state.balance)
         assertEquals(
-            listOf("Бонус от взрослого: +7 монет — «Придумал, как сэкономить». На балансе ${s.balance + 7}.", limitReached),
+            listOf("Бонус от взрослого: +7 монет — «Идея, как сэкономить». На балансе ${s.balance + 7}.", limitReached),
             r.messages,
         )
         assertEquals(limitError, custom.parentBonus(r.state, 0).err().message)
@@ -693,7 +693,7 @@ class MvpRulesTest {
             val econ = economyWith(rules.copy(parentBonusAmount = amount))
             val s = newPet(econ)
             val r = econ.parentBonus(s, 0) as Outcome.Ok
-            assertEquals("Бонус от взрослого: +$coins — «Помог по дому». На балансе ${s.balance + amount}.", r.messages.first())
+            assertEquals("Бонус от взрослого: +$coins — «Помощь по дому». На балансе ${s.balance + amount}.", r.messages.first())
         }
     }
 
