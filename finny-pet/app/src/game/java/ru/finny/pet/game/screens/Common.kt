@@ -27,8 +27,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.paneTitle
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.activity.compose.BackHandler
 import ru.finny.pet.game.GameViewModel
 import ru.finny.pet.game.LocalLayout
 import ru.finny.pet.game.orNone
@@ -74,11 +79,12 @@ fun Adaptive(left: @Composable ColumnScope.() -> Unit, right: @Composable Column
 
 @Composable
 fun BoxScope.ConfirmPanel(title: String, lines: List<String>, confirmText: String, onConfirm: () -> Unit, onDismiss: () -> Unit, danger: Boolean = false) {
-    Box(Modifier.fillMaxSize().background(G.scrim)) {}
+    BackHandler(onBack = onDismiss)
+    Box(Modifier.fillMaxSize().background(G.scrim).pointerInput(Unit) {}) {}
     AnimatedVisibility(visible = true, enter = (fadeIn(tween(200)) + scaleIn(tween(260), initialScale = 0.85f)).orNone(), exit = fadeOut().orNone()) {
         Box(Modifier.fillMaxSize().padding(16.dp), contentAlignment = Alignment.Center) {
-            Panel(Modifier.widthIn(max = 520.dp).heightIn(max = 380.dp)) {
-                Text(title, style = MaterialTheme.typography.headlineSmall, color = G.purpleDeep)
+            Panel(Modifier.widthIn(max = 520.dp).heightIn(max = 380.dp).semantics { paneTitle = title }) {
+                Text(title, style = MaterialTheme.typography.headlineSmall, color = G.purpleDeep, modifier = Modifier.semantics { heading() })
                 Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     lines.forEach { m ->
                         Row { Text("•", style = MaterialTheme.typography.bodyLarge, color = G.magenta); Spacer(Modifier.size(8.dp)); Text(m, style = MaterialTheme.typography.bodyLarge, color = G.ink) }

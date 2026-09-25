@@ -6,6 +6,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -18,13 +19,14 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -39,11 +41,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.delay
 import ru.finny.pet.R
 import ru.finny.pet.domain.Need
@@ -82,21 +88,26 @@ fun RoomScreen(vm: GameViewModel) {
     val particles = LocalParticles.current
     val petAction = LocalPetAction.current
     var confirmEnd by rememberSaveable { mutableStateOf(false) }
+    val lifecycleOwner = LocalLifecycleOwner.current
 
-    // The pet talks on its own: the next step first, then idle lines and questions.
+    // The pet talks on its own: the next step first, then idle lines and questions. Only while on screen (MVP-T12).
     LaunchedEffect(pet.name, s.period, s.plan.confirmed, s.purchases.size, s.goal?.id) {
-        delay(900)
-        vm.say(vm.nextStep().first, ttlMs = 9000)
-        while (true) {
-            delay(14_000)
-            if (vm.bubble == null) {
-                if (e.availableQuiz(s).isNotEmpty() && (System.currentTimeMillis() / 14_000) % 3 == 0L) vm.askQuestion()
-                else vm.say(vm.nextLine(pet.name), ttlMs = 8000)
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            delay(900)
+            vm.say(vm.nextStep().first, ttlMs = 9000)
+            while (true) {
+                delay(14_000)
+                if (vm.bubble == null) {
+                    if (e.availableQuiz(s).isNotEmpty() && (System.currentTimeMillis() / 14_000) % 3 == 0L) vm.askQuestion()
+                    else vm.say(vm.nextLine(pet.name), ttlMs = 8000)
+                }
             }
         }
     }
     val bubble = vm.bubble
     LaunchedEffect(bubble) { if (bubble != null && bubble.questionId == null) { delay(bubble.ttlMs); if (vm.bubble === bubble) vm.clearBubble() } }
+    // system Back closes an open question bubble instead of leaving the room (MVP-T12)
+    BackHandler(enabled = bubble?.options?.isNotEmpty() == true) { vm.clearBubble() }
 
     val openTasks = e.availableTasks(s).size
     val stage = e.stageIndex(pet.growth)
@@ -158,15 +169,12 @@ fun RoomScreen(vm: GameViewModel) {
     }
     val goal = s.goal
 
-    Box(Modifier.fillMaxSize()) {
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val sceneHeight = maxHeight
         if (!portrait) {
             hud()
-            Box(Modifier.align(Alignment.BottomCenter).padding(bottom = 60.dp)) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    BubbleHost(vm, bubble, Modifier.height(if (layout.compact) 88.dp else 104.dp).widthIn(max = 420.dp))
-                    petSprite(Modifier, 230.dp)
-                }
-            }
+            val petSize = 230.dp
+            petSprite(Modifier.align(Alignment.BottomCenter).padding(bottom = 60.dp), petSize)
             // side panels grow with the font until the longest word fits, then phrases wrap (ТЗ 3.6)
             val sidePanelWidth = Modifier.widthIn(min = if (layout.compact) 170.dp else 200.dp, max = 240.dp).width(IntrinsicSize.Min)
             Column(
@@ -187,18 +195,44 @@ fun RoomScreen(vm: GameViewModel) {
             ) {
                 Text("Цель", style = MaterialTheme.typography.labelMedium, color = G.pink)
                 if (goal != null) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Image(painterResource(goalRes(goal.id)), null, Modifier.size(44.dp))
-                        Text(goal.title, style = MaterialTheme.typography.titleSmall, color = Color.White)
+                    Column(
+                        Modifier.clearAndSetSemantics { contentDescription = "Цель: ${goal.title}, накоплено ${s.savings} из ${Economy.coins(goal.price, Case.GEN)}" },
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Image(painterResource(goalRes(goal.id)), null, Modifier.size(44.dp))
+                            Text(goal.title, style = MaterialTheme.typography.titleSmall, color = Color.White)
+                        }
+                        Text("${s.savings} из ${Economy.coins(goal.price, Case.GEN)}", style = MaterialTheme.typography.bodySmall, color = Color.White)
+                        GameBar("", s.savings, G.magenta, max = goal.price, dark = true)
                     }
-                    Text("${s.savings} из ${Economy.coins(goal.price, Case.GEN)}", style = MaterialTheme.typography.bodySmall, color = Color.White)
-                    GameBar("", s.savings, G.magenta, max = goal.price, dark = true)
                 } else {
                     Text("Пока не выбрана", style = MaterialTheme.typography.bodyMedium, color = Color.White)
                     GameButton("Выбрать", style = ButtonStyle.MAGENTA, minHeight = 48.dp) { vm.navigate(Screen.Savings) }
                 }
                 now(Modifier)
             }
+            // pinned strictly between the HUD row and the actions row, never under either (a scrolling bubble eats their taps):
+            // a short bubble sits over the pet's head like before, a tall one grows up but stops at the HUD.
+            val actionsRowHeight = 104.dp // PropButton: icon 64dp + column padding 8dp + label row ~20dp + actions Row vertical padding 2×6dp
+            val zoneTop = 64.dp // HUD row: PropButton icon 48dp + Row vertical padding 2×8dp
+            val zoneBottom = sceneHeight - actionsRowHeight
+            // a tiny landscape window (Samsung pop-up/freeform) can push zoneBottom below zoneTop: never measure with negative height
+            val bubbleMaxHeight = minOf(sceneHeight / 2, zoneBottom - zoneTop).coerceAtLeast(0.dp)
+            val bubbleAnchor = sceneHeight - 60.dp - petSize * 0.65f
+            BubbleHost(
+                vm, bubble,
+                Modifier.layout { measurable, constraints ->
+                    val placeable = measurable.measure(
+                        constraints.copy(minWidth = 0, maxWidth = minOf(constraints.maxWidth, 420.dp.roundToPx()), minHeight = 0, maxHeight = bubbleMaxHeight.roundToPx()),
+                    )
+                    val x = (constraints.maxWidth - placeable.width) / 2
+                    val zoneTopPx = zoneTop.roundToPx()
+                    val zoneBottomPx = zoneBottom.roundToPx()
+                    val y = (bubbleAnchor.roundToPx() - placeable.height).coerceIn(zoneTopPx, (zoneBottomPx - placeable.height).coerceAtLeast(zoneTopPx))
+                    layout(constraints.maxWidth, constraints.maxHeight) { placeable.placeRelative(x, y) }
+                },
+            )
             actions(Modifier.align(Alignment.BottomCenter))
         } else {
             Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -230,7 +264,10 @@ fun RoomScreen(vm: GameViewModel) {
                 ) {
                     if (goal != null) {
                         Image(painterResource(goalRes(goal.id)), null, Modifier.size(44.dp))
-                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Column(
+                            Modifier.weight(1f).clearAndSetSemantics { contentDescription = "Цель: ${goal.title}, накоплено ${s.savings} из ${Economy.coins(goal.price, Case.GEN)}" },
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
                             Text("Цель: ${goal.title} · ${s.savings} из ${goal.price}", style = MaterialTheme.typography.bodySmall, color = Color.White)
                             GameBar("", s.savings, G.magenta, max = goal.price, dark = true)
                         }
@@ -278,11 +315,19 @@ private fun BubbleHost(vm: GameViewModel, bubble: ru.finny.pet.game.Bubble?, mod
         AnimatedVisibility(visible = bubble != null, enter = (fadeIn(tween(200)) + scaleIn(tween(260), initialScale = 0.7f)).orNone(), exit = (fadeOut(tween(150)) + scaleOut(tween(150))).orNone()) {
             val b = bubble ?: return@AnimatedVisibility
             SpeechBubble(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                TypewriterText(b.text, animate = LocalAnimate.current)
-                if (b.options.isNotEmpty()) {
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        b.options.forEachIndexed { i, o -> GameButton(o, style = ButtonStyle.PAPER, minHeight = 48.dp) { vm.answerBubble(i) } }
+                // not enough height for the reason text + answer buttons: scroll inside the bubble instead of clipping (ТЗ 3.6)
+                val scroll = rememberScrollState()
+                Box {
+                    Column(Modifier.verticalScroll(scroll), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TypewriterText(b.text, animate = LocalAnimate.current)
+                        if (b.options.isNotEmpty()) {
+                            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                b.options.forEachIndexed { i, o -> GameButton(o, style = ButtonStyle.PAPER, minHeight = 48.dp) { vm.answerBubble(i) } }
+                            }
+                        }
                     }
+                    // a child would not guess there is more to scroll: show it; TalkBack scrolls the container itself
+                    if (scroll.canScrollForward) Text("▼", Modifier.align(Alignment.BottomCenter).clearAndSetSemantics {}.background(Color.White, RoundedCornerShape(8.dp)).padding(horizontal = 6.dp), style = MaterialTheme.typography.titleSmall, color = G.purpleDeep)
                 }
             }
         }

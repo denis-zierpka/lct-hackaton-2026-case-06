@@ -56,7 +56,7 @@ object G {
 private fun montserrat(weight: FontWeight) = Font(R.font.montserrat, weight, variationSettings = FontVariation.Settings(weight, FontStyle.Normal))
 val Montserrat = FontFamily(montserrat(FontWeight.Normal), montserrat(FontWeight.Medium), montserrat(FontWeight.SemiBold), montserrat(FontWeight.Bold), montserrat(FontWeight.ExtraBold))
 
-/** Big and bold: children read short phrases, not paragraphs (ТЗ 3.6: every phrase ≥ 16 sp; labels 14 sp only for one word or a number). */
+/** Big and bold: children read short phrases, not paragraphs (ТЗ 3.6: every phrase ≥ 16 sp; 14 sp exceptions — docs/UX_ACCESSIBILITY.md, «Исключения: 14 sp»). */
 private val GameTypography = Typography(
     displayMedium = TextStyle(fontFamily = Montserrat, fontSize = 44.sp, lineHeight = 50.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.5).sp),
     displaySmall = TextStyle(fontFamily = Montserrat, fontSize = 34.sp, lineHeight = 40.sp, fontWeight = FontWeight.ExtraBold),

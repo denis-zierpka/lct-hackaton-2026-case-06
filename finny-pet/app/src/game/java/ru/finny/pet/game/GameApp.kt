@@ -47,12 +47,16 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.paneTitle
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
@@ -111,7 +115,7 @@ val LocalAnimate = staticCompositionLocalOf { true }
 @Composable fun EnterTransition.orNone(): EnterTransition = if (LocalAnimate.current) this else EnterTransition.None
 @Composable fun ExitTransition.orNone(): ExitTransition = if (LocalAnimate.current) this else ExitTransition.None
 
-private fun systemAnimates(context: Context) = Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) > 0f
+internal fun systemAnimates(context: Context) = Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) > 0f
 
 /** Room and mini-game have fixed geometry: their text follows the system font scale up to 1.3; panels follow it fully. */
 @Composable
@@ -225,8 +229,9 @@ private fun RoomBackground(landscape: Boolean, evening: Boolean) {
 @Composable
 private fun FeedbackOverlay(vm: GameViewModel) {
     val fb = vm.feedback
+    if (fb != null) BackHandler { vm.dismissFeedback() }
     AnimatedVisibility(visible = fb != null, enter = fadeIn(tween(200)).orNone(), exit = fadeOut(tween(200)).orNone()) {
-        Box(Modifier.fillMaxSize().background(G.scrim)) {}
+        Box(Modifier.fillMaxSize().background(G.scrim).pointerInput(Unit) {}) {}
     }
     AnimatedVisibility(
         visible = fb != null,
@@ -235,7 +240,7 @@ private fun FeedbackOverlay(vm: GameViewModel) {
     ) {
         val f = fb ?: return@AnimatedVisibility
         Box(Modifier.fillMaxSize().padding(16.dp), contentAlignment = Alignment.Center) {
-            Panel(Modifier.widthIn(max = 560.dp).heightIn(max = 400.dp)) {
+            Panel(Modifier.widthIn(max = 560.dp).heightIn(max = 400.dp).semantics { paneTitle = f.title }) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     val pet = vm.state.pet
                     if (pet != null) {
@@ -244,7 +249,7 @@ private fun FeedbackOverlay(vm: GameViewModel) {
                             contentDescription = null, modifier = Modifier.size(64.dp),
                         )
                     }
-                    Text(f.title, style = MaterialTheme.typography.headlineSmall, color = G.purpleDeep, modifier = Modifier.weight(1f))
+                    Text(f.title, style = MaterialTheme.typography.headlineSmall, color = G.purpleDeep, modifier = Modifier.weight(1f).semantics { heading() })
                 }
                 Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     f.messages.forEach { m ->

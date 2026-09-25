@@ -68,6 +68,7 @@ protect: всё остальное (domain, data, content.json, GameViewModel.kt
   4. git diff --name-only BASE -- ':!finny-pet/app/src/game/'   -> пусто
   5. grep -rn "44.dp" app/src/game/java | grep -i "minHeight\|clickable\|width" -> пусто
   6. grep -rn "state.animations\|s.animations" app/src/game/java/ru/finny/pet/game/screens app/src/game/java/ru/finny/pet/game/ui -> пусто (всё через LocalAnimate)
+     [с MVP-T12 п.7 исключение: тумблер «Анимации» в ParentScreen читает s.animations намеренно]
 
 ## ЖИВАЯ ПРОВЕРКА (оркестратор, эмулятор finni)
 - портрет 411×914 и 360×640 dp, шрифт 100% и 130%: комната, создание питомца, план, магазин,

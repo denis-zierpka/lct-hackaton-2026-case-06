@@ -16,10 +16,11 @@
   Третий вид обязателен: ТЗ 2.6 — «Не менее 9 визуально различимых комбинаций»,
   без него 2 × 3 = 6. Выполнено MVP-T02: 108 кадров `pet_*` (кот, зайка, щенок × 3 цвета ×
   3 стадии × 4 выражения) в `app/src/main/res/drawable-nodpi/`, слово `dragon` в `app/src` и
-  `tools/art` не встречается. Сохранённый профиль с `dragon` не падает:
-  [`Content.species()`](../finny-pet/app/src/main/java/ru/finny/pet/domain/Content.kt) вернёт
-  первый вид, [`PetSprites.id()`](../finny-pet/app/src/main/java/ru/finny/pet/PetSprites.kt) —
-  запасной кадр (рыжий кот).
+  `tools/art` не встречается. Сохранённый профиль с `dragon` не падает: в game
+  [`GameViewModel`](../finny-pet/app/src/game/java/ru/finny/pet/game/GameViewModel.kt) при загрузке
+  заменяет неизвестные вид и цвет первыми из контента ([`Content.species()`](../finny-pet/app/src/main/java/ru/finny/pet/domain/Content.kt),
+  `color()`) — питомец рисуется котом со всеми выражениями и стадиями (MVP-T12); в classic
+  [`PetSprites.id()`](../finny-pet/app/src/main/java/ru/finny/pet/PetSprites.kt) даёт запасной кадр (рыжий кот).
 - **Мини-игра — только после подтверждённого плана** (решение сеньора, ТЗ 2.8, спека MVP-T03).
 
 ## Закрыто прогоном MVP 7.1

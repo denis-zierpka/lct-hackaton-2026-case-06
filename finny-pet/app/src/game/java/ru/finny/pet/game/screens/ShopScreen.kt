@@ -93,7 +93,7 @@ fun ShopScreen(vm: GameViewModel) {
                                 .shadow(4.dp, RoundedCornerShape(18.dp))
                                 .background(Color.White, RoundedCornerShape(18.dp))
                                 .clickable(role = Role.Button) { if (affordable && s.plan.confirmed) pendingId = item.id else vm.buy(item.id) }
-                                .semantics { contentDescription = "${item.title}, ${Economy.coins(item.price)}, ${item.effectText()}" }
+                                .semantics { contentDescription = "${item.title}, ${Economy.coins(item.price)}, ${item.effectText()}" + if (!affordable) ", не хватает" else "" }
                                 .padding(horizontal = 4.dp, vertical = 8.dp),
                             horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp),
                         ) {

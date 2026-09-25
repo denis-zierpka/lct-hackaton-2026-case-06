@@ -68,7 +68,8 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     val economy = Economy(content)
     private val store = StateStore(app)
 
-    var state: GameState by mutableStateOf(store.load())
+    // an old save may carry a speciesId/colorId no longer in content.json (e.g. dropped "dragon"): normalize to a known one (MVP-T12)
+    var state: GameState by mutableStateOf(store.load().let { s -> s.pet?.let { p -> s.copy(pet = p.copy(speciesId = content.species(p.speciesId).id, colorId = content.color(p.colorId).id)) } ?: s })
         private set
     var screen: Screen by mutableStateOf(Screen.Title)
         private set
@@ -80,6 +81,9 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         private set
     var matchBombsUsed: Int by mutableIntStateOf(0)
         private set
+    /** Lives with the view model (not rememberSaveable in the screen), so a mid-game process death does not leak
+     * the previous round's "over" panel into the next fresh game in the same Activity (MVP-T12). */
+    var matchOver: Boolean by mutableStateOf(false)
     val effects = MutableSharedFlow<Effect>(extraBufferCapacity = 32)
     /** Lives with the view model, so the room replays only actions it has not shown yet (also after rotation). */
     val petAction = PetActionState()
@@ -241,7 +245,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
             s.purchases.none { it.need == Need.FOOD } -> Triple("Я проголодался. В магазине есть корм!", "В магазин", Screen.Shop)
             s.purchases.none { it.need == Need.CARE } -> Triple("Мне бы шампунь или расчёску.", "В магазин", Screen.Shop)
             s.goal == null -> Triple("На что будем копить? Выбери цель!", "Выбрать цель", Screen.Savings)
-            s.factSavings <= 0 && s.balance > 0 -> Triple("Отложи немного в копилку, и цель станет ближе.", "В копилку", Screen.Savings)
+            s.factSavings <= 0 && s.balance >= (content.rules.savingsAmounts.minOrNull() ?: content.rules.planStep) -> Triple("Отложи немного в копилку, и цель станет ближе.", "В копилку", Screen.Savings)
             economy.availableTasks(s).isNotEmpty() -> Triple("Есть новое задание. Решим вместе?", "К заданиям", Screen.Tasks)
             else -> Triple("Всё сделано! Заверши неделю, и $name подрастёт.", "Завершить неделю", Screen.WeekEnd)
         }
@@ -257,6 +261,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         }
         match = Match3.newGame(moves = content.rules.miniGameMoves, bombs = state.bombs, seed = System.nanoTime())
         matchBombsUsed = 0
+        matchOver = false
         navigate(Screen.MiniGame)
     }
 

@@ -68,8 +68,8 @@ app/src/
 | Компонент | Файл | Ответственность |
 |---|---|---|
 | Точка входа | [MainActivity.kt](../app/src/game/java/ru/finny/pet/MainActivity.kt) | Edge-to-edge, `setContent { GameApp() }` |
-| Оболочка | [game/GameApp.kt](../app/src/game/java/ru/finny/pet/game/GameApp.kt) | Тема, фон комнаты (день/вечер), смена экранов `AnimatedContent`, `BackHandler`, окно обратной связи `FeedbackOverlay`, слой частиц; сбор эффектов VM; `CompositionLocal`: `LocalVm`, `LocalLayout`, `LocalSfx`, `LocalParticles`, `LocalPetAction`, `LocalAnimate` |
-| Состояние UI | [game/GameViewModel.kt](../app/src/game/java/ru/finny/pet/game/GameViewModel.kt) | `AndroidViewModel`: `state`, `screen`, `feedback`, `bubble` (реплика или вопрос питомца), `match` (текущая партия). Типы `Screen`, `Effect`, `Feedback`, `Bubble`, `PetAct`. Правил не содержит — только вызывает `Economy`/`Match3` и сохраняет |
+| Оболочка | [game/GameApp.kt](../app/src/game/java/ru/finny/pet/game/GameApp.kt) | Тема, фон комнаты (день/вечер), смена экранов `AnimatedContent`, корневой `BackHandler`, окно обратной связи `FeedbackOverlay`, слой частиц; сбор эффектов VM; `CompositionLocal`: `LocalVm`, `LocalLayout`, `LocalSfx`, `LocalParticles`, `LocalPetAction`, `LocalAnimate` |
+| Состояние UI | [game/GameViewModel.kt](../app/src/game/java/ru/finny/pet/game/GameViewModel.kt) | `AndroidViewModel`: `state`, `screen`, `feedback`, `bubble` (реплика или вопрос питомца), `match` (текущая партия), `matchOver` (показана панель «Игра окончена» — во ViewModel, чтобы пережить пересоздание Activity и не попасть в следующую партию после смерти процесса). При загрузке неизвестные `speciesId`/`colorId` питомца заменяются первыми из контента. Типы `Screen`, `Effect`, `Feedback`, `Bubble`, `PetAct`. Правил не содержит — только вызывает `Economy`/`Match3` и сохраняет |
 | Звук | [game/audio/Sfx.kt](../app/src/game/java/ru/finny/pet/game/audio/Sfx.kt) | 13 эффектов `Sound` на `SoundPool` и музыкальная петля на `MediaPlayer`; `effects` = тумблер «Звуки», `music` = тумблер «Музыка» (на заставке музыка не играет); `GameApp` ставит музыку на паузу, когда приложение свёрнуто |
 | Общие виджеты | [game/ui/](../app/src/game/java/ru/finny/pet/game/ui/) | `GameTheme.kt` (палитра `G`, шрифт Montserrat, тема M3), `Widgets.kt` (кнопки, панели, HUD, полосы, пузырь речи), `GameTextField.kt`, `PetSprite.kt` (спрайт с дыханием, морганием, прыжком и действиями), `Particles.kt` (одна система частиц поверх всего экрана) |
 | Экраны | [game/screens/](../app/src/game/java/ru/finny/pet/game/screens/) | См. таблицу ниже; `Common.kt` — каркас панельного экрана, адаптивная раскладка, панель подтверждения |
@@ -120,7 +120,7 @@ Compose перерисовывает экраны по state / screen / feedback
 
 `sealed interface Screen` (14 экранов) в `GameViewModel.kt`; смена экрана — присваивание `vm.screen` через `navigate()`, анимированная `AnimatedContent` в `GameApp`. Библиотека navigation-compose не используется.
 
-Системная «Назад» (`BackHandler`) работает на всех экранах, кроме `Title` и `Room` — там она закрывает приложение. `vm.back()` ведёт на известного родителя: `Task` → `Tasks`, `Glossary` → `Progress`, `CreatePet` → `Title`, остальное (в том числе `Intro`) → `Room`, а без профиля → `Title`. На `MiniGame` `vm.back()` ничего не делает: «Назад» перехватывает `BackHandler` самого экрана — первое нажатие открывает окно «игра окончена», второе вызывает `finishMiniGame`.
+Системная «Назад» (`BackHandler`) работает на всех экранах, кроме `Title` и `Room` — там она закрывает приложение, если не открыто окно. Окна регистрируют свой `BackHandler`, и он срабатывает первым, потому что добавлен позже корневого: `ConfirmPanel` ([Common.kt](../app/src/game/java/ru/finny/pet/game/screens/Common.kt)) закрывается как «Отмена», окно обратной связи — как «Понятно» (его `BackHandler` компонуется только пока окно открыто, поэтому перекрывает и `BackHandler` мини-игры), вопрос питомца в комнате и в мини-игре — закрывается без ответа. Затемнение окон поглощает касания (`pointerInput`), для TalkBack окно — панель с `paneTitle`. `vm.back()` ведёт на известного родителя: `Task` → `Tasks`, `Glossary` → `Progress`, `CreatePet` → `Title`, остальное (в том числе `Intro`) → `Room`, а без профиля → `Title`. На `MiniGame` `vm.back()` ничего не делает: «Назад» перехватывает `BackHandler` самого экрана — первое нажатие открывает окно «игра окончена», второе вызывает `finishMiniGame`.
 
 ## Мини-игра
 
@@ -131,7 +131,7 @@ Compose перерисовывает экраны по state / screen / feedback
 
 ## Анимации и доступность
 
-`LocalAnimate` = тумблер «Анимации» (`state.animations`) **и** системный масштаб анимаций > 0 (`ANIMATOR_DURATION_SCALE`, перечитывается при возврате в приложение). При `false`:
+`LocalAnimate` = тумблер «Анимации» (`state.animations`) **и** системный масштаб анимаций > 0 (`ANIMATOR_DURATION_SCALE`, перечитывается при возврате в приложение; `systemAnimates` в [GameApp.kt](../app/src/game/java/ru/finny/pet/game/GameApp.kt)). Сам тумблер показывает `state.animations`, а при системном запрете неактивен и подписан «Выключены в настройках Android». При `LocalAnimate = false`:
 
 - смена экранов и всплывающие окна — без перехода (`EnterTransition.None`, расширения `orNone()`);
 - `ParticleController.enabled = false` — новые частицы не создаются;

@@ -186,7 +186,7 @@ fun PropButton(
     Column(
         modifier
             .clickable(interactionSource = interaction, indication = null, role = Role.Button, onClick = onClick)
-            .semantics { contentDescription = description }
+            .semantics { contentDescription = if (badge > 0) "$description, $badge" else description }
             .padding(horizontal = if (tight) 0.dp else 2.dp, vertical = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -230,7 +230,7 @@ fun HudChip(icon: Painter, value: Int, label: String, modifier: Modifier = Modif
     val shown by animateIntAsState(value, if (LocalAnimate.current) tween(600) else snap(), label = "hud")
     Row(
         modifier
-            .semantics { contentDescription = "$label $value" }
+            .clearAndSetSemantics { contentDescription = "$label $value" }
             .shadow(4.dp, RoundedCornerShape(50), ambientColor = G.purpleDeep, spotColor = G.purpleDeep)
             .background(Color.White.copy(alpha = 0.92f), RoundedCornerShape(50))
             .padding(start = if (compact) 4.dp else 6.dp, end = if (compact) 10.dp else 14.dp, top = 4.dp, bottom = 4.dp),
@@ -303,6 +303,7 @@ fun BoxScope.CloseButton(onClick: () -> Unit, label: String = "Назад") {
         Modifier.align(Alignment.TopStart).padding(6.dp).size(48.dp)
             .graphicsLayer { scaleX = scale; scaleY = scale }
             .shadow(4.dp, CircleShape).background(Color.White, CircleShape)
+            .semantics { contentDescription = label }
             .clickable(interactionSource = interaction, indication = null, role = Role.Button, onClickLabel = label, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {

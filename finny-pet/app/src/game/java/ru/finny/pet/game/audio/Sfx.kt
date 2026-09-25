@@ -26,9 +26,10 @@ class Sfx(context: Context) {
     var effects: Boolean = true
     var music: Boolean = false
         set(v) { field = v; if (!v) stopMusic() }
+    private var paused = false
 
     fun play(s: Sound, volume: Float = 1f, rate: Float = 1f) {
-        if (!effects) return
+        if (!effects || paused) return
         ids[s]?.let { pool.play(it, volume, volume, 1, 0, rate) }
     }
 
@@ -39,8 +40,9 @@ class Sfx(context: Context) {
 
     fun stopMusic() { player?.run { stop(); release() }; player = null }
 
-    fun pause() { player?.takeIf { it.isPlaying }?.pause() }
-    fun resume() { if (music) player?.takeIf { !it.isPlaying }?.start() }
+    // ON_PAUSE/ON_RESUME from GameApp: the pet stays quiet while the app is in the background (MVP-T12)
+    fun pause() { paused = true; player?.takeIf { it.isPlaying }?.pause() }
+    fun resume() { paused = false; if (music) player?.takeIf { !it.isPlaying }?.start() }
 
     /** Frees the player and the pool when the UI leaves composition. */
     fun release() { stopMusic(); pool.release() }
