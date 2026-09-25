@@ -44,15 +44,14 @@ import ru.finny.pet.game.ui.HudChip
 import ru.finny.pet.game.ui.LocalParticles
 import ru.finny.pet.game.ui.particleTarget
 
-private val amounts = listOf(10, 20, 30, 50)
-
 @Composable
 fun SavingsScreen(vm: GameViewModel) {
     val s = vm.state
     val e = vm.economy
     val goal = s.goal
     val particles = LocalParticles.current
-    var amount by rememberSaveable { mutableIntStateOf(20) }
+    val amounts = e.rules.savingsAmounts
+    var amount by rememberSaveable { mutableIntStateOf(amounts.firstOrNull() ?: e.rules.planStep) }
     var confirmWithdraw by rememberSaveable { mutableStateOf(false) }
     var confirmAchieve by rememberSaveable { mutableStateOf(false) }
     var pickGoal by rememberSaveable { mutableStateOf(goal == null) }

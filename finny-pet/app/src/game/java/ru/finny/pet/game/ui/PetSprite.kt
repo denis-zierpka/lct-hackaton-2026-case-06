@@ -43,11 +43,13 @@ import ru.finny.pet.PetSprites
 import ru.finny.pet.R
 import ru.finny.pet.domain.Face
 import ru.finny.pet.game.PetAct
+import ru.finny.pet.game.PetActionState
 import kotlin.math.sin
 
 /**
  * The pet in the game: a pre-rendered 3D sprite with idle breathing, blinking, a happy hop, and short
  * actions (eating, washing, playing) that show a prop in front of it. Tap → [onTap] (chat / petting).
+ * With [seen] a hop or action plays once: a key already shown is skipped when the sprite comes back.
  */
 @Composable
 fun PetSprite(
@@ -62,6 +64,7 @@ fun PetSprite(
     action: PetAct? = null,
     actionKey: Int = 0,
     description: String = "",
+    seen: PetActionState? = null,
     onTap: (() -> Unit)? = null,
 ) {
     val t = rememberInfiniteTransition(label = "pet")
@@ -73,14 +76,17 @@ fun PetSprite(
     var chew by remember { mutableStateOf(false) }
 
     LaunchedEffect(bounceKey) {
-        if (bounceKey > 0 && animate) {
+        if (bounceKey > 0 && bounceKey != seen?.shownBounce) {
+            seen?.shownBounce = bounceKey
+            if (!animate) return@LaunchedEffect
             hop.snapTo(0f)
             hop.animateTo(1f, spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow))
             hop.animateTo(0f, spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMedium))
         }
     }
     LaunchedEffect(actionKey) {
-        if (actionKey > 0 && action != null) {
+        if (actionKey > 0 && action != null && actionKey != seen?.shownAction) {
+            seen?.shownAction = actionKey
             acting = action
             if (animate) {
                 repeat(if (action == PetAct.EAT || action == PetAct.WASH) 6 else 3) {

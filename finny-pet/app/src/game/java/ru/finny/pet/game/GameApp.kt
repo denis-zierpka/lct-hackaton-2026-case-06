@@ -92,8 +92,16 @@ val LocalLayout = staticCompositionLocalOf { Layout(landscape = true, compact = 
 val LocalSfx = staticCompositionLocalOf<Sfx?> { null }
 val LocalVm = staticCompositionLocalOf<GameViewModel> { error("no view model") }
 
-/** Latest pet action requested by the view model, with a key so the sprite replays it. */
-class PetActionState { var action by mutableStateOf<PetAct?>(null); var key by mutableIntStateOf(0) }
+/**
+ * Latest pet action requested by the view model, with a key so the sprite replays it.
+ * [shownBounce]/[shownAction] remember what the room already played: coming back does not repeat it.
+ */
+class PetActionState {
+    var action by mutableStateOf<PetAct?>(null)
+    var key by mutableIntStateOf(0)
+    var shownBounce = 0
+    var shownAction = 0
+}
 val LocalPetAction = staticCompositionLocalOf { PetActionState() }
 
 /** Whether anything moves: the parent toggle and the system «remove animations» setting together (ТЗ 3.6). */
@@ -118,23 +126,25 @@ private val Emphasized = CubicBezierEasing(0.2f, 0f, 0f, 1f)
 fun GameApp(vm: GameViewModel = viewModel()) {
     val context = LocalContext.current
     val sfx = remember { Sfx(context) }
+    DisposableEffect(sfx) { onDispose { sfx.release() } }
     val particles = remember { ParticleController() }
-    val petAction = remember { PetActionState() }
+    val petAction = vm.petAction
     var systemAnim by remember { mutableStateOf(systemAnimates(context)) }
     val animate = vm.state.animations && systemAnim
     particles.coinImage = ImageBitmap.imageResource(R.drawable.ui_coin)
     particles.enabled = animate
-    sfx.enabled = vm.state.sounds
+    sfx.effects = vm.state.sounds
+    sfx.music = vm.state.music
 
     // pause music when the app goes to background; re-read the system animation scale on return
     val owner = LocalLifecycleOwner.current
     DisposableEffect(owner) {
         val obs = LifecycleEventObserver { _, e -> if (e == Lifecycle.Event.ON_PAUSE) sfx.pause() else if (e == Lifecycle.Event.ON_RESUME) { sfx.resume(); systemAnim = systemAnimates(context) } }
         owner.lifecycle.addObserver(obs)
-        onDispose { owner.lifecycle.removeObserver(obs); sfx.stopMusic() }
+        onDispose { owner.lifecycle.removeObserver(obs) }
     }
-    LaunchedEffect(vm.screen, vm.state.sounds) {
-        if (vm.state.sounds && vm.screen != Screen.Title) sfx.startMusic() else sfx.stopMusic()
+    LaunchedEffect(vm.screen, vm.state.music) {
+        if (vm.state.music && vm.screen != Screen.Title) sfx.startMusic() else sfx.stopMusic()
     }
     LaunchedEffect(Unit) {
         vm.effects.collect { e ->
@@ -146,7 +156,10 @@ fun GameApp(vm: GameViewModel = viewModel()) {
                 Effect.Hearts -> particles.targetOf("pet")?.let { particles.hearts(it) }
                 Effect.Sparkles -> particles.targetOf("pet")?.let { particles.sparkles(it) }
                 Effect.Bubbles -> particles.targetOf("pet")?.let { particles.bubbles(it) }
-                is Effect.PetAction -> { petAction.action = e.action; petAction.key++ }
+                is Effect.PetAction -> {
+                    petAction.action = e.action; petAction.key++
+                    if (e.action == PetAct.EAT) sfx.play(Sound.MUNCH) else if (e.action == PetAct.WASH) sfx.play(Sound.SPLASH)
+                }
             }
         }
     }

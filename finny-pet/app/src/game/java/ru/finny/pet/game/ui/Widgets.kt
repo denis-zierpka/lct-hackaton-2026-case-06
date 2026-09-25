@@ -161,7 +161,10 @@ fun BoxScope.CheckBadge(alignment: Alignment = Alignment.TopEnd) {
     }
 }
 
-/** Round icon button with a 3D prop image and a label under it: the room's action buttons. */
+/**
+ * Round icon button with a 3D prop image and a label under it: the room's action buttons.
+ * [tight] drops the side paddings so a narrow portrait row still shows every label in full.
+ */
 @Composable
 fun PropButton(
     label: String,
@@ -171,6 +174,8 @@ fun PropButton(
     badge: Int = 0,
     tint: Color = Color.White,
     showLabel: Boolean = true,
+    tight: Boolean = false,
+    description: String = label,
     onClick: () -> Unit,
 ) {
     val interaction = remember { MutableInteractionSource() }
@@ -179,8 +184,8 @@ fun PropButton(
     Column(
         modifier
             .clickable(interactionSource = interaction, indication = null, role = Role.Button, onClick = onClick)
-            .semantics { contentDescription = label }
-            .padding(horizontal = 2.dp, vertical = 4.dp),
+            .semantics { contentDescription = description }
+            .padding(horizontal = if (tight) 0.dp else 2.dp, vertical = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box(Modifier.size(size).graphicsLayer { scaleX = scale; scaleY = scale }, contentAlignment = Alignment.Center) {
@@ -199,7 +204,7 @@ fun PropButton(
         }
         if (showLabel) {
             Spacer(Modifier.height(2.dp))
-            Text(label, style = MaterialTheme.typography.labelSmall, color = tint, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.background(G.purpleDeep.copy(alpha = 0.55f), RoundedCornerShape(50)).padding(horizontal = 4.dp, vertical = 2.dp))
+            Text(label, style = MaterialTheme.typography.labelSmall, color = tint, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.background(G.purpleDeep.copy(alpha = 0.55f), RoundedCornerShape(50)).padding(horizontal = if (tight) 1.dp else 4.dp, vertical = 2.dp))
         }
     }
 }
@@ -217,21 +222,21 @@ fun Panel(modifier: Modifier = Modifier, color: Color = G.paper, padding: Dp = 1
     )
 }
 
-/** Pill with a prop icon and an animated number: coins, savings, week. */
+/** Pill with a prop icon and an animated number: coins, savings, week. [compact] fits two chips and three buttons into 360 dp. */
 @Composable
-fun HudChip(icon: Painter, value: Int, label: String, modifier: Modifier = Modifier, suffix: String = "") {
+fun HudChip(icon: Painter, value: Int, label: String, modifier: Modifier = Modifier, suffix: String = "", compact: Boolean = false) {
     val shown by animateIntAsState(value, if (LocalAnimate.current) tween(600) else snap(), label = "hud")
     Row(
         modifier
             .semantics { contentDescription = "$label $value" }
             .shadow(4.dp, RoundedCornerShape(50), ambientColor = G.purpleDeep, spotColor = G.purpleDeep)
             .background(Color.White.copy(alpha = 0.92f), RoundedCornerShape(50))
-            .padding(start = 6.dp, end = 14.dp, top = 4.dp, bottom = 4.dp),
+            .padding(start = if (compact) 4.dp else 6.dp, end = if (compact) 10.dp else 14.dp, top = 4.dp, bottom = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Image(icon, contentDescription = null, modifier = Modifier.size(34.dp))
-        Spacer(Modifier.width(6.dp))
-        Text("$shown$suffix", style = MaterialTheme.typography.titleMedium, color = G.purpleDeep)
+        Image(icon, contentDescription = null, modifier = Modifier.size(if (compact) 28.dp else 34.dp))
+        Spacer(Modifier.width(if (compact) 4.dp else 6.dp))
+        Text("$shown$suffix", style = if (compact) MaterialTheme.typography.titleSmall else MaterialTheme.typography.titleMedium, color = G.purpleDeep)
     }
 }
 
