@@ -9,6 +9,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
@@ -30,8 +31,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.intl.LocaleList
+import androidx.compose.ui.text.style.Hyphens
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import ru.finny.pet.R
@@ -84,6 +87,9 @@ fun PlanScreen(vm: GameViewModel) {
     }
 }
 
+/** A long word in a narrow column wraps by Russian syllables («Обяза-тельное»), never letter by letter. */
+private val Syllables = TextStyle(hyphens = Hyphens.Auto, localeList = LocaleList("ru"))
+
 @Composable
 private fun Jar(title: String, hint: String, lid: Int, value: Int, max: Int, color: Color, step: Int, canAdd: Boolean, target: String, modifier: Modifier, onChange: (Int) -> Unit) {
     val particles = LocalParticles.current
@@ -92,8 +98,9 @@ private fun Jar(title: String, hint: String, lid: Int, value: Int, max: Int, col
     val fill by animateFloatAsState((value.toFloat() / max.coerceAtLeast(1)).coerceIn(0f, 1f), if (LocalAnimate.current) spring(stiffness = Spring.StiffnessLow) else snap(), label = "fill")
     val jarH: Dp = if (layout.compact) 84.dp else 110.dp
     Column(modifier.background(G.paperTint, RoundedCornerShape(20.dp)).padding(if (layout.landscape) 8.dp else 4.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(title, style = if (layout.landscape) MaterialTheme.typography.titleSmall else MaterialTheme.typography.labelMedium, color = color, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        Text(hint, style = MaterialTheme.typography.bodySmall, color = G.inkSoft, textAlign = TextAlign.Center)
+        // portrait 360 dp: a jar is 89 dp inside, «Обязательное» is 108 dp at 14 sp — two lines with a hyphen
+        Text(title, style = (if (layout.landscape) MaterialTheme.typography.titleSmall else MaterialTheme.typography.labelMedium).merge(Syllables), color = color, textAlign = TextAlign.Center)
+        Text(hint, style = MaterialTheme.typography.bodySmall.merge(Syllables), color = G.inkSoft, textAlign = TextAlign.Center)
         Box(Modifier.height(jarH + 20.dp).fillMaxWidth().particleTarget(particles, target), contentAlignment = Alignment.BottomCenter) {
             // The jar sprite is a 512px frame with the glass in the middle ~52% width, ~78% height; coins stack inside that area.
             Box(Modifier.size(jarH), contentAlignment = Alignment.BottomCenter) {
@@ -151,8 +158,9 @@ fun PlanFact(rows: List<Triple<String, Int, Int>>) {
         Row(Modifier.fillMaxWidth().background(G.paperTint, RoundedCornerShape(16.dp)).padding(10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Image(painterResource(icons[i]), null, Modifier.size(40.dp))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(title, style = MaterialTheme.typography.titleSmall, color = G.ink, modifier = Modifier.weight(1f))
+                // «план · факт» drops under the title when both do not fit (360 dp: 196 dp for 124 + 128)
+                FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(title, style = MaterialTheme.typography.titleSmall, color = G.ink)
                     Text("план $plan · факт $fact", style = MaterialTheme.typography.labelMedium, color = if (bad) G.red else G.greenDark)
                 }
                 GameBar("", fact, colors[i], max = maxOf(plan, fact, 1))

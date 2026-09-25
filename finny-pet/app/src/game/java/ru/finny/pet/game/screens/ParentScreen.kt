@@ -24,8 +24,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.core.view.SoftwareKeyboardControllerCompat
 import ru.finny.pet.BuildConfig
 import ru.finny.pet.domain.Theme
 import ru.finny.pet.game.GameViewModel
@@ -52,6 +54,7 @@ fun ParentScreen(vm: GameViewModel) {
     var b by rememberSaveable { mutableIntStateOf((3..9).random()) }
     var answer by rememberSaveable { mutableStateOf("") }
     var wrong by remember { mutableStateOf(false) }
+    val view = LocalView.current
     Box {
         PanelScreen(vm, "Для взрослого") {
             if (!unlocked) {
@@ -62,7 +65,12 @@ fun ParentScreen(vm: GameViewModel) {
                     GameTextField(answer, { v -> if (v.length <= 3 && v.all { it.isDigit() }) { answer = v; if (v.isNotEmpty()) wrong = false } }, hint = "Ответ", number = true, maxLength = 3, big = true)
                     if (wrong) Text("Неверно. Вот новый пример.", style = MaterialTheme.typography.bodyMedium, color = G.red)
                     GameButton("Войти", Modifier.fillMaxWidth(), style = ButtonStyle.PRIMARY, enabled = answer.isNotBlank()) {
-                        if (answer.toIntOrNull() == a * b) unlocked = true
+                        if (answer.toIntOrNull() == a * b) {
+                            // the answer field leaves with the gate, but Android keeps its keyboard over the panel
+                            view.findFocus()?.clearFocus()
+                            SoftwareKeyboardControllerCompat(view).hide()
+                            unlocked = true
+                        }
                         else { wrong = true; a = (12..19).random(); b = (3..9).random(); answer = "" }
                     }
                 }
@@ -84,7 +92,7 @@ private fun ParentPanel(vm: GameViewModel) {
             Adaptive(left = {
                 Label("Чему учит игра")
                 educationalGoals.forEach { Text("• $it", style = MaterialTheme.typography.bodyMedium, color = G.ink) }
-                Text("Основа: Единая рамка компетенций по финансовой грамотности, базовый уровень (начальное общее образование).", style = MaterialTheme.typography.bodySmall, color = G.inkSoft)
+                Text("Основа: Единая рамка компетенций по финансовой грамотности — формулировки для младших школьников.", style = MaterialTheme.typography.bodySmall, color = G.inkSoft)
                 Label("Прогресс ребёнка")
                 val pet = s.pet
                 if (pet == null) Text("Профиль ещё не создан.", style = MaterialTheme.typography.bodyLarge, color = G.ink)

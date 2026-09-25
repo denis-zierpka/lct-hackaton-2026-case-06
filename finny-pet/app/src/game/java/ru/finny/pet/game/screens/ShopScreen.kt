@@ -65,9 +65,10 @@ fun ShopScreen(vm: GameViewModel) {
 
     Box {
         PanelScreen(vm, "Магазин") {
+            // portrait 360 dp: tabs 172 + 132 dp; at 14 sp «Обязательное» is 108 dp (146 at 130 %), «Желаемое» 81 (108): one line each
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                GameButton("Обязательное", Modifier.weight(1f), selected = category == Category.MANDATORY, minHeight = 48.dp, icon = if (layout.landscape) painterResource(R.drawable.ui_lid_mandatory) else null, iconSize = 26.dp) { category = Category.MANDATORY }
-                GameButton("Желаемое", Modifier.weight(1f), selected = category == Category.OPTIONAL, minHeight = 48.dp, icon = if (layout.landscape) painterResource(R.drawable.ui_lid_optional) else null, iconSize = 26.dp) { category = Category.OPTIONAL }
+                GameButton("Обязательное", Modifier.weight(if (layout.landscape) 1f else 1.3f), selected = category == Category.MANDATORY, minHeight = 48.dp, icon = if (layout.landscape) painterResource(R.drawable.ui_lid_mandatory) else null, iconSize = 26.dp, tight = !layout.landscape) { category = Category.MANDATORY }
+                GameButton("Желаемое", Modifier.weight(1f), selected = category == Category.OPTIONAL, minHeight = 48.dp, icon = if (layout.landscape) painterResource(R.drawable.ui_lid_optional) else null, iconSize = 26.dp, tight = !layout.landscape) { category = Category.OPTIONAL }
                 if (layout.landscape) HudChip(painterResource(R.drawable.ui_coin), s.balance, "Монеты", Modifier.particleTarget(particles, "coins"))
             }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -85,13 +86,14 @@ fun ShopScreen(vm: GameViewModel) {
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp), maxItemsInEachRow = if (layout.landscape) 5 else 2) {
                     vm.content.items.filter { it.category == category }.forEach { item ->
                         val affordable = item.price <= s.balance
+                        // portrait: two cards on any shelf ≥ 250 dp (2 × 0.48 W + 10 dp gap ≤ W); at 360 dp a card is 140 dp, 132 dp inside
                         Column(
-                            Modifier.width(if (layout.landscape) (if (layout.compact) 118.dp else 136.dp) else 150.dp)
+                            (if (layout.landscape) Modifier.width(if (layout.compact) 118.dp else 136.dp) else Modifier.fillMaxWidth(0.48f))
                                 .shadow(4.dp, RoundedCornerShape(18.dp))
                                 .background(Color.White, RoundedCornerShape(18.dp))
                                 .clickable(role = Role.Button) { if (affordable && s.plan.confirmed) pendingId = item.id else vm.buy(item.id) }
                                 .semantics { contentDescription = "${item.title}, ${item.price} монет, ${item.effectText()}" }
-                                .padding(8.dp),
+                                .padding(horizontal = 4.dp, vertical = 8.dp),
                             horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp),
                         ) {
                             Image(painterResource(itemRes(item.id)), null, Modifier.size(if (layout.compact) 64.dp else 76.dp).alpha(if (affordable) 1f else 0.45f))

@@ -105,9 +105,9 @@ fun SavingsScreen(vm: GameViewModel) {
                 }
                 if (s.achievedGoals.isNotEmpty()) {
                     Label("Достигнутые цели")
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp), maxItemsInEachRow = 2) {
                         s.achievedGoals.forEach { g ->
-                            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(88.dp)) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
                                 Image(painterResource(goalRes(g.id)), null, Modifier.size(56.dp))
                                 Text(g.title, style = MaterialTheme.typography.labelSmall, color = G.ink, textAlign = TextAlign.Center, maxLines = 2)
                             }
@@ -132,7 +132,8 @@ private fun GoalPicker(vm: GameViewModel, onDone: () -> Unit) {
     var customTitle by rememberSaveable { mutableStateOf(c.customGoal.titles.first()) }
     var customPrice by rememberSaveable { mutableIntStateOf(c.customGoal.prices.first()) }
     Label("Выбери цель")
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    // two cards per row: at 360 dp a card is 152 dp, 140 dp inside; «Конструктор» is 99 dp (132 at 130 %)
+    FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp), maxItemsInEachRow = 2) {
         c.goals.forEach { g ->
             Column(
                 Modifier.weight(1f).shadow(3.dp, RoundedCornerShape(18.dp)).background(Color.White, RoundedCornerShape(18.dp))
