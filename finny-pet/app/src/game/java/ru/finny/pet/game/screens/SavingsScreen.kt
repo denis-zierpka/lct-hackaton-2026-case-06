@@ -64,13 +64,13 @@ fun SavingsScreen(vm: GameViewModel) {
                     Image(painterResource(R.drawable.ui_piggy), null, Modifier.size(84.dp).particleTarget(particles, "piggy"))
                     Column(Modifier.weight(1f)) {
                         Text("${s.savings}", style = MaterialTheme.typography.displaySmall, color = G.purpleDeep)
-                        Text("в копилке", style = MaterialTheme.typography.labelMedium, color = G.purpleDeep)
+                        Text("в копилке", style = MaterialTheme.typography.bodySmall, color = G.purpleDeep)
                     }
                     HudChip(painterResource(R.drawable.ui_coin), s.balance, "На балансе", Modifier.particleTarget(particles, "coins"))
                 }
                 Label("Отложить или забрать")
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    amounts.forEach { a -> GameButton("$a", Modifier.width(64.dp), style = if (amount == a) ButtonStyle.MAGENTA else ButtonStyle.PAPER, minHeight = 48.dp) { amount = a } }
+                    amounts.forEach { a -> GameButton("$a", Modifier.width(64.dp), selected = amount == a, minHeight = 48.dp) { amount = a } }
                 }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     GameButton("Отложить $amount", Modifier.weight(1f), style = ButtonStyle.GREEN, enabled = s.plan.confirmed && amount <= s.balance) { vm.deposit(amount) }
@@ -150,10 +150,10 @@ private fun GoalPicker(vm: GameViewModel, onDone: () -> Unit) {
     }
     Label("Или своя цель")
     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        c.customGoal.titles.forEach { t -> GameButton(t, style = if (customTitle == t) ButtonStyle.MAGENTA else ButtonStyle.PAPER, minHeight = 44.dp) { customTitle = t } }
+        c.customGoal.titles.forEach { t -> GameButton(t, selected = customTitle == t, minHeight = 48.dp) { customTitle = t } }
     }
     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        c.customGoal.prices.forEach { p -> GameButton("$p", style = if (customPrice == p) ButtonStyle.MAGENTA else ButtonStyle.PAPER, minHeight = 44.dp) { customPrice = p } }
+        c.customGoal.prices.forEach { p -> GameButton("$p", selected = customPrice == p, minHeight = 48.dp) { customPrice = p } }
     }
     GameButton("Копить на «$customTitle» за $customPrice", Modifier.fillMaxWidth(), style = ButtonStyle.GOLD) { vm.chooseGoal(vm.economy.customGoal(customTitle, customPrice)); onDone() }
     if (vm.state.goal != null) GameButton("Оставить текущую цель", Modifier.fillMaxWidth(), style = ButtonStyle.PAPER, minHeight = 48.dp) { onDone() }

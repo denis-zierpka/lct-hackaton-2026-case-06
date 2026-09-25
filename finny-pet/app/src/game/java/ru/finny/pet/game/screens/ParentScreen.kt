@@ -27,6 +27,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import ru.finny.pet.domain.Theme
 import ru.finny.pet.game.GameViewModel
+import ru.finny.pet.game.LocalAnimate
 import ru.finny.pet.game.ui.ButtonStyle
 import ru.finny.pet.game.ui.G
 import ru.finny.pet.game.ui.GameBar
@@ -92,7 +93,8 @@ private fun ParentPanel(vm: GameViewModel) {
             }, right = {
                 Label("Настройки")
                 SettingRow("Звук", "Эффекты и музыка", s.sounds) { vm.setSounds(it) }
-                SettingRow("Анимации", "Движение питомца и эффекты", s.animations) { vm.setAnimations(it) }
+                // shows what the app actually does: off also when the system «remove animations» is on
+                SettingRow("Анимации", "Движение питомца и эффекты", LocalAnimate.current) { vm.setAnimations(it) }
                 SettingRow("Демо-режим", "Все задания открыты сразу", s.demo) { vm.setDemo(it) }
                 Label("Профиль и данные")
                 Text("Все данные хранятся только на этом устройстве в одном файле. Игра не собирает персональные данные, не выходит в интернет и не запрашивает разрешений.", style = MaterialTheme.typography.bodySmall, color = G.inkSoft)

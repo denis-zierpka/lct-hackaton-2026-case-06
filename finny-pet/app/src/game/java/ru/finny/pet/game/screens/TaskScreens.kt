@@ -31,6 +31,7 @@ import ru.finny.pet.R
 import ru.finny.pet.domain.TaskType
 import ru.finny.pet.domain.Theme
 import ru.finny.pet.game.GameViewModel
+import ru.finny.pet.game.LocalAnimate
 import ru.finny.pet.game.LocalLayout
 import ru.finny.pet.game.Screen
 import ru.finny.pet.game.ui.ButtonStyle
@@ -117,13 +118,13 @@ fun TaskScreen(vm: GameViewModel, taskId: String) {
     PanelScreen(vm, t.title) {
         val story: @Composable () -> Unit = {
             Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                if (pet != null) PetSprite(pet.speciesId, pet.colorId, vm.economy.stageIndex(pet.growth), vm.face, s.animations, size = if (layout.compact) 120.dp else 150.dp, description = "")
+                if (pet != null) PetSprite(pet.speciesId, pet.colorId, vm.economy.stageIndex(pet.growth), vm.face, LocalAnimate.current, size = if (layout.compact) 120.dp else 150.dp, description = "")
                 SpeechBubble(Modifier.weight(1f).padding(bottom = 30.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         Image(painterResource(t.theme.icon()), null, Modifier.size(24.dp))
                         Text(t.theme.title, style = MaterialTheme.typography.labelMedium, color = t.theme.color())
                     }
-                    TypewriterText(t.situation, animate = s.animations)
+                    TypewriterText(t.situation, animate = LocalAnimate.current)
                 }
             }
         }
