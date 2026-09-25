@@ -19,7 +19,7 @@ finny-pet/            само приложение — Gradle-проект, в�
   app/src/game/            вариант сборки «game» (комната, звуки, мини-игра)
   app/src/main/assets/content/content.json   учебный контент и числа экономики
   app/src/test/            JVM-тесты — ОРАКУЛ
-  docs/                    документация для сдачи (13 файлов по разделу 5 ТЗ)
+  docs/                    документация для сдачи (раздел 5 ТЗ) + QUESTIONS, USER_TESTING
 ```
 
 ## Роли
