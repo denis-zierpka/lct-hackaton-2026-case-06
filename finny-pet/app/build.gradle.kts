@@ -23,19 +23,20 @@ android {
         applicationId = "ru.finny.pet"
         minSdk = 26
         targetSdk = 36
-        versionCode = 3
-        versionName = "1.2.0"
+        versionCode = 4
+        versionName = "1.3.0"
     }
 
-    // Two editions from one code base: "classic" (portrait Material 3 app) and "game" (landscape-first game).
+    // Two editions from one code base. "game" is the submitted app and owns the permanent package
+    // ru.finny.pet (ТЗ 3.3); "classic" (Material 3 app) stays in the repo as ru.finny.pet.classic.
     flavorDimensions += "edition"
     productFlavors {
-        create("classic") { dimension = "edition" }
-        create("game") {
+        create("classic") {
             dimension = "edition"
-            applicationIdSuffix = ".game"
-            versionNameSuffix = "-game"
+            applicationIdSuffix = ".classic"
+            versionNameSuffix = "-classic"
         }
+        create("game") { dimension = "edition" }
     }
 
     signingConfigs {
@@ -68,6 +69,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
