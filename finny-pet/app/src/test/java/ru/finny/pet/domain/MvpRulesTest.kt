@@ -15,7 +15,7 @@ import org.junit.Test
 import ru.finny.pet.data.ContentRepository
 import java.io.File
 
-/** Oracle for docs/tasks/MVP-T01.md, CONTRACT A–E. Texts for the child are asserted verbatim: they are the contract. */
+/** Oracle for docs/tasks/MVP-T01.md (CONTRACT A–E) and MVP-T01a.md (grammar). Texts for the child are asserted verbatim: they are the contract. */
 class MvpRulesTest {
     private val content = TestContent.content
     private val e = TestContent.economy
@@ -33,7 +33,7 @@ class MvpRulesTest {
     private fun pet(hunger: Int, clean: Int, mood: Int) = Pet("Финни", "cat", "orange", hunger = hunger, clean = clean, mood = mood)
     private fun rawContent(): JsonObject =
         Json.parseToJsonElement(File("src/main/assets/content/content.json").readText()).jsonObject
-    private fun piggyHint(x: Int) = "На этой неделе копилка не выросла. Попробуй отложить хотя бы $x монет — так цель приблизится."
+    private fun piggyHint(coins: String) = "На этой неделе копилка не выросла. Попробуй отложить хотя бы $coins — так цель приблизится."
 
     private val lockNoPet = "Сначала создай питомца"
     private val lockNoPlan = "Сначала составь план на неделю — игра откроется после него"
@@ -251,15 +251,15 @@ class MvpRulesTest {
         s = e.withdraw(s, 10).ok()
         val r = end(s)
         assertFalse(r.state.history.last().planKept)
-        assertTrue(r.messages.toString(), r.messages.contains("В копилку чистыми 29 (положил 39, взял 10), а планировал 30."))
-        assertTrue(r.messages.none { it.startsWith("В копилку отложил") })
+        assertTrue(r.messages.toString(), r.messages.contains("В копилку чистыми 29 (положено 39, взято 10), а в плане было 30."))
+        assertTrue(r.messages.none { it.startsWith("В копилку отложено") })
     }
 
     @Test
     fun `без снятий текст про копилку показывает отложенное`() {
         val r = end(e.deposit(ready(), 20).ok())
         assertFalse(r.state.history.last().planKept)
-        assertTrue(r.messages.toString(), r.messages.contains("В копилку отложил 20, а планировал 30."))
+        assertTrue(r.messages.toString(), r.messages.contains("В копилку отложено 20, а в плане было 30."))
         assertTrue(r.messages.none { it.contains("чистыми") })
     }
 
@@ -271,7 +271,7 @@ class MvpRulesTest {
         s = e.withdraw(s, 30).ok()
         val r = end(s)
         assertFalse(r.state.history.last().planKept)
-        assertTrue(r.messages.toString(), r.messages.contains("В копилку чистыми 0 (положил 10, взял 30), а планировал 30."))
+        assertTrue(r.messages.toString(), r.messages.contains("В копилку чистыми 0 (положено 10, взято 30), а в плане было 30."))
     }
 
     // ---------- C7. Week summary texts ----------
@@ -280,8 +280,8 @@ class MvpRulesTest {
     fun `без еды и ухода тексты без упрёка`() {
         val r = end(e.buy(ready(), "fun_bow").ok())
         val drop = rules.uncoveredExtraDrop
-        assertTrue(r.messages.toString(), r.messages.contains("Еды на этой неделе не было — Финни проголодался сильнее: сытость ещё −$drop."))
-        assertTrue(r.messages.toString(), r.messages.contains("Ухода на этой неделе не было — Финни запачкался сильнее: чистота ещё −$drop."))
+        assertTrue(r.messages.toString(), r.messages.contains("Еды на этой неделе не было — сытость ещё −$drop."))
+        assertTrue(r.messages.toString(), r.messages.contains("Ухода на этой неделе не было — чистота ещё −$drop."))
         assertTrue(r.messages.none { it.contains("не купил") })
     }
 
@@ -294,16 +294,16 @@ class MvpRulesTest {
 
     @Test
     fun `копилка не выросла подсказывает первую сумму из savingsAmounts`() {
-        assertTrue(end(ready()).messages.contains(piggyHint(rules.savingsAmounts.first())))
+        assertTrue(end(ready()).messages.contains(piggyHint("${rules.savingsAmounts.first()} монет")))
         val custom = economyWith(rules.copy(savingsAmounts = listOf(25, 50)))
-        assertTrue(end(ready(custom), custom).messages.contains(piggyHint(25)))
+        assertTrue(end(ready(custom), custom).messages.contains(piggyHint("25 монет")))
     }
 
     @Test
     fun `копилка не выросла при пустом savingsAmounts подсказывает planStep`() {
         val custom = economyWith(rules.copy(savingsAmounts = emptyList(), planStep = 15))
         val r = end(ready(custom), custom)
-        assertTrue(r.messages.toString(), r.messages.contains(piggyHint(15)))
+        assertTrue(r.messages.toString(), r.messages.contains(piggyHint("15 монет")))
     }
 
     @Test
@@ -368,9 +368,10 @@ class MvpRulesTest {
         val r = e.confirmPlan(e.setPlan(newPet(), 0, 20, 30).ok()) as Outcome.Ok
         assertTrue(
             r.messages.toString(),
-            r.messages.contains("На обязательное в плане 0 монет, а Финни всё равно понадобятся еда и уход — оставь на них монеты."),
+            r.messages.contains("На обязательное в плане 0 монет, а еда и уход всё равно понадобятся — оставь на них монеты."),
         )
         assertTrue(r.messages.none { it.contains("Ты не заложил") })
+        assertTrue(r.messages.toString(), r.messages.none { it.contains("Финни") })
         val withMandatory = e.confirmPlan(e.setPlan(newPet(), 10, 20, 30).ok()) as Outcome.Ok
         assertTrue(withMandatory.messages.none { it.startsWith("На обязательное в плане") })
     }
@@ -409,8 +410,8 @@ class MvpRulesTest {
         val q = e.availableQuiz(s).first()
         val wrongIdx = (q.correct + 1) % q.options.size
         val answered = e.answerQuiz(s, q.id, q.correct).ok()
-        assertEquals("На этот вопрос ты уже ответил", e.answerQuiz(answered, q.id, q.correct).err().message)
-        assertEquals("На этот вопрос ты уже ответил", e.answerQuiz(answered, q.id, wrongIdx).err().message)
+        assertEquals("Этот вопрос уже решён", e.answerQuiz(answered, q.id, q.correct).err().message)
+        assertEquals("Этот вопрос уже решён", e.answerQuiz(answered, q.id, wrongIdx).err().message)
         // a wrong answer can still be retried
         val wrong = e.answerQuiz(s, q.id, wrongIdx).ok()
         assertEquals(s.bombs + rules.quizBombReward, e.answerQuiz(wrong, q.id, q.correct).ok().bombs)
@@ -536,6 +537,284 @@ class MvpRulesTest {
         val s = newPet().copy(parentBonusesThisPeriod = rules.parentBonusPerPeriod + 2)
         assertEquals(0, e.parentBonusesLeft(s))
         assertEquals(limitError, e.parentBonus(s, 0).err().message)
+    }
+
+    // ---------- MVP-T01a CONTRACT 2. The word after a number agrees with it ----------
+
+    private fun economyWithPrice(itemId: String, price: Int) =
+        Economy(content.copy(items = content.items.map { if (it.id == itemId) it.copy(price = price) else it }))
+
+    @Test
+    fun `первые карманные деньги в винительном падеже`() {
+        listOf(21 to "21 монету", 2 to "2 монеты", 5 to "5 монет").forEach { (n, coins) ->
+            val econ = economyWith(rules.copy(allowance = n))
+            val r = econ.createPet(econ.newGame(true), "Финни", "cat", "orange") as Outcome.Ok
+            assertEquals(listOf("Финни получает первые $coins на неделю!"), r.messages)
+        }
+    }
+
+    @Test
+    fun `запас вне плана в именительном падеже`() {
+        mapOf(29 to "1 монета", 28 to "2 монеты", 25 to "5 монет", 9 to "21 монета").forEach { (savings, coins) ->
+            val r = e.confirmPlan(e.setPlan(newPet(), 50, 20, savings).ok()) as Outcome.Ok
+            assertTrue(r.messages.toString(), r.messages.contains("Вне плана осталось $coins — это запас."))
+        }
+    }
+
+    @Test
+    fun `нехватка на покупку в родительном падеже`() {
+        mapOf(59 to "1 монеты", 58 to "2 монет", 55 to "5 монет", 39 to "21 монеты").forEach { (balance, coins) ->
+            assertEquals("Не хватает $coins: цена 60, у тебя $balance", e.buy(ready().copy(balance = balance), "fun_tent").err().message)
+        }
+    }
+
+    @Test
+    fun `дешёвая альтернатива в винительном падеже`() {
+        listOf(1 to "1 монету", 2 to "2 монеты", 5 to "5 монет", 21 to "21 монету").forEach { (price, coins) ->
+            val econ = economyWithPrice("fun_balloon", price)
+            val hints = econ.buy(ready(econ).copy(balance = price), "fun_tent").err().hints
+            assertTrue(hints.toString(), hints.contains("Есть дешевле: Шарик за $coins"))
+        }
+    }
+
+    @Test
+    fun `списание за покупку в именительном падеже`() {
+        listOf(1 to "1 монета", 2 to "2 монеты", 5 to "5 монет", 21 to "21 монета").forEach { (price, coins) ->
+            val econ = economyWithPrice("fun_balloon", price)
+            val s = ready(econ)
+            val r = econ.buy(s, "fun_balloon") as Outcome.Ok
+            assertEquals("Баланс: −$coins, осталось ${s.balance - price}.", r.messages.first())
+        }
+    }
+
+    @Test
+    fun `нехватка на взнос в копилку в родительном падеже`() {
+        val s = ready()
+        mapOf(1 to "1 монеты", 2 to "2 монет", 5 to "5 монет", 21 to "21 монеты").forEach { (missing, coins) ->
+            assertEquals("Не хватает $coins: у тебя ${s.balance}", e.deposit(s, s.balance + missing).err().message)
+        }
+    }
+
+    @Test
+    fun `взнос в копилку в именительном падеже`() {
+        val s = ready()
+        listOf(1 to "1 монета", 2 to "2 монеты", 5 to "5 монет", 21 to "21 монета").forEach { (amount, coins) ->
+            val r = e.deposit(s, amount) as Outcome.Ok
+            assertEquals("В копилку: +$coins, теперь там $amount. На балансе ${s.balance - amount}.", r.messages.first())
+        }
+    }
+
+    @Test
+    fun `прогноз снятия склоняет остаток и нехватку до цели`() {
+        // savings, goal price -> preview of taking 1 coin; no deposits yet, so no ETA line
+        listOf(
+            Triple(22, 43, listOf("В копилке останется 21 монета вместо 22.", "До цели «Мяч» будет не хватать 22 монет вместо 21.")),
+            Triple(3, 4, listOf("В копилке останется 2 монеты вместо 3.", "До цели «Мяч» будет не хватать 2 монет вместо 1.")),
+            Triple(10, 30, listOf("В копилке останется 9 монет вместо 10.", "До цели «Мяч» будет не хватать 21 монеты вместо 20.")),
+            Triple(2, 2, listOf("В копилке останется 1 монета вместо 2.", "До цели «Мяч» будет не хватать 1 монеты вместо 0.")),
+        ).forEach { (savings, price, expected) ->
+            assertEquals(expected, e.withdrawPreview(ready().copy(savings = savings, goal = Goal("g", "Мяч", "⚽", price)), 1))
+        }
+    }
+
+    @Test
+    fun `нехватка в копилке при снятии в именительном падеже`() {
+        listOf(1 to "1 монета", 2 to "2 монеты", 5 to "5 монет", 21 to "21 монета").forEach { (savings, coins) ->
+            assertEquals("В копилке только $coins", e.withdraw(ready().copy(savings = savings), savings + 1).err().message)
+        }
+    }
+
+    @Test
+    fun `снятие из копилки в именительном падеже`() {
+        val s = ready().copy(savings = 30)
+        listOf(1 to "1 монета", 2 to "2 монеты", 5 to "5 монет", 21 to "21 монета").forEach { (amount, coins) ->
+            val r = e.withdraw(s, amount) as Outcome.Ok
+            assertEquals("Из копилки: −$coins, осталось ${30 - amount}. На балансе ${s.balance + amount}.", r.messages.first())
+        }
+    }
+
+    @Test
+    fun `цена цели в винительном и остаток до цели в именительном`() {
+        listOf(
+            Triple(1, "1 монету", "1 монета"), Triple(2, "2 монеты", "2 монеты"),
+            Triple(5, "5 монет", "5 монет"), Triple(21, "21 монету", "21 монета"),
+        ).forEach { (price, acc, nom) ->
+            val r = e.chooseGoal(ready(), Goal("g", "Мяч", "⚽", price)) as Outcome.Ok
+            assertEquals(listOf("Цель: «Мяч» за $acc.", "До цели «Мяч» осталось $nom. Откладывай регулярно — и я посчитаю срок."), r.messages)
+        }
+    }
+
+    @Test
+    fun `нехватка на цель в родительном падеже`() {
+        mapOf(1 to "1 монеты", 2 to "2 монет", 5 to "5 монет", 21 to "21 монеты").forEach { (missing, coins) ->
+            val s = ready().copy(savings = 10, goal = Goal("g", "Мяч", "⚽", 10 + missing))
+            assertEquals("Пока не хватает $coins", e.achieveGoal(s).err().message)
+        }
+    }
+
+    @Test
+    fun `награда за задание в именительном падеже`() {
+        val task = content.tasks.first { it.type == TaskType.CHOICE }
+        val right = task.options.indexOfFirst { it.correct }
+        val wrong = task.options.indexOfFirst { !it.correct }
+        listOf(Triple(21, 1, listOf("21 монета", "1 монета")), Triple(2, 5, listOf("2 монеты", "5 монет"))).forEach { (good, bad, coins) ->
+            val econ = economyWith(rules.copy(rewardCorrect = good, rewardWrong = bad))
+            val s = ready(econ)
+            val r1 = econ.answerChoice(s, task.id, right) as Outcome.Ok
+            assertTrue(r1.messages.toString(), r1.messages.contains("Награда: +${coins[0]}, на балансе ${s.balance + good}."))
+            val r2 = econ.answerChoice(s, task.id, wrong) as Outcome.Ok
+            assertTrue(r2.messages.toString(), r2.messages.contains("Награда: +${coins[1]}, на балансе ${s.balance + bad}."))
+        }
+    }
+
+    @Test
+    fun `остаток монет мини-игры в винительном падеже`() {
+        // default cap 30: earning 29 leaves 1, earning 9 leaves 21
+        mapOf(29 to "1 монету", 28 to "2 монеты", 25 to "5 монет", 9 to "21 монету").forEach { (earned, coins) ->
+            val r = e.finishMiniGame(ready(), score = earned * rules.miniGameScorePerCoin, bombsUsed = 0) as Outcome.Ok
+            assertEquals(r.messages.toString(), "За игру на этой неделе можно получить ещё $coins.", r.messages.last())
+        }
+    }
+
+    @Test
+    fun `лимит мини-игры в именительном и принесённое в винительном падеже`() {
+        listOf(Triple(1, "1 монета", "1 монету"), Triple(2, "2 монеты", "2 монеты"), Triple(21, "21 монета", "21 монету")).forEach { (cap, nom, acc) ->
+            val econ = economyWith(rules.copy(miniGameCap = cap))
+            val first = econ.finishMiniGame(ready(econ), score = 1000 * rules.miniGameScorePerCoin, bombsUsed = 0) as Outcome.Ok
+            assertEquals(first.messages.toString(), "Недельный лимит игры ($nom) набран. Остальное — из плана и заданий.", first.messages.last())
+            val again = econ.finishMiniGame(first.state, score = 1000 * rules.miniGameScorePerCoin, bombsUsed = 0) as Outcome.Ok
+            assertEquals(again.messages.toString(), "На этой неделе игра уже принесла $acc — больше только на следующей.", again.messages.last())
+        }
+    }
+
+    @Test
+    fun `бонус взрослого в именительном падеже`() {
+        listOf(1 to "1 монета", 2 to "2 монеты", 5 to "5 монет", 21 to "21 монета").forEach { (amount, coins) ->
+            val econ = economyWith(rules.copy(parentBonusAmount = amount))
+            val s = newPet(econ)
+            val r = econ.parentBonus(s, 0) as Outcome.Ok
+            assertEquals("Бонус от взрослого: +$coins — «Помог по дому». На балансе ${s.balance + amount}.", r.messages.first())
+        }
+    }
+
+    @Test
+    fun `подсказка про копилку в винительном падеже`() {
+        listOf(listOf(21, 50) to "21 монету", listOf(2) to "2 монеты", listOf(5, 10) to "5 монет").forEach { (amounts, coins) ->
+            val custom = economyWith(rules.copy(savingsAmounts = amounts))
+            val r = end(ready(custom), custom)
+            assertTrue(r.messages.toString(), r.messages.contains(piggyHint(coins)))
+        }
+        val step = economyWith(rules.copy(savingsAmounts = emptyList(), planStep = 1))
+        val r = end(ready(step), step)
+        assertTrue(r.messages.toString(), r.messages.contains(piggyHint("1 монету")))
+    }
+
+    @Test
+    fun `монеты мини-игры вне плана в винительном падеже`() {
+        listOf(1 to "1 монету", 2 to "2 монеты", 5 to "5 монет", 21 to "21 монету").forEach { (earned, coins) ->
+            val s = e.finishMiniGame(ready(), score = earned * rules.miniGameScorePerCoin, bombsUsed = 0).ok()
+            val r = end(s)
+            assertTrue(r.messages.toString(), r.messages.contains("Вне плана: игра «Монетки в ряд» принесла $coins."))
+        }
+    }
+
+    @Test
+    fun `бонус взрослого вне плана в именительном падеже`() {
+        // amount, bonuses granted -> total
+        listOf(Triple(1, 1, "1 монета"), Triple(1, 2, "2 монеты"), Triple(5, 1, "5 монет"), Triple(21, 1, "21 монета")).forEach { (amount, times, coins) ->
+            val econ = economyWith(rules.copy(parentBonusAmount = amount))
+            var s = ready(econ)
+            repeat(times) { s = econ.parentBonus(s, 0).ok() }
+            val r = end(s, econ)
+            assertTrue(r.messages.toString(), r.messages.contains("Вне плана: бонус от взрослого — $coins."))
+        }
+    }
+
+    @Test
+    fun `карманные деньги новой недели в именительном падеже`() {
+        listOf(1 to "1 монета", 2 to "2 монеты", 5 to "5 монет", 21 to "21 монета").forEach { (allowance, coins) ->
+            val econ = economyWith(rules.copy(allowance = allowance))
+            val r = end(ready(econ, mandatory = 1, optional = 0, savings = 0), econ)
+            assertTrue(r.messages.toString(), r.messages.contains("Новая неделя: +$coins карманных денег."))
+        }
+    }
+
+    // ---------- MVP-T01a CONTRACT 3–4. No gender for the child, pet name only in the nominative ----------
+
+    private val genderedWords = listOf("отложил", "планировал", "потратил", "ты уже ответил", "проголодался", "запачкался", "положил", "взял")
+    private fun assertNoGender(msgs: List<String>) = msgs.forEach { m ->
+        genderedWords.forEach { w -> assertFalse("«$w» in «$m»", m.lowercase().contains(w)) }
+    }
+
+    @Test
+    fun `перерасход при покупке описан без рода`() {
+        val optional = e.buy(ready(), "fun_ball") as Outcome.Ok // plan 20, ball 25
+        assertTrue(
+            optional.messages.toString(),
+            optional.messages.contains("На желаемое потрачено 25 из 20 по плану — больше плана. Не страшно: учти это в следующем плане."),
+        )
+        val lunch = e.buy(ready(), "food_lunch") as Outcome.Ok // plan 50, lunch 45
+        assertTrue(lunch.messages.toString(), lunch.messages.contains("На обязательное потрачено 45 из 50 по плану."))
+        val mandatory = e.buy(lunch.state, "care_brush") as Outcome.Ok // 45 + 15 = 60
+        assertTrue(
+            mandatory.messages.toString(),
+            mandatory.messages.contains("На обязательное потрачено 60 из 50 по плану — больше плана. Не страшно: учти это в следующем плане."),
+        )
+        assertNoGender(optional.messages + lunch.messages + mandatory.messages)
+    }
+
+    @Test
+    fun `итог недели без рода ребёнка и питомца`() {
+        var s = ready() // plan 50 20 30, balance 100
+        s = e.buy(s, "care_vitamins").ok() // 25
+        s = e.buy(s, "care_shampoo").ok() // 20
+        s = e.buy(s, "care_brush").ok() // 15, mandatory 60 and no food
+        s = e.buy(s, "fun_ball").ok() // optional 25
+        s = e.deposit(s, 15).ok()
+        s = e.withdraw(s, 5).ok()
+        val r = end(s)
+        listOf(
+            "Прошла неделя: сытость −${rules.decayHunger}, чистота −${rules.decayClean}, настроение −${rules.decayMood}.",
+            "Еды на этой неделе не было — сытость ещё −${rules.uncoveredExtraDrop}.",
+            "На обязательное потрачено 60, а в плане было 50.",
+            "На желаемое потрачено 25, а в плане было 20.",
+            "В копилку чистыми 10 (положено 15, взято 5), а в плане было 30.",
+            "Копилка выросла на 10 монет — цель ближе, настроение +${rules.savedMoodBonus}.",
+        ).forEach { assertTrue(r.messages.toString(), r.messages.contains(it)) }
+        assertTrue(r.messages.toString(), r.messages.none { it.startsWith("Ухода на этой неделе") })
+        assertNoGender(r.messages)
+    }
+
+    @Test
+    fun `начало итога недели берёт числа из rules`() {
+        val custom = economyWith(rules.copy(decayHunger = 21, decayClean = 2, decayMood = 1, uncoveredExtraDrop = 7))
+        val r = end(ready(custom), custom) // nothing bought
+        assertEquals("Прошла неделя: сытость −21, чистота −2, настроение −1.", r.messages.first())
+        assertTrue(r.messages.toString(), r.messages.contains("Еды на этой неделе не было — сытость ещё −7."))
+        assertTrue(r.messages.toString(), r.messages.contains("Ухода на этой неделе не было — чистота ещё −7."))
+        assertTrue(r.messages.toString(), r.messages.none { it.startsWith("За неделю") })
+        assertNoGender(r.messages)
+    }
+
+    @Test
+    fun `рост копилки назван без рода и склоняется в винительном`() {
+        listOf(1 to "1 монету", 2 to "2 монеты", 21 to "21 монету", 30 to "30 монет").forEach { (amount, coins) ->
+            val r = end(e.deposit(ready(), amount).ok())
+            assertTrue(r.messages.toString(), r.messages.contains("Копилка выросла на $coins — цель ближе, настроение +${rules.savedMoodBonus}."))
+            assertTrue(r.messages.none { it.startsWith("Ты отложил") })
+        }
+        // net saving: 31 in, 10 out
+        val net = end(e.withdraw(e.deposit(ready(), 31).ok(), 10).ok())
+        assertTrue(net.messages.toString(), net.messages.contains("Копилка выросла на 21 монету — цель ближе, настроение +${rules.savedMoodBonus}."))
+    }
+
+    @Test
+    fun `повторный вопрос отклоняется без рода`() {
+        val s = ready()
+        val q = e.availableQuiz(s).first()
+        val msg = e.answerQuiz(e.answerQuiz(s, q.id, q.correct).ok(), q.id, q.correct).err().message
+        assertEquals("Этот вопрос уже решён", msg)
+        assertNoGender(listOf(msg))
     }
 
     // ---------- D. Match3 seed ----------

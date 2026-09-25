@@ -79,7 +79,11 @@ class EconomyTest {
     fun `overspending a category warns but is allowed`() {
         val s = TestContent.readyState() // optional plan = 20
         val r = e.buy(s, "fun_ball") as Outcome.Ok // 25 > 20
-        assertTrue(r.messages.any { it.contains("больше, чем планировал") })
+        assertTrue(
+            r.messages.toString(),
+            r.messages.contains("На желаемое потрачено 25 из 20 по плану — больше плана. Не страшно: учти это в следующем плане."),
+        )
+        assertTrue(r.messages.none { it.contains("планировал") })
     }
 
     @Test
@@ -258,6 +262,68 @@ class EconomyTest {
         assertEquals("5 недель", Economy.weeks(5))
         assertEquals("11 недель", Economy.weeks(11))
         assertEquals("21 неделя", Economy.weeks(21))
+    }
+
+    // ---------- MVP-T01a CONTRACT 1: coins(n, case) ----------
+
+    private fun assertCoins(case: Case, expected: Map<Int, String>) =
+        expected.forEach { (n, text) -> assertEquals("coins($n, $case)", text, Economy.coins(n, case)) }
+
+    @Test
+    fun `падежи монет перечислены в порядке NOM ACC GEN`() =
+        assertEquals(listOf("NOM", "ACC", "GEN"), Case.entries.map { it.name })
+
+    @Test
+    fun `монеты в именительном падеже`() = assertCoins(
+        Case.NOM,
+        mapOf(
+            0 to "0 монет", 1 to "1 монета", 2 to "2 монеты", 3 to "3 монеты", 4 to "4 монеты", 5 to "5 монет",
+            10 to "10 монет", 11 to "11 монет", 12 to "12 монет", 13 to "13 монет", 14 to "14 монет", 15 to "15 монет",
+            21 to "21 монета", 22 to "22 монеты", 24 to "24 монеты", 25 to "25 монет", 100 to "100 монет",
+            101 to "101 монета", 111 to "111 монет", 112 to "112 монет", 114 to "114 монет", 122 to "122 монеты",
+        ),
+    )
+
+    @Test
+    fun `монеты в винительном падеже`() = assertCoins(
+        Case.ACC,
+        mapOf(
+            0 to "0 монет", 1 to "1 монету", 2 to "2 монеты", 4 to "4 монеты", 5 to "5 монет",
+            11 to "11 монет", 12 to "12 монет", 13 to "13 монет", 14 to "14 монет",
+            21 to "21 монету", 22 to "22 монеты", 101 to "101 монету", 111 to "111 монет", 112 to "112 монет",
+        ),
+    )
+
+    @Test
+    fun `монеты в родительном падеже`() = assertCoins(
+        Case.GEN,
+        mapOf(
+            0 to "0 монет", 1 to "1 монеты", 2 to "2 монет", 4 to "4 монет", 5 to "5 монет",
+            11 to "11 монет", 12 to "12 монет", 13 to "13 монет", 14 to "14 монет",
+            21 to "21 монеты", 22 to "22 монет", 101 to "101 монеты", 111 to "111 монет", 112 to "112 монет",
+        ),
+    )
+
+    @Test
+    fun `монеты по умолчанию в именительном падеже`() {
+        assertEquals("1 монета", Economy.coins(1))
+        assertEquals("2 монеты", Economy.coins(2))
+        assertEquals("5 монет", Economy.coins(5))
+        assertEquals("11 монет", Economy.coins(11))
+        assertEquals("21 монета", Economy.coins(21))
+        assertEquals("22 монеты", Economy.coins(22))
+        assertEquals("0 монет", Economy.coins(0))
+        assertEquals("112 монет", Economy.coins(112))
+    }
+
+    @Test
+    fun `форма монет берётся по модулю числа`() {
+        assertEquals("-1 монета", Economy.coins(-1))
+        assertEquals("-3 монеты", Economy.coins(-3))
+        assertEquals("-12 монет", Economy.coins(-12))
+        assertEquals("-21 монету", Economy.coins(-21, Case.ACC))
+        assertEquals("-2 монет", Economy.coins(-2, Case.GEN))
+        assertEquals("-31 монеты", Economy.coins(-31, Case.GEN))
     }
 }
 
