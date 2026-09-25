@@ -1,8 +1,9 @@
 """Procedural toy-style pets for Finny, rendered with Blender (Cycles, transparent background).
 
 One frame:  Blender -b -P tools/art/pet.py -- --species cat --color '#F4A261' --face happy --stage 1 --out /abs/cat.png
-Full set:   Blender -b -P tools/art/pet.py -- --all /abs/outdir [--size 512 --samples 96]
-            renders species x colour x stage x face (3 x 3 x 3 x 4 = 108 frames) as pet_<species>_<colour>_<stage>_<face>.png
+Full set:   Blender -b -P tools/art/pet.py -- --all /abs/outdir [--only-species puppy] [--size 512 --samples 96]
+            renders species x colour x stage x face (3 x 3 x 3 x 4 = 108 frames) as pet_<species>_<colour>_<stage>_<face>.png;
+            existing PNGs are skipped. Then: python tools/art/import_sprites.py /abs/outdir
 
 Colours and species ids mirror app/src/main/assets/content/content.json. The ground shadow is drawn by the
 app (PetView), so no shadow catcher here. All geometry is primitives + subdivision: the art belongs to the team.
@@ -10,7 +11,7 @@ app (PetView), so no shadow catcher here. All geometry is primitives + subdivisi
 import bpy, math, sys, argparse, os
 from mathutils import Vector
 
-SPECIES = ["cat", "bunny", "dragon"]
+SPECIES = ["cat", "bunny", "puppy"]
 COLORS = {"orange": "#F4A261", "blue": "#6FB1E0", "green": "#7BC47F"}
 FACES = ["happy", "neutral", "sad", "blink"]
 STAGES = [0, 1, 2]
@@ -21,6 +22,7 @@ ap.add_argument("--species", default="cat"); ap.add_argument("--color", default=
 ap.add_argument("--face", default="happy"); ap.add_argument("--stage", type=int, default=0)
 ap.add_argument("--out", default=None); ap.add_argument("--all", default=None)
 ap.add_argument("--samples", type=int, default=96); ap.add_argument("--size", type=int, default=512)
+ap.add_argument("--only-species", default=None, choices=SPECIES)
 A = ap.parse_args(argv)
 
 
@@ -38,13 +40,19 @@ def setup_scene(samples, size):
     bpy.ops.wm.read_factory_settings(use_empty=True)
     scene = bpy.context.scene
     scene.render.engine = "CYCLES"
+    scene.cycles.device = "CPU"
     prefs = bpy.context.preferences.addons["cycles"].preferences
-    try:
-        prefs.compute_device_type = "METAL"
-        for d in prefs.devices: d.use = True
-        scene.cycles.device = "GPU"
-    except Exception:
-        scene.cycles.device = "CPU"
+    for kind in ("OPTIX", "CUDA", "HIP", "ONEAPI", "METAL"):  # first GPU backend with a device wins, else CPU
+        try:
+            prefs.compute_device_type = kind
+            gpus = [d for d in prefs.get_devices_for_type(kind) if d.type == kind]
+        except (TypeError, ValueError):  # backend not built for this OS
+            continue
+        if gpus:
+            for d in prefs.devices: d.use = d.type == kind
+            scene.cycles.device = "GPU"
+            break
+    print("cycles device:", prefs.compute_device_type if scene.cycles.device == "GPU" else "CPU", flush=True)
     scene.cycles.samples = samples
     scene.cycles.use_denoising = True
     scene.render.film_transparent = True
@@ -108,19 +116,6 @@ def curve(name, pts, bevel, mat, taper=False):
     cd.materials.append(mat); return o
 
 
-def wing(name, sx, mat):
-    """Two-lobed bat wing: a flattened, bevelled outline extruded a little."""
-    pts = [(0.0, 0.05), (0.35, 0.62), (0.85, 0.78), (0.78, 0.3), (1.0, 0.0), (0.72, -0.22), (0.4, -0.38), (0.0, -0.25)]
-    mesh = bpy.data.meshes.new(name)
-    verts = [(x * sx, 0.0, y) for x, y in pts]
-    mesh.from_pydata(verts, [], [list(range(len(pts)))]); mesh.update()
-    o = bpy.data.objects.new(name, mesh); bpy.context.collection.objects.link(o)
-    sol = o.modifiers.new("sol", "SOLIDIFY"); sol.thickness = 0.16; sol.offset = 0
-    bev = o.modifiers.new("bev", "BEVEL"); bev.width = 0.06; bev.segments = 4
-    smooth(o, 2)
-    o.data.materials.append(mat); return o
-
-
 def build_pet(species, color_hex, stage, face):
     BODY = hexc(color_hex)
     DARK = mix(BODY, (0, 0, 0, 1), 0.35)
@@ -151,12 +146,14 @@ def build_pet(species, color_hex, stage, face):
             smooth(sphere("glint", (ex - 0.04 * sx, ey - 0.19, ez + 0.06), 0.035, (1, 1, 1), m_glint), 1)
         if face == "sad":  # soft worried brows
             curve("brow", [(ex - 0.15 * sx, ey + 0.0, ez + 0.31), (ex + 0.13 * sx, ey - 0.03, ez + 0.23)], 0.022, m_ink)
+    my = -0.05 if species == "puppy" else 0.0  # the puppy's muzzle pushes the mouth forward
+    mouth = lambda pts, r: curve("mouth", [(x, y + my, z) for x, y, z in pts], r, m_ink)
     if face in ("happy", "blink"):
-        curve("mouth", [(-0.2, -0.93, 1.9), (0, -0.98, 1.8), (0.2, -0.93, 1.9)], 0.028, m_ink)
+        mouth([(-0.2, -0.93, 1.9), (0, -0.98, 1.8), (0.2, -0.93, 1.9)], 0.028)
     elif face == "sad":
-        curve("mouth", [(-0.18, -0.93, 1.78), (0, -0.98, 1.88), (0.18, -0.93, 1.78)], 0.028, m_ink)
+        mouth([(-0.18, -0.93, 1.78), (0, -0.98, 1.88), (0.18, -0.93, 1.78)], 0.028)
     else:
-        curve("mouth", [(-0.14, -0.94, 1.84), (0, -0.97, 1.815), (0.14, -0.94, 1.84)], 0.026, m_ink)
+        mouth([(-0.14, -0.94, 1.84), (0, -0.97, 1.815), (0.14, -0.94, 1.84)], 0.026)
 
     if species == "cat":
         for sx in (-1, 1):
@@ -177,17 +174,13 @@ def build_pet(species, color_hex, stage, face):
         smooth(sphere("nose", (0, -0.97, 2.02), 0.08, (1.3, 0.7, 0.8), m_nose), 1)
         if face != "sad": smooth(sphere("tooth", (0, -0.9, 1.74), 0.07, (1.6, 0.4, 0.9), m_white), 1)
         smooth(sphere("tail", (0, 0.95, 0.75), 0.26, (1, 1, 1), m_belly))
-    else:  # dragon
-        for i in (-1, 0, 1):
-            cone("spike", (0.42 * i, 0.1, 2.9 + (0.08 if i == 0 else 0)), 0.16, 0.5, (math.radians(-10), math.radians(15 * i), 0), m_dark)
+    else:  # puppy: floppy ears, light muzzle with a button nose, a short wagging tail
         for sx in (-1, 1):
-            w = wing("wing", sx, m_dark)
-            w.location = (0.8 * sx, 0.45, 1.3); w.rotation_euler = (math.radians(-10), math.radians(-35 * sx), math.radians(20 * sx))
-        curve("tail", [(0.7, 0.6, 0.45), (1.6, 0.5, 0.6), (1.9, 0.2, 1.3)], 0.16, m_dark, taper=True)
-        cone("tail_tip", (1.9, 0.2, 1.45), 0.18, 0.4, (0, 0, 0), m_body)
-        for k in range(3):
-            smooth(sphere("scale", (0, -1.08, 0.55 + 0.25 * k), 0.06, (5.0, 0.6, 1.2), m_body), 1)
-        smooth(sphere("nose", (0, -0.97, 2.03), 0.06, (1.2, 0.7, 0.8), m_dark), 1)
+            smooth(sphere("ear", (0.84 * sx, -0.1, 2.25), 0.3, (0.64, 0.42, 1.7), m_dark, (math.radians(6), math.radians(-24 * sx), 0)))
+        smooth(sphere("muzzle", (0, -0.76, 1.92), 0.3, (1.2, 0.67, 0.73), m_belly))
+        smooth(sphere("nose", (0, -1.0, 2.04), 0.09, (1.5, 0.8, 0.95), m_ink), 1)
+        if face in ("happy", "blink"): smooth(sphere("tongue", (0, -0.97, 1.72), 0.08, (1.1, 0.5, 1.1), m_nose), 1)
+        curve("tail", [(0.6, 0.6, 0.65), (1.05, 0.65, 0.95), (1.22, 0.5, 1.45)], 0.13, m_body, taper=True)
 
     if stage >= 1:  # bandana: a ring hugging the neck, a knot and a hanging tip in front of the belly
         bpy.ops.mesh.primitive_torus_add(major_radius=0.7, minor_radius=0.15, location=(0, -0.05, 1.45), major_segments=64, minor_segments=16)
@@ -246,7 +239,7 @@ def render(species, color_hex, stage, face, out):
 
 if A.all:
     os.makedirs(A.all, exist_ok=True)
-    for sp in SPECIES:
+    for sp in [A.only_species] if A.only_species else SPECIES:
         for cid, chex in COLORS.items():
             for st in STAGES:
                 for f in FACES:

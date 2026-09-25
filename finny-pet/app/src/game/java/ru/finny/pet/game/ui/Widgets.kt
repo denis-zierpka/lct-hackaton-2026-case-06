@@ -3,6 +3,7 @@ package ru.finny.pet.game.ui
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateIntAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
@@ -27,6 +28,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.LocalContentColor
@@ -51,12 +53,14 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
+import ru.finny.pet.game.LocalAnimate
 
 enum class ButtonStyle { PRIMARY, GOLD, GREEN, MAGENTA, PAPER, GHOST }
 
@@ -85,7 +89,9 @@ private fun ButtonStyle.content(): Color = when (this) {
 
 /**
  * Chunky game button: gradient top, darker 3D edge below, springs down when pressed.
- * Always ≥ 56 dp tall (ТЗ 3.6: touch targets ≥ 48 dp).
+ * Face ≥ [minHeight] tall, keep it ≥ 48 dp (ТЗ 3.6: touch targets ≥ 48 dp).
+ * [selected] turns it into one option of a choice: magenta + «✓» when chosen, paper otherwise, announced as selected.
+ * [tight] is for a one-word label in a narrow tab: 14 sp and 8 dp side paddings keep the word on one line.
  */
 @Composable
 fun GameButton(
@@ -96,18 +102,24 @@ fun GameButton(
     icon: Painter? = null,
     iconSize: Dp = 28.dp,
     minHeight: Dp = 56.dp,
+    selected: Boolean? = null,
+    tight: Boolean = false,
     onClick: () -> Unit,
 ) {
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
-    val press by animateFloatAsState(if (pressed && enabled) 1f else 0f, spring(stiffness = Spring.StiffnessHigh), label = "press")
+    val press by animateFloatAsState(if (pressed && enabled) 1f else 0f, if (LocalAnimate.current) spring(stiffness = Spring.StiffnessHigh) else snap(), label = "press")
     val edge = 5.dp
     val shape = RoundedCornerShape(minHeight / 2)
-    val edgeColor = style.edge()
+    val look = when (selected) { null -> style; true -> ButtonStyle.MAGENTA; false -> ButtonStyle.PAPER }
+    val edgeColor = look.edge()
     Box(
         modifier
             .graphicsLayer { alpha = if (enabled) 1f else 0.5f }
-            .clickable(interactionSource = interaction, indication = null, enabled = enabled, role = Role.Button, onClick = onClick)
+            .then(
+                if (selected == null) Modifier.clickable(interactionSource = interaction, indication = null, enabled = enabled, role = Role.Button, onClick = onClick)
+                else Modifier.selectable(selected, interaction, null, enabled, Role.RadioButton, onClick),
+            )
             .drawBehind {
                 // 3D edge under the face
                 val e = edge.toPx()
@@ -119,30 +131,42 @@ fun GameButton(
             Modifier
                 .matchParentSize()
                 .graphicsLayer { translationY = press * edge.toPx() * 0.8f }
-                .background(style.fill(), shape)
+                .background(look.fill(), shape)
                 .border(1.dp, Color.White.copy(alpha = 0.35f), shape),
         )
         Box(
             Modifier
                 .defaultMinSize(minHeight = minHeight)
                 .graphicsLayer { translationY = press * edge.toPx() * 0.8f }
-                .padding(horizontal = 14.dp, vertical = 8.dp),
+                .padding(horizontal = if (tight) 8.dp else 14.dp, vertical = 8.dp),
             contentAlignment = Alignment.Center,
         ) {
-            CompositionLocalProvider(LocalContentColor provides style.content()) {
+            CompositionLocalProvider(LocalContentColor provides look.content()) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
                     if (icon != null) {
                         Image(icon, contentDescription = null, modifier = Modifier.size(iconSize))
                         Spacer(Modifier.width(10.dp))
                     }
-                    Text(text, style = MaterialTheme.typography.labelLarge, color = style.content(), textAlign = TextAlign.Center, maxLines = 2)
+                    Text(text, style = if (tight) MaterialTheme.typography.labelMedium else MaterialTheme.typography.labelLarge, color = look.content(), textAlign = TextAlign.Center, maxLines = 2)
                 }
             }
         }
+        if (selected == true) CheckBadge()
     }
 }
 
-/** Round icon button with a 3D prop image and a label under it: the room's action buttons. */
+/** «✓» on the chosen option: a choice is never shown by colour alone (ТЗ 3.6). TalkBack hears «selected» from the option itself. */
+@Composable
+fun BoxScope.CheckBadge(alignment: Alignment = Alignment.TopEnd) {
+    Box(Modifier.align(alignment).size(22.dp).background(G.green, CircleShape).border(2.dp, Color.White, CircleShape).clearAndSetSemantics {}, contentAlignment = Alignment.Center) {
+        Text("✓", style = MaterialTheme.typography.labelSmall, color = Color.White)
+    }
+}
+
+/**
+ * Round icon button with a 3D prop image and a label under it: the room's action buttons.
+ * [tight] drops the side paddings so a narrow portrait row still shows every label in full.
+ */
 @Composable
 fun PropButton(
     label: String,
@@ -152,16 +176,18 @@ fun PropButton(
     badge: Int = 0,
     tint: Color = Color.White,
     showLabel: Boolean = true,
+    tight: Boolean = false,
+    description: String = label,
     onClick: () -> Unit,
 ) {
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
-    val scale by animateFloatAsState(if (pressed) 0.9f else 1f, spring(dampingRatio = Spring.DampingRatioMediumBouncy), label = "scale")
+    val scale by animateFloatAsState(if (pressed) 0.9f else 1f, if (LocalAnimate.current) spring(dampingRatio = Spring.DampingRatioMediumBouncy) else snap(), label = "scale")
     Column(
         modifier
             .clickable(interactionSource = interaction, indication = null, role = Role.Button, onClick = onClick)
-            .semantics { contentDescription = label }
-            .padding(4.dp),
+            .semantics { contentDescription = if (badge > 0) "$description, $badge" else description }
+            .padding(horizontal = if (tight) 0.dp else 2.dp, vertical = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box(Modifier.size(size).graphicsLayer { scaleX = scale; scaleY = scale }, contentAlignment = Alignment.Center) {
@@ -180,7 +206,7 @@ fun PropButton(
         }
         if (showLabel) {
             Spacer(Modifier.height(2.dp))
-            Text(label, style = MaterialTheme.typography.labelSmall, color = tint, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.background(G.purpleDeep.copy(alpha = 0.55f), RoundedCornerShape(50)).padding(horizontal = 6.dp, vertical = 2.dp))
+            Text(label, style = MaterialTheme.typography.labelSmall, color = tint, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.background(G.purpleDeep.copy(alpha = 0.55f), RoundedCornerShape(50)).padding(horizontal = if (tight) 1.dp else 4.dp, vertical = 2.dp))
         }
     }
 }
@@ -198,30 +224,30 @@ fun Panel(modifier: Modifier = Modifier, color: Color = G.paper, padding: Dp = 1
     )
 }
 
-/** Pill with a prop icon and an animated number: coins, savings, week. */
+/** Pill with a prop icon and an animated number: coins, savings, week. [compact] fits two chips and three buttons into 360 dp. */
 @Composable
-fun HudChip(icon: Painter, value: Int, label: String, modifier: Modifier = Modifier, suffix: String = "") {
-    val shown by animateIntAsState(value, tween(600), label = "hud")
+fun HudChip(icon: Painter, value: Int, label: String, modifier: Modifier = Modifier, suffix: String = "", compact: Boolean = false) {
+    val shown by animateIntAsState(value, if (LocalAnimate.current) tween(600) else snap(), label = "hud")
     Row(
         modifier
-            .semantics { contentDescription = "$label $value" }
+            .clearAndSetSemantics { contentDescription = "$label $value" }
             .shadow(4.dp, RoundedCornerShape(50), ambientColor = G.purpleDeep, spotColor = G.purpleDeep)
             .background(Color.White.copy(alpha = 0.92f), RoundedCornerShape(50))
-            .padding(start = 6.dp, end = 14.dp, top = 4.dp, bottom = 4.dp),
+            .padding(start = if (compact) 4.dp else 6.dp, end = if (compact) 10.dp else 14.dp, top = 4.dp, bottom = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Image(icon, contentDescription = null, modifier = Modifier.size(34.dp))
-        Spacer(Modifier.width(6.dp))
-        Text("$shown$suffix", style = MaterialTheme.typography.titleMedium, color = G.purpleDeep)
+        Image(icon, contentDescription = null, modifier = Modifier.size(if (compact) 28.dp else 34.dp))
+        Spacer(Modifier.width(if (compact) 4.dp else 6.dp))
+        Text("$shown$suffix", style = if (compact) MaterialTheme.typography.titleSmall else MaterialTheme.typography.titleMedium, color = G.purpleDeep)
     }
 }
 
-/** Rounded gradient bar with a label and a number: never colour alone (ТЗ 3.6). */
+/** Rounded gradient bar with a label and a number: never colour alone (ТЗ 3.6). TalkBack hears it once; a label that already has numbers («Тема: 0 из 3») is read as is. */
 @Composable
 fun GameBar(label: String, value: Int, color: Color, modifier: Modifier = Modifier, max: Int = 100, icon: Painter? = null, dark: Boolean = false) {
-    val p by animateFloatAsState((value.toFloat() / max).coerceIn(0f, 1f), spring(stiffness = Spring.StiffnessLow), label = "bar")
+    val p by animateFloatAsState((value.toFloat() / max).coerceIn(0f, 1f), if (LocalAnimate.current) spring(stiffness = Spring.StiffnessLow) else snap(), label = "bar")
     val textColor = if (dark) Color.White else G.ink
-    Column(modifier.semantics { contentDescription = "$label $value из $max" }, verticalArrangement = Arrangement.spacedBy(3.dp)) {
+    Column(modifier.clearAndSetSemantics { contentDescription = if (label.any(Char::isDigit)) label else "$label $value из $max" }, verticalArrangement = Arrangement.spacedBy(3.dp)) {
         if (label.isNotEmpty()) Row(verticalAlignment = Alignment.CenterVertically) {
             if (icon != null) { Image(icon, contentDescription = null, modifier = Modifier.size(22.dp)); Spacer(Modifier.width(6.dp)) }
             Text(label, style = MaterialTheme.typography.labelMedium, color = textColor, modifier = Modifier.weight(1f))
@@ -272,11 +298,12 @@ fun SpeechBubble(modifier: Modifier = Modifier, tailAtStart: Boolean = true, con
 fun BoxScope.CloseButton(onClick: () -> Unit, label: String = "Назад") {
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
-    val scale by animateFloatAsState(if (pressed) 0.9f else 1f, label = "close")
+    val scale by animateFloatAsState(if (pressed) 0.9f else 1f, if (LocalAnimate.current) spring() else snap(), label = "close")
     Box(
         Modifier.align(Alignment.TopStart).padding(6.dp).size(48.dp)
             .graphicsLayer { scaleX = scale; scaleY = scale }
             .shadow(4.dp, CircleShape).background(Color.White, CircleShape)
+            .semantics { contentDescription = label }
             .clickable(interactionSource = interaction, indication = null, role = Role.Button, onClickLabel = label, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {

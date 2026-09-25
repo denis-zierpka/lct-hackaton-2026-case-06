@@ -30,7 +30,9 @@ import androidx.compose.ui.unit.dp
 import ru.finny.pet.R
 import ru.finny.pet.domain.TaskType
 import ru.finny.pet.domain.Theme
+import ru.finny.pet.domain.Economy
 import ru.finny.pet.game.GameViewModel
+import ru.finny.pet.game.LocalAnimate
 import ru.finny.pet.game.LocalLayout
 import ru.finny.pet.game.Screen
 import ru.finny.pet.game.ui.ButtonStyle
@@ -63,12 +65,12 @@ fun TasksScreen(vm: GameViewModel) {
         Row(Modifier.fillMaxWidth().background(G.lavenderLight, RoundedCornerShape(16.dp)).padding(10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Image(painterResource(R.drawable.ui_coin), null, Modifier.size(36.dp))
             Column {
-                Text("Верный ответ +${e.rules.rewardCorrect}, попытка +${e.rules.rewardWrong} монет", style = MaterialTheme.typography.titleSmall, color = G.purpleDeep)
+                Text("Верный ответ: +${Economy.coins(e.rules.rewardCorrect)}, попытка: +${Economy.coins(e.rules.rewardWrong)}", style = MaterialTheme.typography.titleSmall, color = G.purpleDeep)
                 Text("Задание — это история с выбором. Объяснение будет в любом случае.", style = MaterialTheme.typography.bodySmall, color = G.inkSoft)
             }
         }
         if (available.isEmpty()) {
-            Text(if (done.size == vm.content.tasks.size) "Все задания выполнены! Ты молодец." else "Новые задания откроются на следующей неделе.", style = MaterialTheme.typography.bodyLarge, color = G.ink)
+            Text(if (done.size == vm.content.tasks.size) "Все задания выполнены! Молодец!" else "Новые задания откроются на следующей неделе.", style = MaterialTheme.typography.bodyLarge, color = G.ink)
         }
         Theme.entries.forEach { theme ->
             val list = available.filter { it.theme == theme }
@@ -117,13 +119,13 @@ fun TaskScreen(vm: GameViewModel, taskId: String) {
     PanelScreen(vm, t.title) {
         val story: @Composable () -> Unit = {
             Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                if (pet != null) PetSprite(pet.speciesId, pet.colorId, vm.economy.stageIndex(pet.growth), vm.face, s.animations, size = if (layout.compact) 120.dp else 150.dp, description = "")
+                if (pet != null) PetSprite(pet.speciesId, pet.colorId, vm.economy.stageIndex(pet.growth), vm.face, LocalAnimate.current, size = if (layout.compact) 120.dp else 150.dp, description = "")
                 SpeechBubble(Modifier.weight(1f).padding(bottom = 30.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         Image(painterResource(t.theme.icon()), null, Modifier.size(24.dp))
                         Text(t.theme.title, style = MaterialTheme.typography.labelMedium, color = t.theme.color())
                     }
-                    TypewriterText(t.situation, animate = s.animations)
+                    TypewriterText(t.situation, animate = LocalAnimate.current)
                 }
             }
         }

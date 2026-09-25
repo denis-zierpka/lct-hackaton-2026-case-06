@@ -23,9 +23,11 @@ data class GameState(
     val ledger: List<LedgerEntry> = emptyList(),
     // game edition
     val sounds: Boolean = true,
+    val music: Boolean = false,
     val bombs: Int = 0,
     val miniGameEarned: Int = 0,
     val quizResults: List<TaskResult> = emptyList(),
+    val parentBonusesThisPeriod: Int = 0,
 ) {
     val hasProfile: Boolean get() = pet != null
     val factMandatory: Int get() = purchases.filter { it.category == Category.MANDATORY }.sumOf { it.price }
@@ -83,6 +85,9 @@ data class PeriodSummary(
     val stageBefore: Int,
     val stageAfter: Int,
     val messages: List<String>,
+    /** Off-plan coins of the period: mini-game and adult bonus (2.8). */
+    val miniGameEarned: Int = 0,
+    val parentBonus: Int = 0,
 )
 
 enum class Face { HAPPY, NEUTRAL, SAD }

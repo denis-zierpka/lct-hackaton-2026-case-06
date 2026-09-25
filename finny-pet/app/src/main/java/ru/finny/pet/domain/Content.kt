@@ -17,6 +17,8 @@ data class Content(
     val quiz: List<QuizQuestion> = emptyList(),
     /** Idle lines the pet says in the room (game edition); {pet} is replaced with the name. */
     val chatter: Chatter = Chatter(),
+    /** Reasons an adult picks when granting a bonus (2.5.12). */
+    val parentBonusReasons: List<String> = emptyList(),
 ) {
     fun quiz(id: String): QuizQuestion = quiz.first { it.id == id }
     fun item(id: String): ShopItem = items.first { it.id == id }
@@ -32,7 +34,7 @@ data class Content(
 @Serializable
 data class Rules(
     val allowance: Int = 100,
-    val rewardCorrect: Int = 20,
+    val rewardCorrect: Int = 10,
     val rewardWrong: Int = 5,
     val decayHunger: Int = 30,
     val decayClean: Int = 25,
@@ -52,6 +54,18 @@ data class Rules(
     val miniGameScorePerCoin: Int = 20,
     val miniGameMoves: Int = 15,
     val quizMoodBonus: Int = 3,
+    /** Adult bonus (2.5.12): coins per bonus and bonuses per period; bombs per correct quiz answer. */
+    val parentBonusAmount: Int = 10,
+    val parentBonusPerPeriod: Int = 3,
+    val quizBombReward: Int = 1,
+    /** Pet stats: start value and face thresholds (sad if any below, happy from average, "low" need below). */
+    val startStat: Int = 70,
+    val faceSadBelow: Int = 30,
+    val faceHappyAvg: Int = 60,
+    val needLowBelow: Int = 40,
+    /** Plan editor step and quick savings amounts. */
+    val planStep: Int = 10,
+    val savingsAmounts: List<Int> = listOf(10, 20, 30, 50),
 )
 
 @Serializable

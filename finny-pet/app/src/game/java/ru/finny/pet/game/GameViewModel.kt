@@ -21,6 +21,7 @@ import ru.finny.pet.domain.Outcome
 import ru.finny.pet.domain.PeriodSummary
 import ru.finny.pet.domain.QuizQuestion
 import ru.finny.pet.domain.Turn
+import ru.finny.pet.domain.Case
 import ru.finny.pet.game.audio.Sound
 
 sealed interface Screen {
@@ -67,7 +68,8 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     val economy = Economy(content)
     private val store = StateStore(app)
 
-    var state: GameState by mutableStateOf(store.load())
+    // an old save may carry a speciesId/colorId no longer in content.json (e.g. dropped "dragon"): normalize to a known one (MVP-T12)
+    var state: GameState by mutableStateOf(store.load().let { s -> s.pet?.let { p -> s.copy(pet = p.copy(speciesId = content.species(p.speciesId).id, colorId = content.color(p.colorId).id)) } ?: s })
         private set
     var screen: Screen by mutableStateOf(Screen.Title)
         private set
@@ -79,7 +81,12 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         private set
     var matchBombsUsed: Int by mutableIntStateOf(0)
         private set
+    /** Lives with the view model (not rememberSaveable in the screen), so a mid-game process death does not leak
+     * the previous round's "over" panel into the next fresh game in the same Activity (MVP-T12). */
+    var matchOver: Boolean by mutableStateOf(false)
     val effects = MutableSharedFlow<Effect>(extraBufferCapacity = 32)
+    /** Lives with the view model, so the room replays only actions it has not shown yet (also after rotation). */
+    val petAction = PetActionState()
 
     /** Increments when something good happened to the pet: the sprite hops. */
     var bounce: Int by mutableIntStateOf(0)
@@ -95,14 +102,14 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         if (to != screen) { screen = to; sfx(Sound.WHOOSH); bubble = null }
     }
 
-    /** Back always lands on a known parent; on Room the system back exits the app. */
+    /** Back always lands on a known parent; on Room the system back exits the app. The mini-game handles back itself. */
     fun back() {
         navigate(
             when (screen) {
                 is Screen.Task -> Screen.Tasks
                 Screen.Glossary -> Screen.Progress
-                Screen.CreatePet, Screen.Intro -> Screen.Title
-                Screen.Title -> Screen.Title
+                Screen.CreatePet, Screen.Title -> Screen.Title
+                Screen.MiniGame -> return
                 else -> if (state.hasProfile) Screen.Room else Screen.Title
             },
         )
@@ -177,6 +184,9 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     fun petTapped() {
         val pet = state.pet ?: return
         sfx(Sound.POP); emit(Effect.Hearts)
+        // a sad or so-so pet first says why (2.5.10); the next tap chats as usual
+        val reason = economy.faceReason(pet)
+        if (economy.face(pet) != Face.HAPPY && bubble?.text != reason) { bubble = Bubble(reason, ttlMs = 9000); return }
         val q = economy.availableQuiz(state)
         val ask = q.isNotEmpty() && (bubble?.questionId == null) && (state.quizResults.size + bounce) % 2 == 0
         bubble = if (ask) {
@@ -192,10 +202,11 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     fun nextLine(petName: String): String {
         val c = content.chatter
         val pet = state.pet
+        val low = content.rules.needLowBelow
         val pool: List<String> = when {
-            pet != null && pet.hunger < 40 && c.hungry.isNotEmpty() -> c.hungry
-            pet != null && pet.clean < 40 && c.dirty.isNotEmpty() -> c.dirty
-            pet != null && pet.mood < 40 && c.bored.isNotEmpty() -> c.bored
+            pet != null && pet.hunger < low && c.hungry.isNotEmpty() -> c.hungry
+            pet != null && pet.clean < low && c.dirty.isNotEmpty() -> c.dirty
+            pet != null && pet.mood < low && c.bored.isNotEmpty() -> c.bored
             else -> listOf(nextStep().first) + c.idle + c.facts
         }
         return pool.random().replace("{pet}", petName)
@@ -205,7 +216,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     fun clearBubble() { bubble = null }
 
     fun askQuestion() {
-        val q = economy.availableQuiz(state).randomOrNull() ?: run { say("Ты ответил на все мои вопросы. Молодец!"); return }
+        val q = economy.availableQuiz(state).randomOrNull() ?: run { say("Все мои вопросы уже разобраны. Здорово!"); return }
         sfx(Sound.BUBBLE)
         bubble = Bubble(q.question, q.options, q.id, ttlMs = 60_000)
     }
@@ -216,7 +227,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
             is Outcome.Ok -> {
                 commit(o.state)
                 val correct = o.state.quizResults.last().correct
-                if (correct) { sfx(Sound.SUCCESS); emit(Effect.Sparkles); bounce++; emit(Effect.PetAction(PetAct.HOP)); match = match?.let { it.copy(bombs = it.bombs + 1) } } else sfx(Sound.FAIL)
+                if (correct) { sfx(Sound.SUCCESS); emit(Effect.Sparkles); bounce++; emit(Effect.PetAction(PetAct.HOP)); match = match?.let { it.copy(bombs = it.bombs + content.rules.quizBombReward) } } else sfx(Sound.FAIL)
                 bubble = Bubble(o.messages.joinToString(" "), ttlMs = 12_000)
             }
             is Outcome.Error -> bubble = Bubble(o.message)
@@ -230,20 +241,27 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         val s = state
         val name = s.pet?.name ?: "Питомец"
         return when {
-            !s.plan.confirmed -> Triple("Давай разделим ${s.balance} монет: обязательное, желаемое и копилка!", "Составить план", Screen.Plan)
+            !s.plan.confirmed -> Triple("Давай разделим ${Economy.coins(s.balance, Case.ACC)}: обязательное, желаемое и копилка!", "Составить план", Screen.Plan)
             s.purchases.none { it.need == Need.FOOD } -> Triple("Я проголодался. В магазине есть корм!", "В магазин", Screen.Shop)
             s.purchases.none { it.need == Need.CARE } -> Triple("Мне бы шампунь или расчёску.", "В магазин", Screen.Shop)
             s.goal == null -> Triple("На что будем копить? Выбери цель!", "Выбрать цель", Screen.Savings)
-            s.factSavings <= 0 && s.balance > 0 -> Triple("Отложи немного в копилку, и цель станет ближе.", "В копилку", Screen.Savings)
+            s.factSavings <= 0 && s.balance >= (content.rules.savingsAmounts.minOrNull() ?: content.rules.planStep) -> Triple("Отложи немного в копилку, и цель станет ближе.", "В копилку", Screen.Savings)
             economy.availableTasks(s).isNotEmpty() -> Triple("Есть новое задание. Решим вместе?", "К заданиям", Screen.Tasks)
             else -> Triple("Всё сделано! Заверши неделю, и $name подрастёт.", "Завершить неделю", Screen.WeekEnd)
         }
     }
 
     // ---- mini-game
+    /** Closed until the week's plan is confirmed (2.8): the child gets the reason instead of the board. */
     fun startMiniGame() {
-        match = Match3.newGame(moves = content.rules.miniGameMoves, bombs = state.bombs)
+        economy.miniGameLock(state)?.let { reason ->
+            sfx(Sound.FAIL)
+            feedback = Feedback("Пока рано", listOf(reason, "Вариант: Открой «План» в комнате"), Mood.OOPS)
+            return
+        }
+        match = Match3.newGame(moves = content.rules.miniGameMoves, bombs = state.bombs, seed = System.nanoTime())
         matchBombsUsed = 0
+        matchOver = false
         navigate(Screen.MiniGame)
     }
 
@@ -259,17 +277,17 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         match = t.state; matchBombsUsed++; sfx(Sound.BOMB); return t
     }
 
+    /** The only way out of a round: used bombs are spent, coins (if any) are credited. */
     fun finishMiniGame() {
         val m = match ?: return
+        val before = state.balance
         val o = economy.finishMiniGame(state, m.score, matchBombsUsed)
         match = null
         if (apply("Игра окончена", o, next = Screen.Room, mood = Mood.INFO)) {
-            val earned = state.ledger.lastOrNull()?.takeIf { it.text.contains("Монетки") }?.amount ?: 0
+            val earned = state.balance - before
             if (earned > 0) { sfx(Sound.SUCCESS); emit(Effect.Coins("coins", (earned / 5).coerceIn(3, 10))) }
         }
     }
-
-    fun quitMiniGame() { match = null; navigate(Screen.Room) }
 
     // ---- period
     fun endPeriod() {
@@ -283,7 +301,9 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     fun setDemo(on: Boolean) = commit(state.copy(demo = on))
     fun setAnimations(on: Boolean) = commit(state.copy(animations = on))
     fun setSounds(on: Boolean) = commit(state.copy(sounds = on))
-    fun createTestProfile() { commit(economy.newGame(demo = true, animations = state.animations).copy(sounds = state.sounds)); navigate(Screen.Intro) }
-    fun resetProfile() { commit(economy.resetProfile(state).copy(sounds = state.sounds)); navigate(Screen.Title) }
+    fun setMusic(on: Boolean) = commit(state.copy(music = on))
+    fun parentBonus(reasonIndex: Int) { if (apply("Бонус от взрослого", economy.parentBonus(state, reasonIndex))) sfx(Sound.COIN) }
+    fun createTestProfile() { commit(economy.newGame(demo = true, state.animations, state.sounds, state.music)); navigate(Screen.Intro) }
+    fun resetProfile() { commit(economy.resetProfile(state)); navigate(Screen.Title) }
     fun deleteProfile() { commit(economy.deleteProfile(state)); navigate(Screen.Title) }
 }

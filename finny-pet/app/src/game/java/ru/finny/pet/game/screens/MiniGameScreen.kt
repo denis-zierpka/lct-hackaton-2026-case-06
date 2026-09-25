@@ -1,8 +1,11 @@
 package ru.finny.pet.game.screens
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -51,6 +54,7 @@ import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
@@ -66,7 +70,9 @@ import ru.finny.pet.domain.Step
 import ru.finny.pet.domain.Tile
 import ru.finny.pet.domain.Turn
 import ru.finny.pet.game.GameViewModel
+import ru.finny.pet.game.LocalAnimate
 import ru.finny.pet.game.LocalLayout
+import ru.finny.pet.game.orNone
 import ru.finny.pet.game.audio.Sound
 import ru.finny.pet.game.ui.ButtonStyle
 import ru.finny.pet.game.ui.CloseButton
@@ -115,11 +121,16 @@ fun MiniGameScreen(vm: GameViewModel) {
     var busy by remember { mutableStateOf(false) }
     var selected by remember { mutableStateOf<Cell?>(null) }
     var bombMode by remember { mutableStateOf(false) }
-    var over by remember { mutableStateOf(false) }
+    // lives in the ViewModel (not rememberSaveable): survives rotation but never leaks into the next fresh game
+    // after a mid-round process death, since a new game resets it in startMiniGame (MVP-T12)
+    var over by vm::matchOver
     val popups = remember { mutableStateListOf<Popup>() }
     var boardOrigin by remember { mutableStateOf(Offset.Zero) }
     var cellPx by remember { mutableStateOf(1f) }
-    val animate = s.animations
+    val animate = LocalAnimate.current
+    val swapSpec: AnimationSpec<Float> = if (animate) spring(stiffness = Spring.StiffnessMediumLow) else snap()
+    // system back = «Закончить»: first the round-over panel, then the result is taken; there is no exit that skips it
+    BackHandler { if (vm.bubble != null) vm.clearBubble() else if (over) vm.finishMiniGame() else { over = true; bombMode = false } }
 
     // initial board
     LaunchedEffect(Unit) {
@@ -141,10 +152,10 @@ fun MiniGameScreen(vm: GameViewModel) {
                     if (a != null && b != null) {
                         a.col = step.b.col; a.row = step.b.row; b.col = step.a.col; b.row = step.a.row
                         coroutineScope {
-                            launch { a.x.animateTo(a.col.toFloat(), spring(stiffness = Spring.StiffnessMediumLow)); }
-                            launch { a.y.animateTo(a.row.toFloat(), spring(stiffness = Spring.StiffnessMediumLow)) }
-                            launch { b.x.animateTo(b.col.toFloat(), spring(stiffness = Spring.StiffnessMediumLow)) }
-                            launch { b.y.animateTo(b.row.toFloat(), spring(stiffness = Spring.StiffnessMediumLow)) }
+                            launch { a.x.animateTo(a.col.toFloat(), swapSpec) }
+                            launch { a.y.animateTo(a.row.toFloat(), swapSpec) }
+                            launch { b.x.animateTo(b.col.toFloat(), swapSpec) }
+                            launch { b.y.animateTo(b.row.toFloat(), swapSpec) }
                         }
                     }
                 }
@@ -182,7 +193,7 @@ fun MiniGameScreen(vm: GameViewModel) {
     }
 
     fun trySwap(a: Cell, b: Cell) {
-        if (busy) return
+        if (busy || over) return
         val turn = vm.matchSwap(a, b)
         scope.launch {
             busy = true
@@ -232,7 +243,7 @@ fun MiniGameScreen(vm: GameViewModel) {
                     Stat("Очки", "${cur.score}")
                     Stat("Ходы", "${cur.movesLeft}")
                 }
-                Text("Монет за игру: до ${vm.economy.miniGameCoinsLeft(s)} (1 за ${vm.content.rules.miniGameScorePerCoin} очков)", style = MaterialTheme.typography.bodySmall, color = G.pink, textAlign = TextAlign.Center)
+                Text("Монет за игру: до ${vm.economy.miniGameCoinsLeft(s)}. Очков на монету: ${vm.content.rules.miniGameScorePerCoin}.", style = MaterialTheme.typography.bodySmall, color = G.pink, textAlign = TextAlign.Center)
                 GameButton(if (bombMode) "Куда бомбочку?" else "Бомбочка ×${cur.bombs}", Modifier.fillMaxWidth(), style = if (bombMode) ButtonStyle.MAGENTA else ButtonStyle.GOLD, enabled = cur.bombs > 0 && !busy, icon = painterResource(R.drawable.tile_bomb), iconSize = 30.dp) { bombMode = !bombMode; selected = null }
                 GameButton("Вопрос → бомбочка", Modifier.fillMaxWidth(), style = ButtonStyle.PAPER, minHeight = 48.dp, enabled = bubble == null && vm.economy.availableQuiz(s).isNotEmpty()) { vm.askQuestion() }
                 GameButton("Закончить", Modifier.fillMaxWidth(), style = ButtonStyle.GHOST, minHeight = 48.dp, enabled = !busy) { over = true }
@@ -258,7 +269,7 @@ fun MiniGameScreen(vm: GameViewModel) {
                                 onDragStart = { p -> start = Cell((p.x / px).toInt().coerceIn(0, cur.width - 1), (p.y / px).toInt().coerceIn(0, cur.height - 1)); done = false },
                                 onDrag = { change, drag ->
                                     val st = start ?: return@detectDragGestures
-                                    if (done || bombMode) return@detectDragGestures
+                                    if (done || bombMode || over) return@detectDragGestures
                                     val total = change.position - Offset((st.col + 0.5f) * px, (st.row + 0.5f) * px)
                                     if (abs(total.x) > px * 0.35f || abs(total.y) > px * 0.35f) {
                                         val n = if (abs(total.x) > abs(total.y)) Cell(st.col + if (total.x > 0) 1 else -1, st.row) else Cell(st.col, st.row + if (total.y > 0) 1 else -1)
@@ -285,7 +296,7 @@ fun MiniGameScreen(vm: GameViewModel) {
                         key(p.key) {
                             var shown by remember { mutableStateOf(false) }
                             LaunchedEffect(p.key) { shown = true; delay(900); popups.remove(p) }
-                            AnimatedVisibility(shown, enter = fadeIn() + scaleIn(initialScale = 0.5f), exit = fadeOut()) {
+                            AnimatedVisibility(shown, enter = (fadeIn() + scaleIn(initialScale = 0.5f)).orNone(), exit = fadeOut().orNone()) {
                                 Text(p.text, style = MaterialTheme.typography.headlineSmall, color = G.gold, modifier = Modifier.offset { IntOffset((p.cell.col * px).roundToInt(), ((p.cell.row - 0.4f) * px).roundToInt()) })
                             }
                         }
@@ -307,9 +318,9 @@ fun MiniGameScreen(vm: GameViewModel) {
 
         // the pet asks a question → a bomb
         val pet = s.pet
-        AnimatedVisibility(bubble != null, enter = fadeIn() + scaleIn(initialScale = 0.85f), exit = fadeOut()) {
+        AnimatedVisibility(bubble != null, enter = (fadeIn() + scaleIn(initialScale = 0.85f)).orNone(), exit = fadeOut().orNone()) {
             val b = bubble ?: return@AnimatedVisibility
-            Box(Modifier.fillMaxSize().background(G.scrim).pointerInput(Unit) {}, contentAlignment = Alignment.Center) {
+            Box(Modifier.fillMaxSize().background(G.scrim).pointerInput(Unit) {}.semantics { paneTitle = "Вопрос" }, contentAlignment = Alignment.Center) {
                 Row(Modifier.padding(16.dp).widthIn(max = 640.dp), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (pet != null) Image(painterResource(ru.finny.pet.PetSprites.id(pet.speciesId, pet.colorId, vm.economy.stageIndex(pet.growth), "happy")), null, Modifier.size(if (layout.compact) 96.dp else 130.dp))
                     SpeechBubble(Modifier.weight(1f).padding(bottom = 20.dp)) {
@@ -322,8 +333,8 @@ fun MiniGameScreen(vm: GameViewModel) {
         }
 
         // round over
-        AnimatedVisibility(over, enter = fadeIn() + scaleIn(initialScale = 0.8f), exit = fadeOut()) {
-            Box(Modifier.fillMaxSize().background(G.scrim), contentAlignment = Alignment.Center) {
+        AnimatedVisibility(over, enter = (fadeIn() + scaleIn(initialScale = 0.8f)).orNone(), exit = fadeOut().orNone()) {
+            Box(Modifier.fillMaxSize().background(G.scrim).pointerInput(Unit) {}.semantics { paneTitle = "Игра окончена" }, contentAlignment = Alignment.Center) {
                 Panel(Modifier.widthIn(max = 420.dp)) {
                     Text("Игра окончена!", style = MaterialTheme.typography.headlineSmall, color = G.purpleDeep)
                     Text("Очки: ${cur.score}. Монеты: +${(cur.score / vm.content.rules.miniGameScorePerCoin).coerceAtMost(vm.economy.miniGameCoinsLeft(s))}", style = MaterialTheme.typography.bodyLarge, color = G.ink)

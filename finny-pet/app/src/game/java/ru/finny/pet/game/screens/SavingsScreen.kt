@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import ru.finny.pet.R
 import ru.finny.pet.domain.Economy
 import ru.finny.pet.domain.Goal
+import ru.finny.pet.domain.Case
 import ru.finny.pet.game.GameViewModel
 import ru.finny.pet.game.LocalLayout
 import ru.finny.pet.game.ui.ButtonStyle
@@ -44,15 +45,14 @@ import ru.finny.pet.game.ui.HudChip
 import ru.finny.pet.game.ui.LocalParticles
 import ru.finny.pet.game.ui.particleTarget
 
-private val amounts = listOf(10, 20, 30, 50)
-
 @Composable
 fun SavingsScreen(vm: GameViewModel) {
     val s = vm.state
     val e = vm.economy
     val goal = s.goal
     val particles = LocalParticles.current
-    var amount by rememberSaveable { mutableIntStateOf(20) }
+    val amounts = e.rules.savingsAmounts
+    var amount by rememberSaveable { mutableIntStateOf(amounts.firstOrNull() ?: e.rules.planStep) }
     var confirmWithdraw by rememberSaveable { mutableStateOf(false) }
     var confirmAchieve by rememberSaveable { mutableStateOf(false) }
     var pickGoal by rememberSaveable { mutableStateOf(goal == null) }
@@ -64,13 +64,13 @@ fun SavingsScreen(vm: GameViewModel) {
                     Image(painterResource(R.drawable.ui_piggy), null, Modifier.size(84.dp).particleTarget(particles, "piggy"))
                     Column(Modifier.weight(1f)) {
                         Text("${s.savings}", style = MaterialTheme.typography.displaySmall, color = G.purpleDeep)
-                        Text("в копилке", style = MaterialTheme.typography.labelMedium, color = G.purpleDeep)
+                        Text("в копилке", style = MaterialTheme.typography.bodySmall, color = G.purpleDeep)
                     }
                     HudChip(painterResource(R.drawable.ui_coin), s.balance, "На балансе", Modifier.particleTarget(particles, "coins"))
                 }
                 Label("Отложить или забрать")
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    amounts.forEach { a -> GameButton("$a", Modifier.width(64.dp), style = if (amount == a) ButtonStyle.MAGENTA else ButtonStyle.PAPER, minHeight = 48.dp) { amount = a } }
+                    amounts.forEach { a -> GameButton("$a", Modifier.width(64.dp), selected = amount == a, minHeight = 48.dp) { amount = a } }
                 }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     GameButton("Отложить $amount", Modifier.weight(1f), style = ButtonStyle.GREEN, enabled = s.plan.confirmed && amount <= s.balance) { vm.deposit(amount) }
@@ -85,7 +85,7 @@ fun SavingsScreen(vm: GameViewModel) {
                             Column {
                                 Label("Моя цель")
                                 Text(goal.title, style = MaterialTheme.typography.titleLarge, color = G.ink)
-                                Text("Стоит ${goal.price} монет", style = MaterialTheme.typography.bodyMedium, color = G.inkSoft)
+                                Text("Стоит ${Economy.coins(goal.price, Case.ACC)}", style = MaterialTheme.typography.bodyMedium, color = G.inkSoft)
                             }
                         }
                         GameBar("Накоплено", s.savings, G.magenta, max = goal.price)
@@ -106,9 +106,9 @@ fun SavingsScreen(vm: GameViewModel) {
                 }
                 if (s.achievedGoals.isNotEmpty()) {
                     Label("Достигнутые цели")
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp), maxItemsInEachRow = 2) {
                         s.achievedGoals.forEach { g ->
-                            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(88.dp)) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
                                 Image(painterResource(goalRes(g.id)), null, Modifier.size(56.dp))
                                 Text(g.title, style = MaterialTheme.typography.labelSmall, color = G.ink, textAlign = TextAlign.Center, maxLines = 2)
                             }
@@ -121,7 +121,7 @@ fun SavingsScreen(vm: GameViewModel) {
             ConfirmPanel("Забрать $amount из копилки?", e.withdrawPreview(s, amount), "Забрать", onConfirm = { confirmWithdraw = false; vm.withdraw(amount) }, onDismiss = { confirmWithdraw = false })
         }
         if (confirmAchieve && goal != null) {
-            ConfirmPanel("Забрать «${goal.title}»?", listOf("Из копилки уйдёт ${goal.price} монет, останется ${s.savings - goal.price}.", "Питомец очень обрадуется!"), "Забрать", onConfirm = { confirmAchieve = false; vm.achieveGoal() }, onDismiss = { confirmAchieve = false })
+            ConfirmPanel("Забрать «${goal.title}»?", listOf("Из копилки уйдёт ${Economy.coins(goal.price)}, останется ${s.savings - goal.price}.", "Питомец очень обрадуется!"), "Забрать", onConfirm = { confirmAchieve = false; vm.achieveGoal() }, onDismiss = { confirmAchieve = false })
         }
     }
 }
@@ -133,12 +133,13 @@ private fun GoalPicker(vm: GameViewModel, onDone: () -> Unit) {
     var customTitle by rememberSaveable { mutableStateOf(c.customGoal.titles.first()) }
     var customPrice by rememberSaveable { mutableIntStateOf(c.customGoal.prices.first()) }
     Label("Выбери цель")
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    // two cards per row: at 360 dp a card is 152 dp, 140 dp inside; «Конструктор» is 99 dp (132 at 130 %)
+    FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp), maxItemsInEachRow = 2) {
         c.goals.forEach { g ->
             Column(
                 Modifier.weight(1f).shadow(3.dp, RoundedCornerShape(18.dp)).background(Color.White, RoundedCornerShape(18.dp))
                     .clickable(role = Role.Button) { vm.chooseGoal(Goal(g.id, g.title, g.emoji, g.price)); onDone() }
-                    .semantics(mergeDescendants = true) { contentDescription = "${g.title}, ${g.price} монет" }
+                    .semantics(mergeDescendants = true) { contentDescription = "${g.title}, ${Economy.coins(g.price)}" }
                     .padding(6.dp),
                 horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
@@ -150,10 +151,10 @@ private fun GoalPicker(vm: GameViewModel, onDone: () -> Unit) {
     }
     Label("Или своя цель")
     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        c.customGoal.titles.forEach { t -> GameButton(t, style = if (customTitle == t) ButtonStyle.MAGENTA else ButtonStyle.PAPER, minHeight = 44.dp) { customTitle = t } }
+        c.customGoal.titles.forEach { t -> GameButton(t, selected = customTitle == t, minHeight = 48.dp) { customTitle = t } }
     }
     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        c.customGoal.prices.forEach { p -> GameButton("$p", style = if (customPrice == p) ButtonStyle.MAGENTA else ButtonStyle.PAPER, minHeight = 44.dp) { customPrice = p } }
+        c.customGoal.prices.forEach { p -> GameButton("$p", selected = customPrice == p, minHeight = 48.dp) { customPrice = p } }
     }
     GameButton("Копить на «$customTitle» за $customPrice", Modifier.fillMaxWidth(), style = ButtonStyle.GOLD) { vm.chooseGoal(vm.economy.customGoal(customTitle, customPrice)); onDone() }
     if (vm.state.goal != null) GameButton("Оставить текущую цель", Modifier.fillMaxWidth(), style = ButtonStyle.PAPER, minHeight = 48.dp) { onDone() }

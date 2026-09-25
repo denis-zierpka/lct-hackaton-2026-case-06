@@ -13,8 +13,8 @@ enum class Sound(val res: Int) {
 }
 
 /**
- * Sound effects on a SoundPool plus a looping music track. `enabled` follows the parent-section toggle
- * (ТЗ 3.6: sounds can be switched off; nothing important is conveyed by sound alone).
+ * Sound effects on a SoundPool plus a looping music track. [effects] and [music] follow the two parent-section
+ * toggles (ТЗ 3.6: sounds can be switched off; nothing important is conveyed by sound alone).
  */
 class Sfx(context: Context) {
     private val pool = SoundPool.Builder().setMaxStreams(6)
@@ -22,22 +22,28 @@ class Sfx(context: Context) {
         .build()
     private val ids: Map<Sound, Int> = Sound.entries.associateWith { pool.load(context, it.res, 1) }
     private val app = context.applicationContext
-    private var music: MediaPlayer? = null
-    var enabled: Boolean = true
+    private var player: MediaPlayer? = null
+    var effects: Boolean = true
+    var music: Boolean = false
         set(v) { field = v; if (!v) stopMusic() }
+    private var paused = false
 
     fun play(s: Sound, volume: Float = 1f, rate: Float = 1f) {
-        if (!enabled) return
+        if (!effects || paused) return
         ids[s]?.let { pool.play(it, volume, volume, 1, 0, rate) }
     }
 
     fun startMusic() {
-        if (!enabled || music != null) return
-        music = MediaPlayer.create(app, R.raw.music_loop)?.apply { isLooping = true; setVolume(0.35f, 0.35f); start() }
+        if (!music || player != null) return
+        player = MediaPlayer.create(app, R.raw.music_loop)?.apply { isLooping = true; setVolume(0.35f, 0.35f); start() }
     }
 
-    fun stopMusic() { music?.run { stop(); release() }; music = null }
+    fun stopMusic() { player?.run { stop(); release() }; player = null }
 
-    fun pause() { music?.takeIf { it.isPlaying }?.pause() }
-    fun resume() { if (enabled) music?.takeIf { !it.isPlaying }?.start() }
+    // ON_PAUSE/ON_RESUME from GameApp: the pet stays quiet while the app is in the background (MVP-T12)
+    fun pause() { paused = true; player?.takeIf { it.isPlaying }?.pause() }
+    fun resume() { paused = false; if (music) player?.takeIf { !it.isPlaying }?.start() }
+
+    /** Frees the player and the pool when the UI leaves composition. */
+    fun release() { stopMusic(); pool.release() }
 }

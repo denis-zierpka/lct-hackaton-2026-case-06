@@ -1,8 +1,12 @@
 package ru.finny.pet.game
 
+import android.content.Context
+import android.provider.Settings
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -43,12 +47,18 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.paneTitle
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -86,9 +96,33 @@ val LocalLayout = staticCompositionLocalOf { Layout(landscape = true, compact = 
 val LocalSfx = staticCompositionLocalOf<Sfx?> { null }
 val LocalVm = staticCompositionLocalOf<GameViewModel> { error("no view model") }
 
-/** Latest pet action requested by the view model, with a key so the sprite replays it. */
-class PetActionState { var action by mutableStateOf<PetAct?>(null); var key by mutableIntStateOf(0) }
+/**
+ * Latest pet action requested by the view model, with a key so the sprite replays it.
+ * [shownBounce]/[shownAction] remember what the room already played: coming back does not repeat it.
+ */
+class PetActionState {
+    var action by mutableStateOf<PetAct?>(null)
+    var key by mutableIntStateOf(0)
+    var shownBounce = 0
+    var shownAction = 0
+}
 val LocalPetAction = staticCompositionLocalOf { PetActionState() }
+
+/** Whether anything moves: the parent toggle and the system «remove animations» setting together (ТЗ 3.6). */
+val LocalAnimate = staticCompositionLocalOf { true }
+
+/** The transition while animations are on, an instant appear/disappear otherwise. */
+@Composable fun EnterTransition.orNone(): EnterTransition = if (LocalAnimate.current) this else EnterTransition.None
+@Composable fun ExitTransition.orNone(): ExitTransition = if (LocalAnimate.current) this else ExitTransition.None
+
+internal fun systemAnimates(context: Context) = Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) > 0f
+
+/** Room and mini-game have fixed geometry: their text follows the system font scale up to 1.3; panels follow it fully. */
+@Composable
+private fun SceneFontScale(content: @Composable () -> Unit) {
+    val d = LocalDensity.current
+    if (d.fontScale <= 1.3f) content() else CompositionLocalProvider(LocalDensity provides Density(d.density, 1.3f), content = content)
+}
 
 private val Emphasized = CubicBezierEasing(0.2f, 0f, 0f, 1f)
 
@@ -96,20 +130,25 @@ private val Emphasized = CubicBezierEasing(0.2f, 0f, 0f, 1f)
 fun GameApp(vm: GameViewModel = viewModel()) {
     val context = LocalContext.current
     val sfx = remember { Sfx(context) }
+    DisposableEffect(sfx) { onDispose { sfx.release() } }
     val particles = remember { ParticleController() }
-    val petAction = remember { PetActionState() }
+    val petAction = vm.petAction
+    var systemAnim by remember { mutableStateOf(systemAnimates(context)) }
+    val animate = vm.state.animations && systemAnim
     particles.coinImage = ImageBitmap.imageResource(R.drawable.ui_coin)
-    sfx.enabled = vm.state.sounds
+    particles.enabled = animate
+    sfx.effects = vm.state.sounds
+    sfx.music = vm.state.music
 
-    // pause music when the app goes to background
+    // pause music when the app goes to background; re-read the system animation scale on return
     val owner = LocalLifecycleOwner.current
     DisposableEffect(owner) {
-        val obs = LifecycleEventObserver { _, e -> if (e == Lifecycle.Event.ON_PAUSE) sfx.pause() else if (e == Lifecycle.Event.ON_RESUME) sfx.resume() }
+        val obs = LifecycleEventObserver { _, e -> if (e == Lifecycle.Event.ON_PAUSE) sfx.pause() else if (e == Lifecycle.Event.ON_RESUME) { sfx.resume(); systemAnim = systemAnimates(context) } }
         owner.lifecycle.addObserver(obs)
-        onDispose { owner.lifecycle.removeObserver(obs); sfx.stopMusic() }
+        onDispose { owner.lifecycle.removeObserver(obs) }
     }
-    LaunchedEffect(vm.screen, vm.state.sounds) {
-        if (vm.state.sounds && vm.screen != Screen.Title) sfx.startMusic() else sfx.stopMusic()
+    LaunchedEffect(vm.screen, vm.state.music) {
+        if (vm.state.music && vm.screen != Screen.Title) sfx.startMusic() else sfx.stopMusic()
     }
     LaunchedEffect(Unit) {
         vm.effects.collect { e ->
@@ -121,7 +160,10 @@ fun GameApp(vm: GameViewModel = viewModel()) {
                 Effect.Hearts -> particles.targetOf("pet")?.let { particles.hearts(it) }
                 Effect.Sparkles -> particles.targetOf("pet")?.let { particles.sparkles(it) }
                 Effect.Bubbles -> particles.targetOf("pet")?.let { particles.bubbles(it) }
-                is Effect.PetAction -> { petAction.action = e.action; petAction.key++ }
+                is Effect.PetAction -> {
+                    petAction.action = e.action; petAction.key++
+                    if (e.action == PetAct.EAT) sfx.play(Sound.MUNCH) else if (e.action == PetAct.WASH) sfx.play(Sound.SPLASH)
+                }
             }
         }
     }
@@ -130,7 +172,7 @@ fun GameApp(vm: GameViewModel = viewModel()) {
         BoxWithConstraints(Modifier.fillMaxSize().background(G.purpleDeep)) {
             val landscape = maxWidth > maxHeight
             val layout = Layout(landscape, compact = (if (landscape) maxHeight else maxWidth) < 420.dp)
-            CompositionLocalProvider(LocalLayout provides layout, LocalSfx provides sfx, LocalParticles provides particles, LocalPetAction provides petAction, LocalVm provides vm) {
+            CompositionLocalProvider(LocalLayout provides layout, LocalSfx provides sfx, LocalParticles provides particles, LocalPetAction provides petAction, LocalVm provides vm, LocalAnimate provides animate) {
                 val screen = vm.screen
                 val atRoot = screen == Screen.Title || (screen == Screen.Room)
                 BackHandler(enabled = !atRoot) { vm.back() }
@@ -140,7 +182,8 @@ fun GameApp(vm: GameViewModel = viewModel()) {
                     AnimatedContent(
                         targetState = screen,
                         transitionSpec = {
-                            (fadeIn(tween(320, easing = Emphasized)) + scaleIn(tween(320, easing = Emphasized), initialScale = 0.96f))
+                            if (!animate) EnterTransition.None togetherWith ExitTransition.None
+                            else (fadeIn(tween(320, easing = Emphasized)) + scaleIn(tween(320, easing = Emphasized), initialScale = 0.96f))
                                 .togetherWith(fadeOut(tween(160)) + scaleOut(tween(160), targetScale = 1.02f))
                         },
                         label = "screen",
@@ -149,13 +192,13 @@ fun GameApp(vm: GameViewModel = viewModel()) {
                             Screen.Title -> TitleScreen(vm)
                             Screen.Intro -> IntroScreen(vm)
                             Screen.CreatePet -> CreatePetScreen(vm)
-                            Screen.Room -> RoomScreen(vm)
+                            Screen.Room -> SceneFontScale { RoomScreen(vm) }
                             Screen.Plan -> PlanScreen(vm)
                             Screen.Shop -> ShopScreen(vm)
                             Screen.Savings -> SavingsScreen(vm)
                             Screen.Tasks -> TasksScreen(vm)
                             is Screen.Task -> TaskScreen(vm, s.id)
-                            Screen.MiniGame -> MiniGameScreen(vm)
+                            Screen.MiniGame -> SceneFontScale { MiniGameScreen(vm) }
                             Screen.WeekEnd -> WeekEndScreen(vm)
                             Screen.Progress -> ProgressScreen(vm)
                             Screen.Parent -> ParentScreen(vm)
@@ -176,7 +219,7 @@ fun GameApp(vm: GameViewModel = viewModel()) {
 private fun RoomBackground(landscape: Boolean, evening: Boolean) {
     Box(Modifier.fillMaxSize()) {
         Image(painterResource(if (landscape) R.drawable.room_land_day else R.drawable.room_port_day), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-        AnimatedVisibility(visible = evening, enter = fadeIn(tween(900)), exit = fadeOut(tween(900))) {
+        AnimatedVisibility(visible = evening, enter = fadeIn(tween(900)).orNone(), exit = fadeOut(tween(900)).orNone()) {
             Image(painterResource(if (landscape) R.drawable.room_land_evening else R.drawable.room_port_evening), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
         }
     }
@@ -186,17 +229,18 @@ private fun RoomBackground(landscape: Boolean, evening: Boolean) {
 @Composable
 private fun FeedbackOverlay(vm: GameViewModel) {
     val fb = vm.feedback
-    AnimatedVisibility(visible = fb != null, enter = fadeIn(tween(200)), exit = fadeOut(tween(200))) {
-        Box(Modifier.fillMaxSize().background(G.scrim)) {}
+    if (fb != null) BackHandler { vm.dismissFeedback() }
+    AnimatedVisibility(visible = fb != null, enter = fadeIn(tween(200)).orNone(), exit = fadeOut(tween(200)).orNone()) {
+        Box(Modifier.fillMaxSize().background(G.scrim).pointerInput(Unit) {}) {}
     }
     AnimatedVisibility(
         visible = fb != null,
-        enter = fadeIn(tween(220)) + scaleIn(tween(320, easing = Emphasized), initialScale = 0.8f),
-        exit = fadeOut(tween(160)) + scaleOut(tween(160), targetScale = 0.9f),
+        enter = (fadeIn(tween(220)) + scaleIn(tween(320, easing = Emphasized), initialScale = 0.8f)).orNone(),
+        exit = (fadeOut(tween(160)) + scaleOut(tween(160), targetScale = 0.9f)).orNone(),
     ) {
         val f = fb ?: return@AnimatedVisibility
         Box(Modifier.fillMaxSize().padding(16.dp), contentAlignment = Alignment.Center) {
-            Panel(Modifier.widthIn(max = 560.dp).heightIn(max = 400.dp)) {
+            Panel(Modifier.widthIn(max = 560.dp).heightIn(max = 400.dp).semantics { paneTitle = f.title }) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     val pet = vm.state.pet
                     if (pet != null) {
@@ -205,7 +249,7 @@ private fun FeedbackOverlay(vm: GameViewModel) {
                             contentDescription = null, modifier = Modifier.size(64.dp),
                         )
                     }
-                    Text(f.title, style = MaterialTheme.typography.headlineSmall, color = G.purpleDeep, modifier = Modifier.weight(1f))
+                    Text(f.title, style = MaterialTheme.typography.headlineSmall, color = G.purpleDeep, modifier = Modifier.weight(1f).semantics { heading() })
                 }
                 Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     f.messages.forEach { m ->

@@ -1,63 +1,199 @@
 # Структура данных
 
-## Локальный профиль — `GameState` (`filesDir/state.json`)
+Вся модель — `@Serializable` data-классы (kotlinx.serialization) в чистом Kotlin:
+профиль — [`domain/GameState.kt`](../app/src/main/java/ru/finny/pet/domain/GameState.kt),
+контент — [`domain/Content.kt`](../app/src/main/java/ru/finny/pet/domain/Content.kt).
+Игровые изменения профиля делает [`domain/Economy.kt`](../app/src/main/java/ru/finny/pet/domain/Economy.kt):
+каждая функция возвращает новый `GameState` (формулы — [ECONOMY.md](ECONOMY.md)). Исключение —
+переключатели раздела для взрослого: `demo`, `animations`, `sounds`, `music` `GameViewModel`
+меняет напрямую (`state.copy`).
 
-| Поле | Тип | Назначение |
+Описан сдаваемый вариант `game` (`ru.finny.pet`, 1.3.0). Альтернативная сборка `classic`
+(`ru.finny.pet.classic`, в сдачу не входит) использует те же классы и тот же формат файла.
+
+## Профиль — `GameState`
+
+| Поле | Тип | По умолчанию | Назначение |
+|---|---|---|---|
+| `demo` | Boolean | `false` | Демо-режим: все задания открыты сразу, `unlockPeriod` не учитывается |
+| `animations` | Boolean | `true` | Анимации; UI анимирует, только если они включены и здесь, и в системных настройках |
+| `pet` | `Pet?` | `null` | Питомец; `null` — профиль не создан |
+| `period` | Int | `1` | Номер игровой недели |
+| `balance` | Int | `0` | Монеты на руках (без копилки), не бывает меньше 0 |
+| `savings` | Int | `0` | Монеты в копилке |
+| `plan` | `BudgetPlan` | `BudgetPlan()` | План текущей недели ⟲ |
+| `purchases` | List<`Purchase`> | `[]` | Покупки текущей недели ⟲ |
+| `depositedThisPeriod` | Int | `0` | Положено в копилку за неделю ⟲ |
+| `withdrawnThisPeriod` | Int | `0` | Взято из копилки за неделю ⟲ |
+| `depositHistory` | List<Int> | `[]` | Чистый взнос каждой завершённой недели (отрицательный — как 0) — для срока цели |
+| `goal` | `Goal?` | `null` | Текущая цель |
+| `achievedGoals` | List<`Goal`> | `[]` | Достигнутые цели |
+| `taskResults` | List<`TaskResult`> | `[]` | Решённые задания, одна запись на задание |
+| `history` | List<`PeriodSummary`> | `[]` | Итоги завершённых недель |
+| `ledger` | List<`LedgerEntry`> | `[]` | Журнал недели «откуда монеты» ⟲ — новая неделя начинается с записей «Остаток с прошлой недели» (если > 0) и «Карманные деньги на неделю» |
+| `sounds` | Boolean | `true` | Переключатель «Звуки» в разделе для взрослого: звуковые эффекты при действиях |
+| `music` | Boolean | `false` | Переключатель «Музыка» в разделе для взрослого: фоновая мелодия |
+| `bombs` | Int | `0` | Бомбочки для мини-игры «Монетки в ряд»: `+rules.quizBombReward` за верный ответ на вопрос питомца, минус использованные в завершённом раунде |
+| `miniGameEarned` | Int | `0` | Монеты из мини-игры за неделю, не больше `rules.miniGameCap` ⟲ |
+| `quizResults` | List<`TaskResult`> | `[]` | Ответы на вопросы питомца, `reward` всегда 0. Неверный ответ можно повторить, поэтому на вопрос бывает несколько записей |
+| `parentBonusesThisPeriod` | Int | `0` | Число бонусов от взрослого за неделю ⟲. Растёт в `Economy.parentBonus` — кнопки причин в разделе «Бонус ребёнку» для взрослого; не больше `rules.parentBonusPerPeriod` |
+
+⟲ — сбрасывается в `Economy.endPeriod` при завершении недели.
+
+Вычисляемые свойства (в файл не пишутся): `hasProfile` = `pet != null`;
+`factMandatory`, `factOptional` — сумма покупок категории; `factSavings` =
+`depositedThisPeriod − withdrawnThisPeriod`.
+
+### Вложенные классы
+
+| Класс | Поля: тип = по умолчанию | Примечание |
 |---|---|---|
-| `demo` | Boolean | Демо-режим: все задания открыты сразу |
-| `animations` | Boolean | Включены ли анимации питомца |
-| `pet` | `Pet?` | `null`, пока профиль не создан |
-| `period` | Int | Номер игровой недели, с 1 |
-| `balance` | Int | Доступные монеты (без копилки) |
-| `savings` | Int | Копилка |
-| `plan` | `BudgetPlan` | `mandatory`, `optional`, `savings`, `confirmed` |
-| `purchases` | List<`Purchase`> | Покупки текущей недели: `itemId`, `title`, `category`, `need`, `price` |
-| `depositedThisPeriod`, `withdrawnThisPeriod` | Int | Движения по копилке за неделю |
-| `depositHistory` | List<Int> | Чистые взносы по завершённым неделям (для расчёта срока цели) |
-| `goal` | `Goal?` | Текущая цель: `id`, `title`, `emoji`, `price` |
-| `achievedGoals` | List<`Goal`> | Достигнутые цели |
-| `taskResults` | List<`TaskResult`> | `taskId`, `correct`, `reward`, `period` |
-| `history` | List<`PeriodSummary`> | Итоги завершённых недель (план/факт, три проверки, рост, объяснения) |
-| `ledger` | List<`LedgerEntry`> | Журнал недели: `text`, `amount` — источник каждой монеты |
+| `Pet` | `name`, `speciesId`, `colorId`: String; `hunger`, `clean`, `mood`: Int = 70; `growth`: Int = 0 | Показатели 0–100; при создании — `rules.startStat`, после недели не ниже `rules.statFloor`. `growth` — очки роста, стадия вычисляется (см. ниже) |
+| `BudgetPlan` | `mandatory`, `optional`, `savings`: Int = 0; `confirmed`: Boolean = false | `total` — сумма трёх частей (вычисляется) |
+| `Purchase` | `itemId`, `title`: String; `category`: `Category`; `need`: `Need`; `price`: Int | Копия товара на момент покупки |
+| `Goal` | `id`, `title`, `emoji`: String; `price`: Int | Копия `GoalTemplate` или своя цель: `id = custom_<hashCode названия>_<цена>`, `emoji = ⭐` |
+| `LedgerEntry` | `text`: String; `amount`: Int | Источник и сумма (расход — отрицательный, достижение цели — 0) |
+| `TaskResult` | `taskId`: String; `correct`: Boolean; `reward`: Int; `period`: Int | Общий для заданий и вопросов питомца |
+| `PeriodSummary` | `period`: Int; `plan`: `BudgetPlan`; `factMandatory`, `factOptional`, `factSavings`: Int; `mandatoryCovered`, `planKept`, `saved`: Boolean; `score`, `growthBefore`, `growthAfter`, `stageBefore`, `stageAfter`: Int; `messages`: List<String>; `miniGameEarned`: Int = 0; `parentBonus`: Int = 0 | Итог недели: три проверки, `score` = число выполненных (0–3), рост и тексты «что случилось и почему». `miniGameEarned`, `parentBonus` — монеты вне плана; остальные поля обязательны |
 
-`Pet`: `name`, `speciesId`, `colorId`, `hunger`, `clean`, `mood` (0–100), `growth` (очки роста; стадия вычисляется из порогов правил).
+Перечисления пишутся в JSON по имени: `Category` — `MANDATORY`, `OPTIONAL`;
+`Need` — `FOOD`, `CARE`, `FUN` (еда и уход проверяются в конце недели);
+`Theme` — `BUDGET`, `SAVINGS`, `SHOPPING`; `TaskType` — `CHOICE`, `NUMBER`.
 
-Персональных данных нет: имя питомца — игровое, вводится ребёнком; реального имени, телефона, почты, даты рождения не запрашивается.
+Персональных данных нет: имя питомца — игровое, вводится ребёнком; реального имени,
+телефона, почты, даты рождения не запрашивается.
 
-Пример файла:
+### Пример файла
+
+Профиль после первой недели (в файле — одна строка, здесь отформатировано, `messages` сокращены):
 
 ```json
 {
-  "demo": true, "animations": true,
-  "pet": { "name": "Финни", "speciesId": "cat", "colorId": "orange", "hunger": 70, "clean": 75, "mood": 90, "growth": 2 },
-  "period": 2, "balance": 155, "savings": 20,
+  "demo": false, "animations": true,
+  "pet": { "name": "Финни", "speciesId": "cat", "colorId": "orange", "hunger": 70, "clean": 75, "mood": 98, "growth": 3 },
+  "period": 2, "balance": 125, "savings": 30,
   "plan": { "mandatory": 0, "optional": 0, "savings": 0, "confirmed": false },
-  "purchases": [], "depositedThisPeriod": 0, "withdrawnThisPeriod": 0, "depositHistory": [20],
+  "purchases": [], "depositedThisPeriod": 0, "withdrawnThisPeriod": 0, "depositHistory": [30],
   "goal": { "id": "goal_scooter", "title": "Самокат", "emoji": "🛴", "price": 150 },
   "achievedGoals": [],
-  "taskResults": [ { "taskId": "budget_first", "correct": true, "reward": 20, "period": 1 } ],
-  "history": [ { "period": 1, "plan": {...}, "factMandatory": 50, "factOptional": 15, "factSavings": 20,
-                 "mandatoryCovered": true, "planKept": false, "saved": true, "score": 2,
-                 "growthBefore": 0, "growthAfter": 2, "stageBefore": 0, "stageAfter": 0, "messages": ["..."] } ],
-  "ledger": [ { "text": "Остаток с прошлой недели", "amount": 55 }, { "text": "Карманные деньги на неделю", "amount": 100 } ]
+  "taskResults": [ { "taskId": "budget_first", "correct": true, "reward": 10, "period": 1 } ],
+  "history": [ { "period": 1, "plan": { "mandatory": 50, "optional": 20, "savings": 30, "confirmed": true },
+                 "factMandatory": 50, "factOptional": 15, "factSavings": 30,
+                 "mandatoryCovered": true, "planKept": true, "saved": true, "score": 3,
+                 "growthBefore": 0, "growthAfter": 3, "stageBefore": 0, "stageAfter": 0,
+                 "messages": ["Прошла неделя: сытость −30, чистота −25, настроение −10.", "…"],
+                 "miniGameEarned": 10, "parentBonus": 0 } ],
+  "ledger": [ { "text": "Остаток с прошлой недели", "amount": 25 }, { "text": "Карманные деньги на неделю", "amount": 100 } ],
+  "sounds": true, "music": false, "bombs": 0, "miniGameEarned": 0,
+  "quizResults": [ { "taskId": "q_budget_1", "correct": true, "reward": 0, "period": 1 } ],
+  "parentBonusesThisPeriod": 0
 }
 ```
 
-## Учебный контент — `Content` (`assets/content/content.json`)
+## Хранение — `StateStore`
 
-| Раздел | Поля | Минимум по ТЗ | В прототипе |
+[`data/StateStore.kt`](../app/src/main/java/ru/finny/pet/data/StateStore.kt): один файл
+`filesDir/state.json` в приватной папке приложения. JSON kotlinx.serialization с
+`ignoreUnknownKeys = true` и `encodeDefaults = true` (в файл пишутся все поля, включая
+равные умолчанию). `GameViewModel.commit` сохраняет весь профиль после каждого изменения.
+
+| Ситуация | Поведение |
+|---|---|
+| Файла нет (первый запуск) | `GameState()` |
+| Файл не читается (`IOException`) | `GameState()`, файл не трогается |
+| Битый JSON, нет обязательного поля, недопустимое значение | Файл переименовывается в `state.json.bad`, игра стартует с `GameState()` |
+| Запись | Во временный `state.json.tmp`, затем переименование поверх `state.json`; если переименование не удалось — копирование tmp поверх и удаление tmp |
+| Ошибка записи | `save` возвращает `false`, игра показывает «Не удалось сохранить». Если не записался `state.json.tmp`, прежний файл цел. Если сорвалось копирование tmp поверх, прежний файл потерян: `copyTo(overwrite = true)` сначала удаляет `state.json`, и файла нет или он записан не полностью (при следующем запуске — `GameState()`, неполный файл уходит в `state.json.bad`) |
+
+**Версии схемы нет** — ни поля версии в файле, ни миграций. Совместимость старых
+сохранений держится на двух правилах:
+
+- новое поле добавляется только со значением по умолчанию — старый файл без него читается
+  (тест `старое сохранение без новых полей читается` в
+  [`MvpRulesTest.kt`](../app/src/test/java/ru/finny/pet/domain/MvpRulesTest.kt));
+- `ignoreUnknownKeys` — лишние ключи в файле пропускаются.
+
+Смена типа поля или новое поле без умолчания делают старые файлы нечитаемыми (→ `state.json.bad`);
+переименованное поле молча получает значение по умолчанию.
+Ссылки на контент не ломают загрузку: в game `GameViewModel` при загрузке заменяет неизвестные
+`speciesId`/`colorId` питомца первыми из контента (`Content.species()`, `color()`), и питомец
+рисуется со всеми стадиями и выражениями; в файл новые id попадут при следующем сохранении.
+В classic такой питомец рисуется запасным спрайтом `PetSprites.id` — рыжий кот стадии 0 с довольной
+мордой (`pet_cat_orange_0_happy`); результаты удалённых заданий пропускаются (`Economy.completedTasks`).
+
+Не сохраняются: текущий экран, реплика питомца и поле мини-игры (`Match3State`) — они живут
+в памяти `GameViewModel`. Выход из раунда без завершения не тратит бомбочки и не даёт монет.
+
+### Сброс и удаление (раздел для взрослого)
+
+| Действие | Функция | Что остаётся от прежнего профиля |
+|---|---|---|
+| Сбросить профиль | `Economy.resetProfile` | `demo`, `animations`, `sounds`, `music` |
+| Удалить профиль и данные | `Economy.deleteProfile` | `animations`, `sounds`, `music`; `demo = false` |
+| Создать тестовый профиль | `GameViewModel.createTestProfile` → `Economy.newGame` | `animations`, `sounds`, `music`; `demo = true` |
+
+Остальные поля получают значения по умолчанию, и `state.json` перезаписывается.
+
+## Учебный контент — `Content`
+
+Файл [`assets/content/content.json`](../app/src/main/assets/content/content.json) читается
+[`data/ContentRepository.kt`](../app/src/main/java/ru/finny/pet/data/ContentRepository.kt)
+при старте, `ignoreUnknownKeys = true`. Разделы без умолчания обязательны: без них разбор
+падает. Тесты читают тот же файл
+([`TestContent.kt`](../app/src/test/java/ru/finny/pet/domain/TestContent.kt));
+[`ContentTest.kt`](../app/src/test/java/ru/finny/pet/domain/ContentTest.kt) проверяет
+минимумы ТЗ 2.6: ≥ 9 комбинаций питомца, ≥ 6 заданий по 3 темам, ≥ 8 товаров обоих
+типов, ≥ 3 цели, ≥ 3 стадии.
+
+| Раздел | Тип | По умолчанию | В content.json |
 |---|---|---|---|
-| `rules` | числовые параметры экономики (см. ECONOMY.md) | — | — |
-| `species` | `id`, `title` | 9 комбинаций питомца | 3 вида × 3 цвета = 9 |
-| `colors` | `id`, `title`, `hex` | | |
-| `items` | `id`, `title`, `emoji`, `category` (MANDATORY/OPTIONAL), `need` (FOOD/CARE/FUN), `price`, `hunger`, `clean`, `mood`, `description`, `reaction` | 8 позиций двух типов | 10 (5 + 5) |
-| `goals` | `id`, `title`, `emoji`, `price` | 3 цели | 4 готовых + конструктор своей цели (5 названий × 4 цены) |
-| `customGoal` | `titles[]`, `prices[]` | | |
-| `tasks` | `id`, `theme` (BUDGET/SAVINGS/SHOPPING), `title`, `situation`, `type` (CHOICE/NUMBER), `options[]` или `answer` + объяснения, `unlockPeriod` | 6 заданий по 3 темам | 10 (3 + 3 + 4) |
-| `glossary` | `term`, `definition` | справочный раздел | 10 терминов |
+| `rules` | `Rules` | `Rules()` | все 29 полей, значения совпадают с умолчаниями |
+| `species` | List<`PetSpecies`> | обязателен | 3: `cat`, `bunny`, `puppy` |
+| `colors` | List<`PetColor`> | обязателен | 3: `orange`, `blue`, `green` — 9 комбинаций |
+| `items` | List<`ShopItem`> | обязателен | 10: 5 `MANDATORY` (2 `FOOD`, 3 `CARE`) + 5 `OPTIONAL` (`FUN`) |
+| `goals` | List<`GoalTemplate`> | обязателен | 4 |
+| `customGoal` | `CustomGoalOptions` | обязателен | 5 названий × 4 цены (50–200) |
+| `tasks` | List<`Task`> | обязателен | 10: `BUDGET` 3, `SAVINGS` 3, `SHOPPING` 4; 7 `CHOICE` + 3 `NUMBER` |
+| `glossary` | List<`GlossaryEntry`> | обязателен | 10 терминов |
+| `quiz` | List<`QuizQuestion`> | `[]` | 15, по 5 на тему |
+| `chatter` | `Chatter` | `Chatter()` | `idle` 6, `hungry` 2, `dirty` 2, `bored` 2, `proud` 2, `facts` 4 |
+| `parentBonusReasons` | List<String> | `[]` | 4 причины |
 
-`reaction` поддерживает подстановку `{pet}` — имя питомца.
+| Класс | Поля: тип = по умолчанию | Примечание |
+|---|---|---|
+| `PetSpecies` | `id`, `title`: String | |
+| `PetColor` | `id`, `title`, `hex`: String | `hex` — `#RRGGBB` |
+| `ShopItem` | `id`, `title`, `emoji`: String; `category`: `Category`; `need`: `Need`; `price`: Int; `hunger`, `clean`, `mood`: Int = 0; `description`, `reaction`: String | `hunger`/`clean`/`mood` — изменение показателей при покупке; в `reaction` `{pet}` заменяется именем |
+| `GoalTemplate` | `id`, `title`, `emoji`: String; `price`: Int | Готовая цель |
+| `CustomGoalOptions` | `titles`: List<String>; `prices`: List<Int> | Конструктор своей цели |
+| `Task` | `id`: String; `theme`: `Theme`; `title`, `situation`: String; `type`: `TaskType`; `options`: List<`TaskOption`> = []; `answer`: Int? = null; `explanationCorrect`, `explanationWrong`: String = ""; `unlockPeriod`: Int = 1 | `CHOICE` — `options`, `NUMBER` — `answer` и два объяснения; открывается с недели `unlockPeriod` (в демо — сразу) |
+| `TaskOption` | `text`: String; `correct`: Boolean; `explanation`: String | |
+| `GlossaryEntry` | `term`, `definition`: String | Справочник |
+| `QuizQuestion` | `id`: String; `theme`: `Theme`; `question`: String; `options`: List<String>; `correct`: Int (индекс); `explanation`: String | Вопрос питомца в комнате, все поля обязательны |
+| `Chatter` | `idle`, `hungry`, `dirty`, `bored`, `proud`, `facts`: List<String> = [] | Реплики питомца в комнате: `hungry`/`dirty`/`bored` — при показателе ниже 40, иначе `idle`, `facts` и подсказка следующего шага; `{pet}` → имя. `proud` в коде не используется |
+
+`parentBonusReasons` — причины бонуса от взрослого; `Economy.parentBonus` принимает индекс
+причины и пишет её в журнал.
+
+### `Rules` — числа экономики
+
+Все поля Int, кроме списков. Как они применяются — [ECONOMY.md](ECONOMY.md).
+
+| Группа | Поля = по умолчанию |
+|---|---|
+| Доход | `allowance` = 100, `rewardCorrect` = 10, `rewardWrong` = 5 |
+| Конец недели | `decayHunger` = 30, `decayClean` = 25, `decayMood` = 10, `uncoveredExtraDrop` = 20, `uncoveredMoodDrop` = 20, `statFloor` = 10 |
+| Бонусы настроения | `planKeptMoodBonus` = 10, `savedMoodBonus` = 10, `goalMoodBonus` = 30, `correctMoodBonus` = 5, `quizMoodBonus` = 3 |
+| Питомец | `startStat` = 70, `faceSadBelow` = 30, `faceHappyAvg` = 60, `needLowBelow` = 40, `maxNameLength` = 12 |
+| Стадии | `stageThresholds` = [0, 4, 9], `stageTitles` = [«Малыш», «Подросток», «Взрослый»] |
+| Мини-игра и вопросы | `miniGameCap` = 30, `miniGameScorePerCoin` = 20, `miniGameMoves` = 15, `quizBombReward` = 1 |
+| Бонус от взрослого | `parentBonusAmount` = 10, `parentBonusPerPeriod` = 3 |
+| Подсказка копилки | `savingsAmounts` = [10, 20, 30, 50], `planStep` = 10 — итог недели без накоплений советует отложить первую сумму `savingsAmounts`, при пустом списке — `planStep` |
 
 ## Прогресс и стадии
 
-Стадия = наибольший индекс `i`, для которого `growth ≥ rules.stageThresholds[i]`; название — `rules.stageTitles[i]`. Значения по умолчанию: `[0, 4, 9]` → «Малыш», «Подросток», «Взрослый».
+Стадия = наибольший индекс `i`, для которого `growth ≥ rules.stageThresholds[i]` (не меньше 0);
+название — `rules.stageTitles[i]`, а если его нет — «Стадия N». За неделю `growth` растёт
+на `score` итога (0–3). По умолчанию `[0, 4, 9]` → «Малыш», «Подросток», «Взрослый».
+
+Актуально на версию 1.3.0 (2026-09-25)

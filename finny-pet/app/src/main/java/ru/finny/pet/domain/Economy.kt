@@ -1,6 +1,10 @@
 package ru.finny.pet.domain
 
+import kotlin.math.abs
 import kotlin.math.ceil
+
+/** Case of «монета» after a number: what the sentence needs (MVP-T01a). */
+enum class Case { NOM, ACC, GEN }
 
 /**
  * Pure game rules. No Android, no IO. Every public function returns a new state and
@@ -10,7 +14,8 @@ import kotlin.math.ceil
 class Economy(val content: Content) {
     val rules: Rules get() = content.rules
 
-    fun newGame(demo: Boolean, animations: Boolean = true) = GameState(demo = demo, animations = animations)
+    fun newGame(demo: Boolean, animations: Boolean = true, sounds: Boolean = true, music: Boolean = false) =
+        GameState(demo = demo, animations = animations, sounds = sounds, music = music)
 
     // ---------- profile ----------
 
@@ -22,7 +27,7 @@ class Economy(val content: Content) {
             return Outcome.Error("Выбери вид и цвет питомца")
         }
         val state = s.copy(
-            pet = Pet(name = n, speciesId = speciesId, colorId = colorId),
+            pet = Pet(name = n, speciesId = speciesId, colorId = colorId, hunger = rules.startStat, clean = rules.startStat, mood = rules.startStat),
             period = 1,
             balance = rules.allowance,
             savings = 0,
@@ -30,12 +35,12 @@ class Economy(val content: Content) {
             purchases = emptyList(),
             ledger = listOf(LedgerEntry("Карманные деньги на неделю", rules.allowance)),
         )
-        return Outcome.Ok(state, listOf("$n получает первые ${rules.allowance} монет на неделю!"))
+        return Outcome.Ok(state, listOf("$n получает первые ${coins(rules.allowance, Case.ACC)} на неделю!"))
     }
 
-    fun resetProfile(s: GameState): GameState = newGame(demo = s.demo, animations = s.animations)
+    fun resetProfile(s: GameState): GameState = newGame(s.demo, s.animations, s.sounds, s.music)
 
-    fun deleteProfile(s: GameState): GameState = GameState(animations = s.animations)
+    fun deleteProfile(s: GameState): GameState = GameState(animations = s.animations, sounds = s.sounds, music = s.music)
 
     // ---------- plan ----------
 
@@ -59,8 +64,8 @@ class Economy(val content: Content) {
         if (p.total == 0) return Outcome.Error("Распредели хотя бы часть монет", listOf("Начни с обязательного: еда и уход"))
         val rest = s.balance - p.total
         val msgs = mutableListOf("План на неделю принят: обязательное ${p.mandatory}, желаемое ${p.optional}, копилка ${p.savings}.")
-        msgs += if (rest > 0) "Вне плана осталось $rest монет — это запас." else "Все монеты распределены."
-        if (p.mandatory == 0) msgs += "Ты не заложил монеты на обязательное. ${petName(s)} всё равно захочет есть — следи за этим."
+        msgs += if (rest > 0) "Вне плана осталось ${coins(rest)} — это запас." else "Все монеты распределены."
+        if (p.mandatory == 0) msgs += "На обязательное в плане 0 монет, а еда и уход всё равно понадобятся — оставь на них монеты."
         return Outcome.Ok(s.copy(plan = p.copy(confirmed = true)), msgs)
     }
 
@@ -72,14 +77,15 @@ class Economy(val content: Content) {
         if (!s.plan.confirmed) return Outcome.Error("Сначала составь план на неделю", listOf("Открой «План» на главном экране"))
         if (item.price > s.balance) {
             val missing = item.price - s.balance
-            val hints = mutableListOf("Выполни задание — за него дают монеты")
+            val hints = mutableListOf<String>()
+            if (availableTasks(s).isNotEmpty()) hints += "Выполни задание — за него дают монеты"
             content.items
                 .filter { it.need == item.need && it.price <= s.balance && it.id != item.id }
                 .maxByOrNull { it.price }
-                ?.let { hints += "Есть дешевле: ${it.title} за ${it.price} монет" }
-            if (s.savings > 0) hints += "Можно взять из копилки, но цель отодвинется"
+                ?.let { hints += "Есть дешевле: ${it.title} за ${coins(it.price, Case.ACC)}" }
+            if (s.savings >= missing) hints += "Можно взять из копилки, но цель отодвинется"
             hints += "Или подожди новую неделю — придут карманные деньги"
-            return Outcome.Error("Не хватает $missing монет: цена ${item.price}, у тебя ${s.balance}", hints)
+            return Outcome.Error("Не хватает ${coins(missing, Case.GEN)}: цена ${item.price}, у тебя ${s.balance}", hints)
         }
         val newBalance = s.balance - item.price
         val newPet = pet.copy(
@@ -88,7 +94,7 @@ class Economy(val content: Content) {
             mood = clamp(pet.mood + item.mood),
         )
         val purchases = s.purchases + Purchase(item.id, item.title, item.category, item.need, item.price)
-        val msgs = mutableListOf("Баланс: −${item.price} монет, осталось $newBalance.")
+        val msgs = mutableListOf("Баланс: −${coins(item.price)}, осталось $newBalance.")
         if (item.hunger != 0) msgs += "Сытость ${signed(item.hunger)} (теперь ${newPet.hunger})."
         if (item.clean != 0) msgs += "Чистота ${signed(item.clean)} (теперь ${newPet.clean})."
         if (item.mood != 0) msgs += "Настроение ${signed(item.mood)} (теперь ${newPet.mood})."
@@ -97,7 +103,7 @@ class Economy(val content: Content) {
         val planned = if (item.category == Category.MANDATORY) s.plan.mandatory else s.plan.optional
         val catTitle = if (item.category == Category.MANDATORY) "обязательное" else "желаемое"
         msgs += if (spent > planned) {
-            "На $catTitle потрачено $spent из $planned по плану — больше, чем планировал. Не страшно: учти это в следующем плане."
+            "На $catTitle потрачено $spent из $planned по плану — больше плана. Не страшно: учти это в следующем плане."
         } else {
             "На $catTitle потрачено $spent из $planned по плану."
         }
@@ -116,7 +122,7 @@ class Economy(val content: Content) {
         if (!s.plan.confirmed) return Outcome.Error("Сначала составь план на неделю", listOf("Открой «План» на главном экране"))
         if (amount <= 0) return Outcome.Error("Введи сумму больше нуля")
         if (amount > s.balance) {
-            return Outcome.Error("Не хватает ${amount - s.balance} монет: у тебя ${s.balance}", listOf("Отложи меньше или выполни задание"))
+            return Outcome.Error("Не хватает ${coins(amount - s.balance, Case.GEN)}: у тебя ${s.balance}", listOf("Отложи меньше или выполни задание"))
         }
         val state = s.copy(
             balance = s.balance - amount,
@@ -124,7 +130,7 @@ class Economy(val content: Content) {
             depositedThisPeriod = s.depositedThisPeriod + amount,
             ledger = s.ledger + LedgerEntry("В копилку", -amount),
         )
-        val msgs = mutableListOf("В копилку: +$amount монет, теперь там ${state.savings}. На балансе ${state.balance}.")
+        val msgs = mutableListOf("В копилку: +${coins(amount)}, теперь там ${state.savings}. На балансе ${state.balance}.")
         msgs += goalProgressMessage(state)
         return Outcome.Ok(state, msgs)
     }
@@ -132,10 +138,10 @@ class Economy(val content: Content) {
     /** What happens if [amount] is taken from savings — shown before the user confirms (2.5.7). */
     fun withdrawPreview(s: GameState, amount: Int): List<String> {
         val after = s.copy(savings = s.savings - amount, withdrawnThisPeriod = s.withdrawnThisPeriod + amount)
-        val msgs = mutableListOf("В копилке останется ${after.savings} монет вместо ${s.savings}.")
+        val msgs = mutableListOf("В копилке останется ${coins(after.savings)} вместо ${s.savings}.")
         val goal = s.goal
         if (goal != null) {
-            msgs += "До цели «${goal.title}» будет не хватать ${remaining(after)} монет вместо ${remaining(s)}."
+            msgs += "До цели «${goal.title}» будет не хватать ${coins(remaining(after), Case.GEN)} вместо ${remaining(s)}."
             val etaBefore = goalEta(s)
             val etaAfter = goalEta(after)
             if (etaBefore != null && etaAfter != null && etaAfter != etaBefore) {
@@ -148,21 +154,21 @@ class Economy(val content: Content) {
     /** Unlike deposit, withdrawing needs no plan: taking coins out is how you fund this week's plan. */
     fun withdraw(s: GameState, amount: Int): Outcome {
         if (amount <= 0) return Outcome.Error("Введи сумму больше нуля")
-        if (amount > s.savings) return Outcome.Error("В копилке только ${s.savings} монет")
+        if (amount > s.savings) return Outcome.Error("В копилке только ${coins(s.savings)}")
         val state = s.copy(
             balance = s.balance + amount,
             savings = s.savings - amount,
             withdrawnThisPeriod = s.withdrawnThisPeriod + amount,
             ledger = s.ledger + LedgerEntry("Из копилки", amount),
         )
-        val msgs = mutableListOf("Из копилки: −$amount монет, осталось ${state.savings}. На балансе ${state.balance}.")
+        val msgs = mutableListOf("Из копилки: −${coins(amount)}, осталось ${state.savings}. На балансе ${state.balance}.")
         msgs += goalProgressMessage(state)
         return Outcome.Ok(state, msgs)
     }
 
     fun chooseGoal(s: GameState, goal: Goal): Outcome {
         val state = s.copy(goal = goal)
-        return Outcome.Ok(state, listOf("Цель: «${goal.title}» за ${goal.price} монет.", goalProgressMessage(state)))
+        return Outcome.Ok(state, listOf("Цель: «${goal.title}» за ${coins(goal.price, Case.ACC)}.", goalProgressMessage(state)))
     }
 
     fun customGoal(title: String, price: Int): Goal = Goal("custom_${title.hashCode()}_$price", title, "⭐", price)
@@ -170,7 +176,7 @@ class Economy(val content: Content) {
     fun achieveGoal(s: GameState): Outcome {
         val goal = s.goal ?: return Outcome.Error("Сначала выбери цель")
         val pet = s.pet ?: return Outcome.Error("Сначала создай питомца")
-        if (s.savings < goal.price) return Outcome.Error("Пока не хватает ${goal.price - s.savings} монет")
+        if (s.savings < goal.price) return Outcome.Error("Пока не хватает ${coins(goal.price - s.savings, Case.GEN)}")
         val newPet = pet.copy(mood = clamp(pet.mood + rules.goalMoodBonus))
         val state = s.copy(
             savings = s.savings - goal.price,
@@ -219,7 +225,7 @@ class Economy(val content: Content) {
         if (left <= 0) return "Накоплено на «${goal.title}»! Забери цель на экране копилки."
         val eta = goalEta(s)
         val etaText = if (eta == null) "Откладывай регулярно — и я посчитаю срок." else "При таком темпе — ещё ${weeks(eta)}."
-        return "До цели «${goal.title}» осталось $left монет. $etaText"
+        return "До цели «${goal.title}» осталось ${coins(left)}. $etaText"
     }
 
     // ---------- tasks ----------
@@ -257,7 +263,7 @@ class Economy(val content: Content) {
             taskResults = s.taskResults + TaskResult(task.id, correct, reward, s.period),
             ledger = s.ledger + LedgerEntry("Задание «${task.title}»", reward),
         )
-        val msgs = mutableListOf(explanation, "Награда: +$reward монет, на балансе ${state.balance}.")
+        val msgs = mutableListOf(explanation, "Награда: +${coins(reward)}, на балансе ${state.balance}.")
         if (correct) msgs += "${pet.name} гордится тобой: настроение +${rules.correctMoodBonus} (теперь ${newPet.mood})."
         else msgs += "Ничего страшного — теперь ты знаешь, как лучше. Монеты за старание тоже даются."
         return Outcome.Ok(state, msgs)
@@ -269,15 +275,16 @@ class Economy(val content: Content) {
     fun availableQuiz(s: GameState): List<QuizQuestion> =
         content.quiz.filter { q -> s.quizResults.none { it.taskId == q.id && it.correct } }
 
-    /** A correct answer arms one bomb for the mini-game and cheers the pet; a wrong one just explains. No coins: chat is not a farm. */
+    /** Each question is answered correctly once. A correct answer arms quizBombReward bombs for the mini-game and cheers the pet; a wrong one just explains. No coins: chat is not a farm. */
     fun answerQuiz(s: GameState, questionId: String, index: Int): Outcome {
         val q = content.quiz(questionId)
         val pet = s.pet ?: return Outcome.Error("Сначала создай питомца")
+        if (availableQuiz(s).none { it.id == q.id }) return Outcome.Error("Этот вопрос уже решён")
         val correct = index == q.correct
         val newPet = if (correct) pet.copy(mood = clamp(pet.mood + rules.quizMoodBonus)) else pet
         val state = s.copy(
             pet = newPet,
-            bombs = if (correct) s.bombs + 1 else s.bombs,
+            bombs = if (correct) s.bombs + rules.quizBombReward else s.bombs,
             quizResults = s.quizResults + TaskResult(q.id, correct, 0, s.period),
         )
         val msgs = mutableListOf(q.explanation)
@@ -287,9 +294,16 @@ class Economy(val content: Content) {
 
     fun miniGameCoinsLeft(s: GameState): Int = (rules.miniGameCap - s.miniGameEarned).coerceAtLeast(0)
 
+    /** Why the mini-game is closed, or null when it can be played: extras open only after the plan (2.8). */
+    fun miniGameLock(s: GameState): String? = when {
+        s.pet == null -> "Сначала создай питомца"
+        !s.plan.confirmed -> "Сначала составь план на неделю — игра откроется после него"
+        else -> null
+    }
+
     /** Converts a finished round into coins (capped per period) and consumes used bombs. Source and amount go to the ledger (2.5.4). */
     fun finishMiniGame(s: GameState, score: Int, bombsUsed: Int): Outcome {
-        if (s.pet == null) return Outcome.Error("Сначала создай питомца")
+        miniGameLock(s)?.let { return Outcome.Error(it) }
         val earned = (score / rules.miniGameScorePerCoin).coerceIn(0, miniGameCoinsLeft(s))
         val state = s.copy(
             balance = s.balance + earned,
@@ -298,10 +312,35 @@ class Economy(val content: Content) {
             ledger = if (earned > 0) s.ledger + LedgerEntry("Игра «Монетки в ряд»", earned) else s.ledger,
         )
         val msgs = mutableListOf("Очки: $score. Монеты: +$earned (на балансе ${state.balance}).")
-        if (earned == 0 && miniGameCoinsLeft(s) == 0) msgs += "На этой неделе игра уже принесла ${rules.miniGameCap} монет — больше только на следующей."
-        else if (miniGameCoinsLeft(state) > 0) msgs += "За игру на этой неделе можно получить ещё ${miniGameCoinsLeft(state)} монет."
-        else msgs += "Недельный лимит игры (${rules.miniGameCap} монет) набран. Остальное — из плана и заданий."
+        if (earned == 0 && miniGameCoinsLeft(s) == 0) msgs += "На этой неделе игра уже принесла ${coins(rules.miniGameCap, Case.ACC)} — больше только на следующей."
+        else if (miniGameCoinsLeft(state) > 0) msgs += "За игру на этой неделе можно получить ещё ${coins(miniGameCoinsLeft(state), Case.ACC)}."
+        else msgs += "Недельный лимит игры (${coins(rules.miniGameCap)}) набран. Остальное — из плана и заданий."
         return Outcome.Ok(state, msgs)
+    }
+
+    // ---------- parent bonus (2.5.12) ----------
+
+    fun parentBonusesLeft(s: GameState): Int = (rules.parentBonusPerPeriod - s.parentBonusesThisPeriod).coerceAtLeast(0)
+
+    /** An adult grants coins for a listed reason, limited per period. Like task rewards, the bonus does not touch the plan. */
+    fun parentBonus(s: GameState, reasonIndex: Int): Outcome {
+        if (s.pet == null) return Outcome.Error("Сначала создай питомца")
+        val reason = content.parentBonusReasons.getOrNull(reasonIndex) ?: return Outcome.Error("Выберите причину бонуса")
+        if (parentBonusesLeft(s) == 0) return Outcome.Error("На этой неделе все бонусы уже начислены — новые будут со следующей недели.")
+        val amount = rules.parentBonusAmount
+        val state = s.copy(
+            balance = s.balance + amount,
+            parentBonusesThisPeriod = s.parentBonusesThisPeriod + 1,
+            ledger = s.ledger + LedgerEntry("Бонус от взрослого: $reason", amount),
+        )
+        val left = parentBonusesLeft(state)
+        return Outcome.Ok(
+            state,
+            listOf(
+                "Бонус от взрослого: +${coins(amount)} — «$reason». На балансе ${state.balance}.",
+                if (left > 0) "На этой неделе можно начислить ещё $left." else "Лимит бонусов на эту неделю исчерпан.",
+            ),
+        )
     }
 
     // ---------- period ----------
@@ -315,58 +354,70 @@ class Economy(val content: Content) {
         val hasFood = s.purchases.any { it.need == Need.FOOD }
         val hasCare = s.purchases.any { it.need == Need.CARE }
         val mandatoryCovered = hasFood && hasCare
-        val planKept = s.factMandatory <= plan.mandatory && s.factOptional <= plan.optional && s.factSavings >= plan.savings
+        // a net withdrawal counts as 0 saved: taking coins out funds the plan, it does not break it
+        val netSavings = s.factSavings.coerceAtLeast(0)
+        val planKept = s.factMandatory <= plan.mandatory && s.factOptional <= plan.optional && netSavings >= plan.savings
         val saved = s.factSavings > 0
-        val score = listOf(mandatoryCovered, planKept, saved).count { it }
+        val checks = listOf(mandatoryCovered, planKept, saved)
+        val score = checks.count { it }
 
         val msgs = mutableListOf<String>()
         var hunger = pet.hunger - rules.decayHunger
         var clean = pet.clean - rules.decayClean
         var mood = pet.mood - rules.decayMood
-        msgs += "За неделю ${pet.name} проголодался и запачкался: сытость −${rules.decayHunger}, чистота −${rules.decayClean}, настроение −${rules.decayMood}."
+        msgs += "Прошла неделя: сытость −${rules.decayHunger}, чистота −${rules.decayClean}, настроение −${rules.decayMood}."
         if (mandatoryCovered) {
             msgs += "Еда и уход куплены — ${pet.name} сыт и ухожен. Так держать!"
         } else {
             mood -= rules.uncoveredMoodDrop
-            if (!hasFood) { hunger -= rules.uncoveredExtraDrop; msgs += "Ты не купил еду — ${pet.name} сильно проголодался (сытость ещё −${rules.uncoveredExtraDrop})." }
-            if (!hasCare) { clean -= rules.uncoveredExtraDrop; msgs += "Ты не купил уход — ${pet.name} запачкался (чистота ещё −${rules.uncoveredExtraDrop})." }
+            if (!hasFood) { hunger -= rules.uncoveredExtraDrop; msgs += "Еды на этой неделе не было — сытость ещё −${rules.uncoveredExtraDrop}." }
+            if (!hasCare) { clean -= rules.uncoveredExtraDrop; msgs += "Ухода на этой неделе не было — чистота ещё −${rules.uncoveredExtraDrop}." }
             msgs += "Настроение −${rules.uncoveredMoodDrop}. На следующей неделе начни с обязательного: еда и уход."
         }
         if (planKept) {
             mood += rules.planKeptMoodBonus
             msgs += "Траты совпали с планом — настроение +${rules.planKeptMoodBonus}."
         } else {
-            if (s.factMandatory > plan.mandatory) msgs += "На обязательное потратил ${s.factMandatory}, а планировал ${plan.mandatory}."
-            if (s.factOptional > plan.optional) msgs += "На желаемое потратил ${s.factOptional}, а планировал ${plan.optional}."
-            if (s.factSavings < plan.savings) msgs += "В копилку отложил ${s.factSavings.coerceAtLeast(0)}, а планировал ${plan.savings}."
+            if (s.factMandatory > plan.mandatory) msgs += "На обязательное потрачено ${s.factMandatory}, а в плане было ${plan.mandatory}."
+            if (s.factOptional > plan.optional) msgs += "На желаемое потрачено ${s.factOptional}, а в плане было ${plan.optional}."
+            if (netSavings < plan.savings) {
+                val d = s.depositedThisPeriod
+                val w = s.withdrawnThisPeriod
+                msgs += if (w == 0) "В копилку отложено $d, а в плане было ${plan.savings}."
+                else "В копилку чистыми $netSavings (положено $d, взято $w), а в плане было ${plan.savings}."
+            }
             msgs += "План — это обещание себе. В следующий раз поставь суммы, которые сможешь соблюсти, или откажись от лишней покупки."
         }
         if (saved) {
             mood += rules.savedMoodBonus
-            msgs += "Ты отложил ${s.factSavings} монет — цель ближе, настроение +${rules.savedMoodBonus}."
+            msgs += "Копилка выросла на ${coins(s.factSavings, Case.ACC)} — цель ближе, настроение +${rules.savedMoodBonus}."
         } else {
-            msgs += "На этой неделе копилка не выросла. Попробуй отложить хотя бы 10 монет — так цель приблизится."
+            msgs += "На этой неделе копилка не выросла. Попробуй отложить хотя бы ${coins(rules.savingsAmounts.firstOrNull() ?: rules.planStep, Case.ACC)} — так цель приблизится."
         }
 
         val growthBefore = pet.growth
         val growthAfter = growthBefore + score
         val stageBefore = stageIndex(growthBefore)
         val stageAfter = stageIndex(growthAfter)
-        msgs += "Рост: +$score из 3 (всего $growthAfter)."
+        msgs += "Рост: +$score из ${checks.size} (всего $growthAfter)."
         val left = nextStageLeft(growthAfter)
         msgs += when {
             stageAfter > stageBefore -> "${pet.name} вырос! Теперь ${stageTitle(growthAfter).lowercase()}."
-            left != null -> "До следующей стадии: $left очков роста."
+            left != null -> "До следующей стадии: ${points(left)} роста."
             else -> "${pet.name} достиг высшей стадии — так держать!"
         }
-        msgs += "Новая неделя: +${rules.allowance} монет карманных денег."
+        // off-plan coins are shown apart from the plan checks (2.8)
+        val parentBonus = s.parentBonusesThisPeriod * rules.parentBonusAmount
+        if (s.miniGameEarned > 0) msgs += "Вне плана: игра «Монетки в ряд» принесла ${coins(s.miniGameEarned, Case.ACC)}."
+        if (parentBonus > 0) msgs += "Вне плана: бонус от взрослого — ${coins(parentBonus)}."
+        msgs += "Новая неделя: +${coins(rules.allowance)} карманных денег."
 
         val summary = PeriodSummary(
             period = s.period, plan = plan,
             factMandatory = s.factMandatory, factOptional = s.factOptional, factSavings = s.factSavings,
             mandatoryCovered = mandatoryCovered, planKept = planKept, saved = saved, score = score,
             growthBefore = growthBefore, growthAfter = growthAfter, stageBefore = stageBefore, stageAfter = stageAfter,
-            messages = msgs,
+            messages = msgs, miniGameEarned = s.miniGameEarned, parentBonus = parentBonus,
         )
         val state = s.copy(
             pet = pet.copy(hunger = clampFloor(hunger), clean = clampFloor(clean), mood = clampFloor(mood), growth = growthAfter),
@@ -377,6 +428,7 @@ class Economy(val content: Content) {
             depositedThisPeriod = 0,
             withdrawnThisPeriod = 0,
             miniGameEarned = 0,
+            parentBonusesThisPeriod = 0,
             depositHistory = s.depositHistory + s.factSavings.coerceAtLeast(0), // withdrawals don't count as negative saving in the forecast
 
             history = s.history + summary,
@@ -401,17 +453,17 @@ class Economy(val content: Content) {
         val min = minOf(pet.hunger, pet.clean, pet.mood)
         val avg = (pet.hunger + pet.clean + pet.mood) / 3
         return when {
-            min < 30 -> Face.SAD
-            avg >= 60 && min >= 40 -> Face.HAPPY
+            min < rules.faceSadBelow -> Face.SAD
+            avg >= rules.faceHappyAvg && min >= rules.needLowBelow -> Face.HAPPY
             else -> Face.NEUTRAL
         }
     }
 
     fun faceReason(pet: Pet): String {
         val low = listOfNotNull(
-            "голодный".takeIf { pet.hunger < 40 },
-            "грязный".takeIf { pet.clean < 40 },
-            "скучает".takeIf { pet.mood < 40 },
+            "голодный".takeIf { pet.hunger < rules.needLowBelow },
+            "хочет помыться".takeIf { pet.clean < rules.needLowBelow },
+            "скучает".takeIf { pet.mood < rules.needLowBelow },
         )
         return when (face(pet)) {
             Face.HAPPY -> "${pet.name} доволен: сыт, чист и в хорошем настроении."
@@ -420,7 +472,6 @@ class Economy(val content: Content) {
         }
     }
 
-    private fun petName(s: GameState) = s.pet?.name ?: "Питомец"
     private fun clamp(v: Int) = v.coerceIn(0, 100)
     private fun clampFloor(v: Int) = v.coerceIn(rules.statFloor, 100)
     private fun signed(v: Int) = if (v > 0) "+$v" else "$v"
@@ -436,6 +487,28 @@ class Economy(val content: Content) {
                 else -> "недель"
             }
             return "$n $word"
+        }
+
+        /** "$n монета/монеты/монет" agreeing with |n| in [case], so texts stay right for any number from content.json. */
+        fun coins(n: Int, case: Case = Case.NOM): String {
+            val words = when (case) {
+                Case.NOM -> listOf("монета", "монеты", "монет")
+                Case.ACC -> listOf("монету", "монеты", "монет")
+                Case.GEN -> listOf("монеты", "монет", "монет")
+            }
+            return "$n ${words[form(n)]}"
+        }
+
+        /** "$n очко/очка/очков" agreeing with |n|, same rule as [coins] (MVP-T11). */
+        fun points(n: Int): String = "$n ${listOf("очко", "очка", "очков")[form(n)]}"
+
+        private fun form(n: Int): Int {
+            val r = abs(n % 100)
+            return when {
+                r % 10 == 1 && r != 11 -> 0
+                r % 10 in 2..4 && r !in 12..14 -> 1
+                else -> 2
+            }
         }
     }
 }

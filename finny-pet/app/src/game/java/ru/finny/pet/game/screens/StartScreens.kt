@@ -3,7 +3,6 @@ package ru.finny.pet.game.screens
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,6 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -46,10 +46,14 @@ import androidx.compose.ui.unit.dp
 import ru.finny.pet.PetSprites
 import ru.finny.pet.R
 import ru.finny.pet.domain.Face
+import ru.finny.pet.domain.Case
+import ru.finny.pet.domain.Economy
 import ru.finny.pet.game.GameViewModel
+import ru.finny.pet.game.LocalAnimate
 import ru.finny.pet.game.LocalLayout
 import ru.finny.pet.game.Screen
 import ru.finny.pet.game.ui.ButtonStyle
+import ru.finny.pet.game.ui.CheckBadge
 import ru.finny.pet.game.ui.CloseButton
 import ru.finny.pet.game.ui.G
 import ru.finny.pet.game.ui.GameButton
@@ -80,7 +84,7 @@ fun TitleScreen(vm: GameViewModel) {
         val sprite: @Composable () -> Unit = {
             PetSprite(
                 speciesId = pet?.speciesId ?: "cat", colorId = pet?.colorId ?: "orange", stage = pet?.let { vm.economy.stageIndex(it.growth) } ?: 1,
-                face = Face.HAPPY, animate = s.animations, size = if (layout.compact) 220.dp else 280.dp, description = "Финни", bounceKey = vm.bounce,
+                face = Face.HAPPY, animate = LocalAnimate.current, size = if (layout.compact) 220.dp else 280.dp, description = "Финни", bounceKey = vm.bounce,
             )
         }
         if (layout.landscape) {
@@ -93,9 +97,9 @@ fun TitleScreen(vm: GameViewModel) {
 
 private class Page(val text: String, val icons: List<Int>)
 
-private val pages = listOf(
+private fun introPages(allowance: Int) = listOf(
     Page("Привет! Я твой питомец. Мне нужны еда, уход и радость. Ты решаешь, на что тратить монеты, а я показываю, что из этого вышло.", listOf(R.drawable.item_food_basic, R.drawable.item_care_shampoo, R.drawable.item_fun_ball)),
-    Page("Каждую неделю ты получаешь 100 монет и делишь их на три части: обязательное, желаемое и копилка на мечту.", listOf(R.drawable.ui_lid_mandatory, R.drawable.ui_lid_optional, R.drawable.ui_lid_savings)),
+    Page("Каждую неделю ты получаешь ${Economy.coins(allowance, Case.ACC)}. Их надо разделить на три части: обязательное, желаемое и копилка на мечту.", listOf(R.drawable.ui_lid_mandatory, R.drawable.ui_lid_optional, R.drawable.ui_lid_savings)),
     Page("Ошибаться можно! После каждого решения я расскажу, что изменилось и почему. Не вышло на этой неделе — поправим на следующей.", listOf(R.drawable.ui_book, R.drawable.ui_gamepad, R.drawable.ui_trophy)),
 )
 
@@ -103,6 +107,7 @@ private val pages = listOf(
 fun IntroScreen(vm: GameViewModel) {
     var page by rememberSaveable { mutableIntStateOf(0) }
     val s = vm.state
+    val pages = introPages(vm.content.rules.allowance)
     val p = pages[page]
     val layout = LocalLayout.current
     Box(Modifier.fillMaxSize().background(G.purpleDeep.copy(alpha = 0.45f))) {
@@ -110,13 +115,13 @@ fun IntroScreen(vm: GameViewModel) {
         val sprite: @Composable () -> Unit = {
             PetSprite(
                 speciesId = pet?.speciesId ?: "cat", colorId = pet?.colorId ?: "orange", stage = pet?.let { vm.economy.stageIndex(it.growth) } ?: 1,
-                face = Face.HAPPY, animate = s.animations, size = if (layout.compact) 200.dp else 260.dp, description = "Питомец рассказывает",
+                face = Face.HAPPY, animate = LocalAnimate.current, size = if (layout.compact) 200.dp else 260.dp, description = "Питомец рассказывает",
             )
         }
         val bubble: @Composable () -> Unit = {
             Column(Modifier.widthIn(max = 440.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 SpeechBubble(tailAtStart = layout.landscape) {
-                    TypewriterText(p.text, animate = s.animations)
+                    TypewriterText(p.text, animate = LocalAnimate.current)
                     Row(horizontalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterHorizontally), modifier = Modifier.fillMaxWidth()) {
                         p.icons.forEach { Image(painterResource(it), null, Modifier.size(56.dp)) }
                     }
@@ -158,7 +163,7 @@ fun CreatePetScreen(vm: GameViewModel) {
     Box(Modifier.fillMaxSize().background(G.purpleDeep.copy(alpha = 0.45f))) {
         val preview: @Composable () -> Unit = {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                PetSprite(speciesId = species, colorId = color, stage = 0, face = Face.HAPPY, animate = vm.state.animations, size = if (layout.compact) 200.dp else 260.dp, description = "Питомец: ${c.species(species).title}", bounceKey = species.hashCode() + color.hashCode())
+                PetSprite(speciesId = species, colorId = color, stage = 0, face = Face.HAPPY, animate = LocalAnimate.current, size = if (layout.compact) 200.dp else 260.dp, description = "Питомец: ${c.species(species).title}", bounceKey = species.hashCode() + color.hashCode())
                 Text(name.ifBlank { "Как тебя зовут?" }, style = MaterialTheme.typography.headlineSmall, color = if (name.isBlank()) G.pink else Color.White)
             }
         }
@@ -168,18 +173,20 @@ fun CreatePetScreen(vm: GameViewModel) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     c.species.forEach { sp ->
                         val selected = species == sp.id
-                        Column(
+                        Box(
                             Modifier.weight(1f)
                                 .shadow(if (selected) 6.dp else 0.dp, RoundedCornerShape(18.dp))
                                 .background(if (selected) G.pink else G.paperTint, RoundedCornerShape(18.dp))
                                 .border(3.dp, if (selected) G.magenta else Color.Transparent, RoundedCornerShape(18.dp))
-                                .clickable(role = Role.RadioButton) { species = sp.id }
+                                .selectable(selected, role = Role.RadioButton) { species = sp.id }
                                 .semantics { contentDescription = sp.title }
                                 .padding(4.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
-                            Image(painterResource(PetSprites.id(sp.id, color, 0, "happy")), null, Modifier.size(if (layout.compact) 48.dp else 56.dp))
-                            Text(sp.title, style = MaterialTheme.typography.labelMedium, color = G.purpleDeep)
+                            Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                                Image(painterResource(PetSprites.id(sp.id, color, 0, "happy")), null, Modifier.size(if (layout.compact) 48.dp else 56.dp))
+                                Text(sp.title, style = MaterialTheme.typography.labelMedium, color = G.purpleDeep)
+                            }
+                            if (selected) CheckBadge()
                         }
                     }
                 }
@@ -188,17 +195,17 @@ fun CreatePetScreen(vm: GameViewModel) {
                     c.colors.forEach { col ->
                         val selected = color == col.id
                         Box(
-                            Modifier.size(44.dp).shadow(if (selected) 6.dp else 2.dp, CircleShape)
+                            Modifier.size(48.dp).shadow(if (selected) 6.dp else 2.dp, CircleShape)
                                 .background(colorHex[col.id] ?: G.gold, CircleShape)
                                 .border(4.dp, if (selected) G.magenta else Color.White, CircleShape)
-                                .clickable(role = Role.RadioButton) { color = col.id }
+                                .selectable(selected, role = Role.RadioButton) { color = col.id }
                                 .semantics { contentDescription = col.title },
-                        )
+                        ) { if (selected) CheckBadge(Alignment.Center) }
                     }
                 }
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FlowRow(itemVerticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Label("Имя:")
-                    listOf("Финни", "Пушок", "Искра").forEach { n -> GameButton(n, style = if (name == n) ButtonStyle.MAGENTA else ButtonStyle.PAPER, minHeight = 44.dp) { name = n } }
+                    listOf("Финни", "Пушок", "Бублик").forEach { n -> GameButton(n, selected = name == n, minHeight = 48.dp) { name = n } }
                 }
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     GameTextField(name, { name = it }, Modifier.weight(1f), hint = "Или своё имя", maxLength = c.rules.maxNameLength)

@@ -10,11 +10,11 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Edit|Write|NotebookEdit|Bash",
+        "matcher": "Edit|Write|NotebookEdit|Bash|PowerShell",
         "hooks": [
           {
             "type": "command",
-            "command": "node .claude/hooks/guard-paths.js"
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard-paths.js\""
           }
         ]
       }
@@ -25,7 +25,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node .claude/hooks/assert-oracle-intact.js"
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/assert-oracle-intact.js\""
           }
         ]
       }

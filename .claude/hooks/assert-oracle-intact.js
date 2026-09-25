@@ -13,9 +13,12 @@
  */
 
 const fs = require("fs");
+const path = require("path");
 const { execFileSync } = require("child_process");
 
-const SCOPE_FILE = ".claude/task-scope.json";
+// Корень — от расположения хука, не от cwd подагента (он мог сделать `cd finny-pet`).
+const ROOT = path.resolve(__dirname, "..", "..");
+const SCOPE_FILE = path.join(ROOT, ".claude", "task-scope.json");
 
 function fail(msg) {
   process.stderr.write(`ORACLE INTEGRITY FAILED: ${msg}\n`);
@@ -35,7 +38,8 @@ const protect = Array.isArray(scope.protect) ? scope.protect : [];
 if (protect.length === 0) process.exit(0);
 
 // Сверяем protect с HEAD, а не с base из task-scope (решение сеньора 2026-08-21).
-// Кодер не коммитит — его правки всегда незакоммичены, и диff от HEAD их видит.
+// Кодер не коммитит — его правки всегда незакоммичены. `git status` вместо
+// `git diff`: diff не видит новых (untracked) файлов в protect (найдено 2026-09-25).
 // Сверка с base давала вечно-красный стоп осиротевшим сессиям кодера после
 // коммитов оркестратора в protect-пути (base устаревал), а текст «откатите»
 // провоцировал кодера сносить незакоммиченные файлы оркестратора.
@@ -45,13 +49,13 @@ let changed;
 try {
   changed = execFileSync(
     "git",
-    ["diff", "--name-only", "HEAD", "--", ...protect],
-    { encoding: "utf8" },
+    ["status", "--porcelain", "--untracked-files=all", "--", ...protect],
+    { encoding: "utf8", cwd: ROOT },
   )
     .split("\n")
     .filter(Boolean);
 } catch (e) {
-  fail(`не удалось выполнить git diff от HEAD: ${e.message}`);
+  fail(`не удалось выполнить git status: ${e.message}`);
 }
 
 if (changed.length > 0) {

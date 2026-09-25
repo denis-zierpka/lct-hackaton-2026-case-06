@@ -35,6 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import ru.finny.pet.BuildConfig
 import ru.finny.pet.domain.Theme
 import ru.finny.pet.ui.BigButton
 import ru.finny.pet.ui.ConfirmDialog
@@ -99,7 +100,7 @@ private fun ParentPanel(vm: GameViewModel) {
 
     SectionCard(title = "Чему учит приложение", icon = Icons.Outlined.School) {
         educationalGoals.forEach { Text("• $it", style = MaterialTheme.typography.bodyMedium) }
-        Text("Основа: Единая рамка компетенций по финансовой грамотности, базовый уровень (начальное общее образование).", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("Основа: Единая рамка компетенций по финансовой грамотности — формулировки для младших школьников.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 
     SectionCard(title = "Прогресс ребёнка", icon = Icons.AutoMirrored.Outlined.TrendingUp) {
@@ -137,7 +138,7 @@ private fun ParentPanel(vm: GameViewModel) {
         BigButton("Создать тестовый профиль (демо)", Modifier.fillMaxWidth(), emphasis = Emphasis.TONAL, icon = Icons.Outlined.Science) { confirm = "test" }
         BigButton("Сбросить профиль", Modifier.fillMaxWidth(), emphasis = Emphasis.OUTLINED, enabled = s.hasProfile, icon = Icons.Outlined.Refresh) { confirm = "reset" }
         BigButton("Удалить профиль и данные", Modifier.fillMaxWidth(), emphasis = Emphasis.OUTLINED, enabled = s.hasProfile, icon = Icons.Outlined.DeleteOutline) { confirm = "delete" }
-        Text("Версия 1.2.0 · Прототип для конкурса, без рекламы и покупок.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("Версия ${BuildConfig.VERSION_NAME} · Прототип для конкурса, без рекламы и покупок.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 
     confirm?.let { kind ->

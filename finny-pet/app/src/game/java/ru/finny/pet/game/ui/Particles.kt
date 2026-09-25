@@ -40,6 +40,8 @@ class ParticleController {
     private val ps = ArrayList<Particle>()
     private val targets = HashMap<String, Offset>()
     var coinImage: ImageBitmap? = null
+    /** False while animations are off (ТЗ 3.6): nothing new is spawned. */
+    var enabled = true
     internal var tick by mutableLongStateOf(0L)
     private var now = 0L
 
@@ -50,6 +52,7 @@ class ParticleController {
     /** Coins fly from [from] to a named target along an arc, then vanish (the HUD number animates on its own). */
     fun coins(from: Offset, toName: String, count: Int = 8, size: Float = 48f) {
         val to = targets[toName] ?: return
+        if (!enabled) return
         repeat(count) { i ->
             val ctrl = Offset((from.x + to.x) / 2 + Random.nextFloat() * 200 - 100, minOf(from.y, to.y) - 150 - Random.nextFloat() * 120)
             ps += Particle(Kind.COIN, from.x, from.y, 0f, 0f, now + i * 55L, 620, size * (0.8f + Random.nextFloat() * 0.4f), G.gold, Random.nextFloat() * 6f, Random.nextFloat() * 6f - 3f, from, to, ctrl)
@@ -57,6 +60,7 @@ class ParticleController {
     }
 
     fun confetti(center: Offset, count: Int = 60) {
+        if (!enabled) return
         val colors = listOf(G.magenta, G.gold, G.lavender, G.green, G.pink, G.sky, Color.White)
         repeat(count) {
             val a = Random.nextFloat() * Math.PI.toFloat() * 2
@@ -66,6 +70,7 @@ class ParticleController {
     }
 
     fun burst(center: Offset, kind: Kind, count: Int = 12, color: Color = G.gold, spread: Float = 260f) {
+        if (!enabled) return
         repeat(count) {
             val a = Random.nextFloat() * Math.PI.toFloat() * 2
             val sp = spread * (0.4f + Random.nextFloat() * 0.6f)
