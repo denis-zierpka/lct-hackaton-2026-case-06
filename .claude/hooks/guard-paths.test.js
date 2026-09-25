@@ -13,9 +13,11 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 
-const HOOK = path.resolve(__dirname, "guard-paths.js");
 const sandbox = fs.mkdtempSync(path.join(os.tmpdir(), "guard-test-"));
-fs.mkdirSync(path.join(sandbox, ".claude"), { recursive: true });
+fs.mkdirSync(path.join(sandbox, ".claude", "hooks"), { recursive: true });
+// Хук ищет скоуп от своего расположения (корень = ../..), поэтому гоняем копию из песочницы.
+const HOOK = path.join(sandbox, ".claude", "hooks", "guard-paths.js");
+fs.copyFileSync(path.resolve(__dirname, "guard-paths.js"), HOOK);
 fs.writeFileSync(
   path.join(sandbox, ".claude/task-scope.json"),
   JSON.stringify({
@@ -60,6 +62,22 @@ const cases = [
   ["PASS",  "чтение теста из подпроекта",         bash(`cd finny-pet && cat app/src/test/java/X.kt`)],
   ["BLOCK", "снос самого хука",               bash(`node -e "require('fs').unlinkSync('.claude/hooks/guard-paths.js')"`)],
 
+  // --- Windows (2026-09-25): обратные слэши, регистр, PowerShell, cmd, py ---
+  ["BLOCK", "sed -i по пути с обратными слэшами",  bash(`cd finny-pet && sed -i s/a/b/ 'app\\src\\test\\X.kt'`)],
+  ["BLOCK", "rm по пути в другом регистре",        bash(`cd finny-pet && rm App/Src/Test/Y.kt`)],
+  ["BLOCK", "powershell -c Set-Content в тест",    bash(`powershell -c "Set-Content tests/t.py x"`)],
+  ["BLOCK", "cmd //c del теста",                   bash(`cmd //c del tests\\t.py`)],
+  ["BLOCK", "py -c запись в тест",                 bash(`py -c "open('tests/t.py','w')"`)],
+  ["BLOCK", "git по абсолютному пути",             bash(`/usr/bin/git checkout -- tests/`)],
+  ["BLOCK", "PowerShell: Remove-Item теста",       ps(`Remove-Item finny-pet\\app\\src\\test\\X.kt`)],
+  ["BLOCK", "PowerShell: Out-File в build.gradle", ps(`"x" | Out-File finny-pet/app/build.gradle.kts`)],
+  ["BLOCK", "PowerShell: git commit",              ps(`git commit -am wip`)],
+  ["BLOCK", "Edit по абсолютному Windows-пути в тест", { agent_type: "coder", tool_name: "Edit", tool_input: { file_path: path.join(sandbox, "tests", "t.py") } }],
+  ["BLOCK", "Edit относительно cwd подпроекта",    { agent_type: "coder", cwd: path.join(sandbox, "finny-pet"), tool_name: "Edit", tool_input: { file_path: "app/src/test/X.kt" } }],
+  ["PASS",  "Edit разрешённого по абсолютному пути в другом регистре", { agent_type: "coder", tool_name: "Edit", tool_input: { file_path: path.join(sandbox, "SRC", "Limiter.py") } }],
+  ["PASS",  "PowerShell: gradlew.bat test",        ps(`cd finny-pet; .\\gradlew.bat testGameDebugUnitTest --console=plain`)],
+  ["PASS",  "PowerShell: чтение теста",            ps(`Get-Content finny-pet\\app\\src\\test\\X.kt`)],
+
   // --- легальная работа: не должно ломаться ---
   ["PASS",  "Edit разрешённого файла",        { agent_type: "coder", tool_name: "Edit", tool_input: { file_path: "src/limiter.py" } }],
   ["PASS",  "локальный pytest",               bash(`pytest tests/ -q`)],
@@ -74,6 +92,10 @@ const cases = [
   ["PASS",  "git log (чтение)",               bash(`git log --oneline -5`)],
   ["PASS",  "git show (чтение)",              bash(`git show HEAD --stat`)],
 ];
+
+function ps(command) {
+  return { agent_type: "coder", tool_name: "PowerShell", tool_input: { command } };
+}
 
 function bash(command) {
   // Кейсы контура пишутся от лица кодера: у настоящего подагента stdin несёт agent_type.

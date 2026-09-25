@@ -3,10 +3,12 @@
 Копируйте блок в секцию ACCEPTANCE шаблона задачи. Требование к любой команде одно:
 она детерминирована и её может запустить ревьювер, не зная ничего о том, что делал кодер.
 
-Все команды — из каталога `finny-pet/`, окружение:
+Все команды — из каталога `finny-pet/`. Окружение — `CLAUDE.md`, раздел «Окружение».
+На Windows `./gradlew` → `.\gradlew.bat` (PowerShell) и `python3` → `python`;
+`JAVA_HOME` не переопределять — он уже указывает на JDK 17.
 
 ```bash
-export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64 ANDROID_HOME=~/android-sdk
+export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64 ANDROID_HOME=~/android-sdk   # только Linux
 ```
 
 ---
@@ -25,6 +27,12 @@ export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64 ANDROID_HOME=~/android-sdk
 | `lintGameDebug` | 0 ошибок, 10 предупреждений, 2 подсказки |
 | предупреждения компилятора | 1: `GameApp.kt:105`, устаревший `LocalLifecycleOwner` |
 
+Повторный замер на Windows 2026-09-25 (коммит 209ff3d): тесты 34 / 34, 0 упало;
+сборка обоих вариантов — exit 0; lint classic — 0 ошибок, 8 предупреждений;
+game — 0 ошибок, 9 предупреждений, 2 подсказки; предупреждение компилятора то же.
+Предупреждений на одно меньше из-за `GradleDependency`: это правило сверяет версии
+с сетью, и его число плавает со временем. Потолок для задач прогона MVP — **8 / 9**.
+
 Предупреждения линта — **потолок, а не цель**: задача не может их увеличить.
 Починка исходных предупреждений — отдельная задача, не «заодно».
 
@@ -36,7 +44,7 @@ export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64 ANDROID_HOME=~/android-sdk
    = <было> + <добавлено оракулом>; skipped = 0
 3. ./gradlew assembleClassicDebug assembleGameDebug          -> exit 0
 4. ./gradlew lintClassicDebug lintGameDebug                  -> exit 0,
-   ошибок 0, предупреждений не больше 9 / 10
+   ошибок 0, предупреждений не больше 8 / 9
 5. git diff --name-only <BASE> -- app/src/test/              -> пусто
 6. git diff --name-only <BASE> -- '*.gradle.kts' gradle/ gradle.properties -> пусто
 7. git diff --shortstat <BASE>                               -> не более <N> строк
@@ -47,7 +55,7 @@ export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64 ANDROID_HOME=~/android-sdk
 Подсчёт — скриптом по XML, а не по выводу Gradle:
 
 ```bash
-python3 - <<'EOF'
+python3 - <<'EOF'        # на Windows: python
 import glob, xml.etree.ElementTree as ET
 t=f=s=0
 for p in glob.glob("app/build/test-results/testClassicDebugUnitTest/*.xml"):
@@ -68,8 +76,8 @@ EOF
 10. чек-лист живой проверки для человека: экран, действие, что должно быть видно
 ```
 
-Экран на сервере не проверяется — эмулятора нет. Пункт 10 выполняет сеньор, и до
-его отметки задача считается принятой только по логике.
+Пункт 10 оркестратор выполняет сам на эмуляторе (AVD `finni`, портрет 411 и 360 dp)
+и прикладывает скриншоты «до/после»; плавность и физическое устройство — за человеком.
 
 ## Задача, затрагивающая контент (`content.json`)
 

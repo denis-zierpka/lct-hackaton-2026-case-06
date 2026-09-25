@@ -61,8 +61,9 @@ finny-pet/            само приложение — Gradle-проект, в�
 - **Сдаём вариант `game`** (решение сеньора 2026-09-23). `classic` остаётся в
   репозитории, но UI-задачи по умолчанию — для `game`. Общее — в `main/`.
   Следствия выбора и открытые вопросы — `docs/BACKLOG.md`.
-- **Питомец — 3D-модели с ручной анимацией, рендер в спрайты.** План и
-  ограничения — `docs/ART_PIPELINE.md`.
+- **Питомец:** до промежуточной сдачи — процедурный рендер `tools/art/pet.py`
+  (кот, зайка, щенок — щенок вместо дракона, решение 2026-09-25); 3D-модели с ручной
+  анимацией — к финалу, план — `docs/ART_PIPELINE.md`.
 - **Доки не врут о коде.** Любое изменение поведения сопровождается грепом по
   формулировке старого правила по ВСЕМУ репозиторию (оба `docs/`).
 - **Ассеты — с лицензией в момент добавления** (`finny-pet/docs/LICENSES.md`),
@@ -91,23 +92,30 @@ finny-pet/            само приложение — Gradle-проект, в�
 
 ## Окружение
 
-- **Сборка — из `finny-pet/`:** `JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64`,
-  `ANDROID_HOME=~/android-sdk` (platform 36, build-tools 36.0.0). Путь к SDK — в
-  `finny-pet/local.properties`, файл в `.gitignore`.
-- **Хуки на Node** — `~/.local/bin/node`. Проверка guard:
-  `node .claude/hooks/guard-paths.test.js` из корня репозитория.
-- **Эмулятор — только через `tools/emu.sh`, только на сервере сеньора** (Android 16, 2 ядра, 2 ГБ, без окна,
-  `nice 15`). Сервер общий с боевыми ботами: включать на время проверки и сразу
-  `tools/emu.sh stop`; одновременно со сборкой Gradle не запускать (скрипт откажет).
-  Сессия сама снимает скриншоты экранов «до/после». Анимации без видеокарты
-  дёргаются — плавность и проверку на физическом устройстве (ТЗ 3.1.3) делает человек.
+- **Сборка — из `finny-pet/`, JDK 17, Android SDK (platform 36, build-tools 36.0.0).**
+  Путь к SDK — в `finny-pet/local.properties` (в `.gitignore`).
+  - Windows (основная машина с 2026-09-25): `JAVA_HOME` — установленный JDK 17
+    (Adoptium), SDK — `%LOCALAPPDATA%\Android\Sdk`, в `local.properties` двоеточие
+    экранируется: `sdk.dir=C\:/Users/…/Android/Sdk` (иначе lint даёт ошибку
+    PropertyEscape). Gradle — `gradlew.bat`, Python — `python` (`python3` — заглушка Store).
+  - Linux: `JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64`, `ANDROID_HOME=~/android-sdk`,
+    `./gradlew`, `python3`.
+- **Хуки на Node**, пути к ним — через `$CLAUDE_PROJECT_DIR`, корень хуки находят сами
+  (подагент может сделать `cd finny-pet`). Проверка guard: `node .claude/hooks/guard-paths.test.js`
+  из корня репозитория, включая Windows-кейсы (обратные слэши, регистр, PowerShell).
+- **Эмулятор.** Windows: AVD `finni` (Android 16, x86_64, WHPX, 3 ГБ ОЗУ), запуск
+  `%LOCALAPPDATA%\Android\Sdk\emulator\emulator -avd finni`, проверка 360 dp —
+  `adb shell wm size 1080x1920 && adb shell wm density 480`, сброс — `wm size reset`,
+  `wm density reset`. Linux — `tools/emu.sh`. Одновременно со сборкой Gradle можно.
+  Сессия сама снимает скриншоты «до/после». Физическое устройство (ТЗ 3.1.3),
+  плавность и звук проверяет человек.
 - **Скриншоты эмулятора** — `finny-pet/screenshots/emu_*.png`, в git не идут.
-- **Спавн подагента:** `claude -p` с `PATH="$HOME/.local/bin:$PATH"`, в фоне с
-  уведомлением. В текущей версии CLI `Task`/`Agent` асинхронный — в промпте
-  писать «работай САМ, не делегируй», иначе обёртка выйдет и работа оборвётся.
-  Обрыв или пустой `BLOCKED` ≠ «работы нет»: смотреть файлы, а не отчёт.
+- **Спавн подагента:** инструмент Agent/Workflow сессии с `agentType` из `.claude/agents/`
+  (`test-author`, `coder`, `reviewer`) — тогда хук видит `agent_type`. Обрыв или пустой
+  `BLOCKED` ≠ «работы нет»: смотреть файлы, а не отчёт.
 
 ## Коммиты
 
 Коммиты — по задачам (`<ID>: …`, `test(<ID>): …` для оракула). Репозиторий
-общий с командой. Пуш на GitHub — только по явной просьбе сеньора.
+общий с командой. Пуш на GitHub — только по явной просьбе сеньора (на прогон
+MVP 7.1 дано разрешение пушить ветку `feat/mvp-7-1` и влить её в `main` в конце).

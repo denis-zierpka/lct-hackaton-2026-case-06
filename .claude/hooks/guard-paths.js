@@ -18,7 +18,13 @@
 const fs = require("fs");
 const path = require("path");
 
-const SCOPE_FILE = ".claude/task-scope.json";
+// Корень репозитория берём от самого хука, а не от cwd: подагент может сделать
+// `cd finny-pet`, и относительный путь к скоупу и сверка allow поехали бы
+// (найдено на Windows 2026-09-25, сессия жила в finny-pet/).
+const ROOT = path.resolve(__dirname, "..", "..");
+const SCOPE_FILE = path.join(ROOT, ".claude", "task-scope.json");
+// NTFS и APFS по умолчанию не различают регистр: `App/Src/Test` — тот же файл.
+const FOLD = (s) => s.replace(/\\/g, "/").toLowerCase();
 
 function deny(reason) {
   process.stderr.write(
@@ -38,14 +44,15 @@ function readStdin() {
 
 // --- нормализация пути к repo-relative ------------------------------------
 function rel(p) {
-  const abs = path.resolve(p);
-  const r = path.relative(process.cwd(), abs);
+  const abs = path.resolve(input.cwd || process.cwd(), p);
+  const r = path.relative(ROOT, abs);
   return r.split(path.sep).join("/");
 }
 
 function matches(target, entry) {
-  const e = entry.replace(/\/+$/, "");
-  return target === e || target.startsWith(e + "/");
+  const t = FOLD(target);
+  const e = FOLD(entry).replace(/\/+$/, "");
+  return t === e || t.startsWith(e + "/");
 }
 
 // --- основной поток --------------------------------------------------------
@@ -70,19 +77,19 @@ if ((input.agent_type ?? "") !== "coder") {
 }
 
 if (!fs.existsSync(SCOPE_FILE)) {
-  deny(`${SCOPE_FILE} отсутствует — оркестратор не зафиксировал скоуп задачи`);
+  deny(`.claude/task-scope.json отсутствует — оркестратор не зафиксировал скоуп задачи`);
 }
 
 let scope;
 try {
   scope = JSON.parse(fs.readFileSync(SCOPE_FILE, "utf8"));
 } catch {
-  deny(`${SCOPE_FILE} повреждён`);
+  deny(`.claude/task-scope.json повреждён`);
 }
 
 const allow = Array.isArray(scope.allow) ? scope.allow : null;
 const protect = Array.isArray(scope.protect) ? scope.protect : [];
-if (!allow) deny(`${SCOPE_FILE}: поле "allow" обязано быть массивом`);
+if (!allow) deny(`.claude/task-scope.json: поле "allow" обязано быть массивом`);
 
 const tool = input.tool_name || "";
 const ti = input.tool_input || {};
@@ -99,21 +106,26 @@ if (["Edit", "Write", "NotebookEdit"].includes(tool)) {
 }
 
 if (tool === "Bash" || tool === "PowerShell") {
-  const cmd = String(ti.command || "");
+  // Windows: `app\\src\\test`, `App/Src/Test` и `/usr/bin/git` — те же пути и тот же
+  // git. Сверяем по свёрнутой строке: обратные слэши → прямые, регистр — нижний.
+  const cmd = FOLD(String(ti.command || ""));
 
   // Мутации git-истории и прав — прерогатива оркестратора. `[^;&|]*` покрывает флаги
   // между `git` и субкомандой (`git -C . checkout` — реальный обход, GEM-T01 2026-08-21).
   // Fail-closed: слово-субкоманда в аргументах (`git log --grep checkout`) тоже блок.
   const gitMut =
-    /(^|[;&|(\s])git\b[^;&|]*\b(commit|reset|checkout|restore|stash|rebase|push|clean|update-index)\b/;
+    /(^|[;&|(\s\/"'])git(\.exe)?\b[^;&|]*\b(commit|reset|checkout|restore|stash|rebase|push|clean|update-index)\b/;
   if (gitMut.test(cmd)) deny("операции с git-историей выполняет оркестратор, не кодер");
 
   // Попытка отредактировать защищённый путь в обход Edit/Write.
+  // PowerShell-командлеты и алиасы cmd — тоже запись (Windows, 2026-09-25).
   const writeVerb =
-    /(>>?|(^|[;&|(\s])(sed\s+-i|perl\s+-i|rm|mv|cp|tee|truncate|touch|install|patch|dd)(\s|$))/;
+    /(>>?|(^|[;&|(\s])(sed\s+-i|perl\s+-i|rm|mv|cp|tee|truncate|touch|install|patch|dd|del|erase|ren|rename|move|copy|xcopy|robocopy|rmdir|rd|set-content|add-content|clear-content|out-file|remove-item|move-item|copy-item|new-item|rename-item|ri|ni|mi|cpi|sc|ac)(\s|$))/;
 
   // Inline-eval интерпретатора: python -c "open('tests/..','w')", node -e, и т.п.
-  const inlineEval = /(^|[;&|(\s])(python3?|node|perl|ruby|php)\s+(-c|-e|-p)(\s|$)/;
+  // Плюс Windows-обёртки: `py -c`, `powershell -Command`, `cmd /c` (в Git Bash — `cmd //c`).
+  const inlineEval =
+    /(^|[;&|(\s\/])((python3?|py|node|perl|ruby|php)(\.exe)?\s+(-c|-e|-p)|(powershell|pwsh)(\.exe)?\s[\s\S]*?-(c|command|encodedcommand|e|ec)|cmd(\.exe)?\s+\/\/?c)(\s|$)/;
 
   // Контейнер с bind-mount репозитория пишет в хостовую ФС мимо всех проверок.
   const containerMount =
@@ -131,7 +143,7 @@ if (tool === "Bash" || tool === "PowerShell") {
     for (let i = 1; i <= segs.length - 2; i++) out.push(segs.slice(i).join("/") + trail);
     return out;
   }
-  const touchesProtected = protect.some((pr) => variants(pr).some((v) => cmd.includes(v)));
+  const touchesProtected = protect.some((pr) => variants(FOLD(pr)).some((v) => cmd.includes(v)));
 
   if (touchesProtected) {
     if (writeVerb.test(cmd)) deny(`shell-запись в защищённый путь`);
