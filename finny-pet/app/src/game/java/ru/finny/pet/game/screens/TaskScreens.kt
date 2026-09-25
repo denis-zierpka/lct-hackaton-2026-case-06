@@ -69,7 +69,7 @@ fun TasksScreen(vm: GameViewModel) {
             }
         }
         if (available.isEmpty()) {
-            Text(if (done.size == vm.content.tasks.size) "Все задания выполнены! Ты молодец." else "Новые задания откроются на следующей неделе.", style = MaterialTheme.typography.bodyLarge, color = G.ink)
+            Text(if (done.size == vm.content.tasks.size) "Все задания выполнены! Молодец!" else "Новые задания откроются на следующей неделе.", style = MaterialTheme.typography.bodyLarge, color = G.ink)
         }
         Theme.entries.forEach { theme ->
             val list = available.filter { it.theme == theme }

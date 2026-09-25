@@ -17,6 +17,7 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -25,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import ru.finny.pet.BuildConfig
 import ru.finny.pet.domain.Theme
 import ru.finny.pet.game.GameViewModel
 import ru.finny.pet.game.LocalAnimate
@@ -42,12 +44,12 @@ private val educationalGoals = listOf(
     "Оценивать свои финансовые решения и объяснять, к чему они привели.",
 )
 
-/** Gate: a multiplication example a 7-year-old is unlikely to solve quickly (ТЗ 2.5.12). */
+/** Gate: a two-digit multiplication a 7-year-old is unlikely to solve quickly (ТЗ 2.5.12); a wrong answer gets a new example. */
 @Composable
 fun ParentScreen(vm: GameViewModel) {
     var unlocked by rememberSaveable { mutableStateOf(false) }
-    val a = rememberSaveable { (6..9).random() }
-    val b = rememberSaveable { (6..9).random() }
+    var a by rememberSaveable { mutableIntStateOf((12..19).random()) }
+    var b by rememberSaveable { mutableIntStateOf((3..9).random()) }
     var answer by rememberSaveable { mutableStateOf("") }
     var wrong by remember { mutableStateOf(false) }
     Box {
@@ -56,9 +58,13 @@ fun ParentScreen(vm: GameViewModel) {
                 Column(Modifier.widthIn(max = 420.dp).align(Alignment.CenterHorizontally), verticalArrangement = Arrangement.spacedBy(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("Этот раздел для родителей. Решите пример:", style = MaterialTheme.typography.bodyLarge, color = G.ink)
                     Text("$a × $b = ?", style = MaterialTheme.typography.displaySmall, color = G.purpleDeep)
-                    GameTextField(answer, { v -> if (v.length <= 3 && v.all { it.isDigit() }) { answer = v; wrong = false } }, hint = "Ответ", number = true, maxLength = 3, big = true)
-                    if (wrong) Text("Неверно, попробуйте ещё раз.", style = MaterialTheme.typography.bodyMedium, color = G.red)
-                    GameButton("Войти", Modifier.fillMaxWidth(), style = ButtonStyle.PRIMARY, enabled = answer.isNotBlank()) { if (answer.toIntOrNull() == a * b) unlocked = true else wrong = true }
+                    // clearing the field after a miss echoes "" back: only real typing hides the hint
+                    GameTextField(answer, { v -> if (v.length <= 3 && v.all { it.isDigit() }) { answer = v; if (v.isNotEmpty()) wrong = false } }, hint = "Ответ", number = true, maxLength = 3, big = true)
+                    if (wrong) Text("Неверно. Вот новый пример.", style = MaterialTheme.typography.bodyMedium, color = G.red)
+                    GameButton("Войти", Modifier.fillMaxWidth(), style = ButtonStyle.PRIMARY, enabled = answer.isNotBlank()) {
+                        if (answer.toIntOrNull() == a * b) unlocked = true
+                        else { wrong = true; a = (12..19).random(); b = (3..9).random(); answer = "" }
+                    }
                 }
                 return@PanelScreen
             }
@@ -72,6 +78,7 @@ private fun ParentPanel(vm: GameViewModel) {
     val s = vm.state
     val e = vm.economy
     var confirm by remember { mutableStateOf<String?>(null) }
+    var bonus by remember { mutableStateOf<Int?>(null) }
     Box {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Adaptive(left = {
@@ -90,9 +97,21 @@ private fun ParentPanel(vm: GameViewModel) {
                     }
                     if (s.history.isNotEmpty()) Text("Недель с хорошим балансом решений: ${s.history.count { it.score >= 2 }} из ${s.history.size}.", style = MaterialTheme.typography.bodyMedium, color = G.ink)
                 }
+                // 2.5.12: coins for deeds, limited per week; each grant is a ledger entry the child sees
+                Label("Бонус ребёнку")
+                val left = e.parentBonusesLeft(s)
+                Text("До ${e.rules.parentBonusPerPeriod} раз в неделю по ${e.rules.parentBonusAmount} монет — за дела, а не за оценки. Осталось на этой неделе: $left.", style = MaterialTheme.typography.bodyMedium, color = G.ink)
+                when {
+                    !s.hasProfile -> Text("Бонус можно начислить, когда питомец создан.", style = MaterialTheme.typography.bodyMedium, color = G.inkSoft)
+                    left == 0 -> Text("Все бонусы этой недели начислены. Новые — со следующей игровой недели.", style = MaterialTheme.typography.bodyMedium, color = G.inkSoft)
+                }
+                vm.content.parentBonusReasons.forEachIndexed { i, reason ->
+                    GameButton(reason, Modifier.fillMaxWidth(), style = ButtonStyle.PAPER, enabled = s.hasProfile && left > 0, minHeight = 48.dp) { bonus = i }
+                }
             }, right = {
                 Label("Настройки")
-                SettingRow("Звук", "Эффекты и музыка", s.sounds) { vm.setSounds(it) }
+                SettingRow("Звуки", "Эффекты при действиях", s.sounds) { vm.setSounds(it) }
+                SettingRow("Музыка", "Фоновая мелодия", s.music) { vm.setMusic(it) }
                 // shows what the app actually does: off also when the system «remove animations» is on
                 SettingRow("Анимации", "Движение питомца и эффекты", LocalAnimate.current) { vm.setAnimations(it) }
                 SettingRow("Демо-режим", "Все задания открыты сразу", s.demo) { vm.setDemo(it) }
@@ -101,7 +120,7 @@ private fun ParentPanel(vm: GameViewModel) {
                 GameButton("Создать тестовый профиль (демо)", Modifier.fillMaxWidth(), style = ButtonStyle.PRIMARY, minHeight = 48.dp) { confirm = "test" }
                 GameButton("Сбросить профиль", Modifier.fillMaxWidth(), style = ButtonStyle.PAPER, enabled = s.hasProfile, minHeight = 48.dp) { confirm = "reset" }
                 GameButton("Удалить профиль и данные", Modifier.fillMaxWidth(), style = ButtonStyle.PAPER, enabled = s.hasProfile, minHeight = 48.dp) { confirm = "delete" }
-                Text("Версия 1.2.0-game · Прототип для конкурса, без рекламы и покупок.", style = MaterialTheme.typography.bodySmall, color = G.inkSoft)
+                Text("Версия ${BuildConfig.VERSION_NAME} · Прототип для конкурса, без рекламы и покупок.", style = MaterialTheme.typography.bodySmall, color = G.inkSoft)
             })
         }
         confirm?.let { kind ->
@@ -114,6 +133,11 @@ private fun ParentPanel(vm: GameViewModel) {
                 confirm = null
                 when (kind) { "test" -> vm.createTestProfile(); "reset" -> vm.resetProfile(); else -> vm.deleteProfile() }
             }, onDismiss = { confirm = null })
+        }
+        bonus?.let { i ->
+            val reason = vm.content.parentBonusReasons[i]
+            ConfirmPanel("Начислить ${e.rules.parentBonusAmount} монет?", listOf("За: «$reason»", "Монеты появятся у ребёнка сразу, в журнале будет запись."), "Начислить",
+                onConfirm = { bonus = null; vm.parentBonus(i) }, onDismiss = { bonus = null })
         }
     }
 }

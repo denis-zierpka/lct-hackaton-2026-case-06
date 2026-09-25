@@ -47,8 +47,6 @@ import ru.finny.pet.game.ui.LocalParticles
 import ru.finny.pet.game.ui.particleTarget
 import ru.finny.pet.game.audio.Sound
 
-private const val STEP = 10
-
 /** Three jars and a purse: tap "+" and a coin flies from the purse into the jar. Rules stay in Economy.setPlan. */
 @Composable
 fun PlanScreen(vm: GameViewModel) {
@@ -62,7 +60,8 @@ fun PlanScreen(vm: GameViewModel) {
         }
         val plan = s.plan
         val rest = s.balance - plan.total
-        val canAdd = rest >= STEP
+        val step = vm.content.rules.planStep
+        val canAdd = rest >= step
 
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Box(Modifier.particleTarget(particles, "purse"), contentAlignment = Alignment.Center) {
@@ -75,9 +74,9 @@ fun PlanScreen(vm: GameViewModel) {
             if (layout.landscape) GameButton("Подтвердить", style = ButtonStyle.GOLD, minHeight = 48.dp, enabled = rest >= 0 && plan.total > 0) { vm.confirmPlan() }
         }
         val jars: @Composable RowScope.() -> Unit = {
-            Jar("Обязательное", "еда и уход", R.drawable.ui_lid_mandatory, plan.mandatory, s.balance, G.mandatory, canAdd, "jar0", Modifier.weight(1f)) { vm.setPlan(it, plan.optional, plan.savings) }
-            Jar("Желаемое", "игрушки", R.drawable.ui_lid_optional, plan.optional, s.balance, G.optional, canAdd, "jar1", Modifier.weight(1f)) { vm.setPlan(plan.mandatory, it, plan.savings) }
-            Jar("Копилка", "на цель", R.drawable.ui_lid_savings, plan.savings, s.balance, G.savings, canAdd, "jar2", Modifier.weight(1f)) { vm.setPlan(plan.mandatory, plan.optional, it) }
+            Jar("Обязательное", "еда и уход", R.drawable.ui_lid_mandatory, plan.mandatory, s.balance, G.mandatory, step, canAdd, "jar0", Modifier.weight(1f)) { vm.setPlan(it, plan.optional, plan.savings) }
+            Jar("Желаемое", "игрушки", R.drawable.ui_lid_optional, plan.optional, s.balance, G.optional, step, canAdd, "jar1", Modifier.weight(1f)) { vm.setPlan(plan.mandatory, it, plan.savings) }
+            Jar("Копилка", "на цель", R.drawable.ui_lid_savings, plan.savings, s.balance, G.savings, step, canAdd, "jar2", Modifier.weight(1f)) { vm.setPlan(plan.mandatory, plan.optional, it) }
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Bottom) { jars() }
         if (!layout.landscape) GameButton("Подтвердить план", Modifier.fillMaxWidth(), style = ButtonStyle.GOLD, enabled = rest >= 0 && plan.total > 0) { vm.confirmPlan() }
@@ -86,7 +85,7 @@ fun PlanScreen(vm: GameViewModel) {
 }
 
 @Composable
-private fun Jar(title: String, hint: String, lid: Int, value: Int, max: Int, color: Color, canAdd: Boolean, target: String, modifier: Modifier, onChange: (Int) -> Unit) {
+private fun Jar(title: String, hint: String, lid: Int, value: Int, max: Int, color: Color, step: Int, canAdd: Boolean, target: String, modifier: Modifier, onChange: (Int) -> Unit) {
     val particles = LocalParticles.current
     val vm = LocalVm.current
     val layout = LocalLayout.current
@@ -101,7 +100,7 @@ private fun Jar(title: String, hint: String, lid: Int, value: Int, max: Int, col
                 Box(Modifier.padding(bottom = jarH * 0.09f).size(jarH * 0.46f, jarH * 0.7f).clip(RoundedCornerShape(bottomStart = 14.dp, bottomEnd = 14.dp)), contentAlignment = Alignment.BottomCenter) {
                     Box(Modifier.fillMaxWidth().height(jarH * 0.7f * fill).background(color.copy(alpha = 0.35f)))
                     Column(verticalArrangement = Arrangement.Bottom, horizontalAlignment = Alignment.CenterHorizontally) {
-                        val coins = (value / STEP).coerceAtMost(9)
+                        val coins = (value / step.coerceAtLeast(1)).coerceAtMost(9)
                         repeat(coins) { i -> Image(painterResource(R.drawable.ui_coin), null, Modifier.size(jarH * 0.4f, jarH * 0.075f).graphicsLayer { rotationZ = if (i % 2 == 0) -5f else 5f; scaleY = 0.55f }) }
                     }
                 }
@@ -110,12 +109,12 @@ private fun Jar(title: String, hint: String, lid: Int, value: Int, max: Int, col
             Image(painterResource(lid), null, Modifier.size(jarH * 0.5f).align(Alignment.TopCenter).offset(y = (-4).dp))
         }
         val minus: @Composable () -> Unit = {
-            GameButton("−", Modifier.width(48.dp), style = ButtonStyle.PAPER, enabled = value > 0, minHeight = 48.dp) { onChange((value - STEP).coerceAtLeast(0)); vm.sfx(Sound.POP) }
+            GameButton("−", Modifier.width(48.dp), style = ButtonStyle.PAPER, enabled = value > 0, minHeight = 48.dp) { onChange((value - step).coerceAtLeast(0)); vm.sfx(Sound.POP) }
         }
         val number: @Composable () -> Unit = { Text("$value", style = MaterialTheme.typography.titleLarge, color = G.purpleDeep, modifier = Modifier.widthIn(min = 36.dp), textAlign = TextAlign.Center) }
         val plus: @Composable () -> Unit = {
             GameButton("+", Modifier.width(48.dp), style = ButtonStyle.PRIMARY, enabled = canAdd, minHeight = 48.dp) {
-                onChange(value + STEP)
+                onChange(value + step)
                 particles.targetOf("purse")?.let { particles.coins(it, target, 1, 40f) }
                 vm.sfx(Sound.COIN)
             }

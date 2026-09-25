@@ -1,5 +1,6 @@
 package ru.finny.pet.game.screens
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationSpec
@@ -125,6 +126,8 @@ fun MiniGameScreen(vm: GameViewModel) {
     var cellPx by remember { mutableStateOf(1f) }
     val animate = LocalAnimate.current
     val swapSpec: AnimationSpec<Float> = if (animate) spring(stiffness = Spring.StiffnessMediumLow) else snap()
+    // system back = «Закончить»: first the round-over panel, then the result is taken; there is no exit that skips it
+    BackHandler { if (over) vm.finishMiniGame() else { over = true; bombMode = false } }
 
     // initial board
     LaunchedEffect(Unit) {

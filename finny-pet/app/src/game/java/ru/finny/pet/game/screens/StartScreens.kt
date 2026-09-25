@@ -95,9 +95,9 @@ fun TitleScreen(vm: GameViewModel) {
 
 private class Page(val text: String, val icons: List<Int>)
 
-private val pages = listOf(
+private fun introPages(allowance: Int) = listOf(
     Page("Привет! Я твой питомец. Мне нужны еда, уход и радость. Ты решаешь, на что тратить монеты, а я показываю, что из этого вышло.", listOf(R.drawable.item_food_basic, R.drawable.item_care_shampoo, R.drawable.item_fun_ball)),
-    Page("Каждую неделю ты получаешь 100 монет и делишь их на три части: обязательное, желаемое и копилка на мечту.", listOf(R.drawable.ui_lid_mandatory, R.drawable.ui_lid_optional, R.drawable.ui_lid_savings)),
+    Page("Каждую неделю у тебя $allowance новых монет. Их надо разделить на три части: обязательное, желаемое и копилка на мечту.", listOf(R.drawable.ui_lid_mandatory, R.drawable.ui_lid_optional, R.drawable.ui_lid_savings)),
     Page("Ошибаться можно! После каждого решения я расскажу, что изменилось и почему. Не вышло на этой неделе — поправим на следующей.", listOf(R.drawable.ui_book, R.drawable.ui_gamepad, R.drawable.ui_trophy)),
 )
 
@@ -105,6 +105,7 @@ private val pages = listOf(
 fun IntroScreen(vm: GameViewModel) {
     var page by rememberSaveable { mutableIntStateOf(0) }
     val s = vm.state
+    val pages = introPages(vm.content.rules.allowance)
     val p = pages[page]
     val layout = LocalLayout.current
     Box(Modifier.fillMaxSize().background(G.purpleDeep.copy(alpha = 0.45f))) {
@@ -202,7 +203,7 @@ fun CreatePetScreen(vm: GameViewModel) {
                 }
                 FlowRow(itemVerticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Label("Имя:")
-                    listOf("Финни", "Пушок", "Искра").forEach { n -> GameButton(n, selected = name == n, minHeight = 48.dp) { name = n } }
+                    listOf("Финни", "Пушок", "Бублик").forEach { n -> GameButton(n, selected = name == n, minHeight = 48.dp) { name = n } }
                 }
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     GameTextField(name, { name = it }, Modifier.weight(1f), hint = "Или своё имя", maxLength = c.rules.maxNameLength)
