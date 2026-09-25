@@ -31,7 +31,11 @@ export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64 ANDROID_HOME=~/android-sdk  
 сборка обоих вариантов — exit 0; lint classic — 0 ошибок, 8 предупреждений;
 game — 0 ошибок, 9 предупреждений, 2 подсказки; предупреждение компилятора то же.
 Предупреждений на одно меньше из-за `GradleDependency`: это правило сверяет версии
-с сетью, и его число плавает со временем. Потолок для задач прогона MVP — **8 / 9**.
+с сетью, и его число плавает со временем. Так же ведёт себя `AndroidGradlePluginVersion`
+(«доступна новая версия Gradle»): 2026-09-25 он появился посреди прогона MVP-T01 без
+единой правки gradle-файлов. Поэтому потолок считается **без сетевых проверок версий**
+(`GradleDependency`, `AndroidGradlePluginVersion`, `NewerVersionAvailable`): на базе
+**5 / 6** (classic / game), задача не может его увеличить.
 
 Предупреждения линта — **потолок, а не цель**: задача не может их увеличить.
 Починка исходных предупреждений — отдельная задача, не «заодно».
@@ -44,7 +48,9 @@ game — 0 ошибок, 9 предупреждений, 2 подсказки; �
    = <было> + <добавлено оракулом>; skipped = 0
 3. ./gradlew assembleClassicDebug assembleGameDebug          -> exit 0
 4. ./gradlew lintClassicDebug lintGameDebug                  -> exit 0,
-   ошибок 0, предупреждений не больше 8 / 9
+   ошибок 0, предупреждений без сетевых проверок версий не больше 5 / 6:
+   grep ': Warning:' app/build/intermediates/lint_intermediate_text_report/<variant>/*/lint-results-<variant>.txt
+     | grep -vcE '\[(GradleDependency|AndroidGradlePluginVersion|NewerVersionAvailable)\]'
 5. git diff --name-only <BASE> -- app/src/test/              -> пусто
 6. git diff --name-only <BASE> -- '*.gradle.kts' gradle/ gradle.properties -> пусто
 7. git diff --shortstat <BASE>                               -> не более <N> строк
