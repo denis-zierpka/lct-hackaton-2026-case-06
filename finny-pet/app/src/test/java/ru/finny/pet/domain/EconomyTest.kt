@@ -199,7 +199,7 @@ class EconomyTest {
         val pet = r.state.pet!!
         assertTrue(pet.hunger >= rules.statFloor)
         assertTrue(pet.hunger < 70)
-        assertTrue(sum.messages.any { it.contains("не купил еду") })
+        assertTrue(sum.messages.any { it.startsWith("Еды на этой неделе не было") }) // no reproach (3.5)
         assertTrue(sum.messages.any { it.contains("начни с обязательного") }) // recovery path
         assertEquals(Face.SAD, e.face(pet))
     }
@@ -286,7 +286,7 @@ class GameEditionTest {
         val s = TestContent.readyState()
         val q = e.availableQuiz(s).first()
         val ok = e.answerQuiz(s, q.id, q.correct) as Outcome.Ok
-        assertEquals(1, ok.state.bombs)
+        assertEquals(rules.quizBombReward, ok.state.bombs)
         assertEquals(s.balance, ok.state.balance)
         assertFalse(e.availableQuiz(ok.state).any { it.id == q.id })
         val wrong = e.answerQuiz(s, q.id, (q.correct + 1) % q.options.size) as Outcome.Ok
