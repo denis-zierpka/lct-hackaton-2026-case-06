@@ -99,7 +99,7 @@ private fun ParentPanel(vm: GameViewModel) {
 
     SectionCard(title = "Чему учит приложение", icon = Icons.Outlined.School) {
         educationalGoals.forEach { Text("• $it", style = MaterialTheme.typography.bodyMedium) }
-        Text("Основа: Единая рамка компетенций по финансовой грамотности, базовый уровень (начальное общее образование).", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("Основа: Единая рамка компетенций по финансовой грамотности — формулировки для младших школьников.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 
     SectionCard(title = "Прогресс ребёнка", icon = Icons.AutoMirrored.Outlined.TrendingUp) {

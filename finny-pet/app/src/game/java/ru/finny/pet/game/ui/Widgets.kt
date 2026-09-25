@@ -91,6 +91,7 @@ private fun ButtonStyle.content(): Color = when (this) {
  * Chunky game button: gradient top, darker 3D edge below, springs down when pressed.
  * Face ≥ [minHeight] tall, keep it ≥ 48 dp (ТЗ 3.6: touch targets ≥ 48 dp).
  * [selected] turns it into one option of a choice: magenta + «✓» when chosen, paper otherwise, announced as selected.
+ * [tight] is for a one-word label in a narrow tab: 14 sp and 8 dp side paddings keep the word on one line.
  */
 @Composable
 fun GameButton(
@@ -102,6 +103,7 @@ fun GameButton(
     iconSize: Dp = 28.dp,
     minHeight: Dp = 56.dp,
     selected: Boolean? = null,
+    tight: Boolean = false,
     onClick: () -> Unit,
 ) {
     val interaction = remember { MutableInteractionSource() }
@@ -136,7 +138,7 @@ fun GameButton(
             Modifier
                 .defaultMinSize(minHeight = minHeight)
                 .graphicsLayer { translationY = press * edge.toPx() * 0.8f }
-                .padding(horizontal = 14.dp, vertical = 8.dp),
+                .padding(horizontal = if (tight) 8.dp else 14.dp, vertical = 8.dp),
             contentAlignment = Alignment.Center,
         ) {
             CompositionLocalProvider(LocalContentColor provides look.content()) {
@@ -145,7 +147,7 @@ fun GameButton(
                         Image(icon, contentDescription = null, modifier = Modifier.size(iconSize))
                         Spacer(Modifier.width(10.dp))
                     }
-                    Text(text, style = MaterialTheme.typography.labelLarge, color = look.content(), textAlign = TextAlign.Center, maxLines = 2)
+                    Text(text, style = if (tight) MaterialTheme.typography.labelMedium else MaterialTheme.typography.labelLarge, color = look.content(), textAlign = TextAlign.Center, maxLines = 2)
                 }
             }
         }
@@ -240,12 +242,12 @@ fun HudChip(icon: Painter, value: Int, label: String, modifier: Modifier = Modif
     }
 }
 
-/** Rounded gradient bar with a label and a number: never colour alone (ТЗ 3.6). */
+/** Rounded gradient bar with a label and a number: never colour alone (ТЗ 3.6). TalkBack hears it once; a label that already has numbers («Тема: 0 из 3») is read as is. */
 @Composable
 fun GameBar(label: String, value: Int, color: Color, modifier: Modifier = Modifier, max: Int = 100, icon: Painter? = null, dark: Boolean = false) {
     val p by animateFloatAsState((value.toFloat() / max).coerceIn(0f, 1f), if (LocalAnimate.current) spring(stiffness = Spring.StiffnessLow) else snap(), label = "bar")
     val textColor = if (dark) Color.White else G.ink
-    Column(modifier.semantics { contentDescription = "$label $value из $max" }, verticalArrangement = Arrangement.spacedBy(3.dp)) {
+    Column(modifier.clearAndSetSemantics { contentDescription = if (label.any(Char::isDigit)) label else "$label $value из $max" }, verticalArrangement = Arrangement.spacedBy(3.dp)) {
         if (label.isNotEmpty()) Row(verticalAlignment = Alignment.CenterVertically) {
             if (icon != null) { Image(icon, contentDescription = null, modifier = Modifier.size(22.dp)); Spacer(Modifier.width(6.dp)) }
             Text(label, style = MaterialTheme.typography.labelMedium, color = textColor, modifier = Modifier.weight(1f))
