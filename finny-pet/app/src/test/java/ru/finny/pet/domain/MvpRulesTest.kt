@@ -817,6 +817,33 @@ class MvpRulesTest {
         assertNoGender(listOf(msg))
     }
 
+    // ---------- MVP-T11 CONTRACT 1: points(n) и итог недели ----------
+
+    private fun assertPoints(expected: Map<Int, String>) =
+        expected.forEach { (n, text) -> assertEquals("points($n)", text, Economy.points(n)) }
+
+    @Test
+    fun `одно очко после 1 21 101`() = assertPoints(mapOf(1 to "1 очко", 21 to "21 очко", 101 to "101 очко"))
+
+    @Test
+    fun `два три четыре очка`() = assertPoints(mapOf(2 to "2 очка", 3 to "3 очка", 4 to "4 очка", 22 to "22 очка"))
+
+    @Test
+    fun `пять и больше очков включая 11-14 и 111`() = assertPoints(
+        mapOf(0 to "0 очков", 5 to "5 очков", 11 to "11 очков", 12 to "12 очков", 14 to "14 очков", 25 to "25 очков", 111 to "111 очков"),
+    )
+
+    @Test
+    fun `до следующей стадии очки роста согласованы с числом`() {
+        mapOf(1 to "1 очко", 3 to "3 очка", 5 to "5 очков", 21 to "21 очко").forEach { (left, points) ->
+            val custom = economyWith(rules.copy(stageThresholds = listOf(0, left), stageTitles = listOf("Малыш", "Взрослый")))
+            // nothing bought, nothing saved: score 0, growth stays 0, so exactly `left` points remain
+            val r = end(ready(custom), custom)
+            assertTrue(r.messages.toString(), r.messages.contains("Рост: +0 из 3 (всего 0)."))
+            assertTrue(r.messages.toString(), r.messages.contains("До следующей стадии: $points роста."))
+        }
+    }
+
     // ---------- D. Match3 seed ----------
 
     @Test
