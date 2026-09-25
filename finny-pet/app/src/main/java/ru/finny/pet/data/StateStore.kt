@@ -8,7 +8,11 @@ import ru.finny.pet.domain.GameState
 import java.io.File
 import java.io.IOException
 
-/** One JSON file in filesDir. Written via temp file + rename so a crash mid-write never loses the last good state. */
+/**
+ * One JSON file in filesDir, written via temp file + rename: a crash while writing the temp file leaves the
+ * last good state untouched. ponytail: if rename fails (not seen on Android internal storage) the fallback
+ * copy is not atomic; add a load-time fallback to state.json.tmp if that ever shows up.
+ */
 class StateStore(context: Context) {
     private val file = File(context.filesDir, "state.json")
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
@@ -34,7 +38,7 @@ class StateStore(context: Context) {
         }
     }
 
-    /** @return false when nothing could be written; the previous file stays intact. */
+    /** @return false when nothing could be written; the previous file stays intact unless the rename fallback copy fails midway. */
     fun save(state: GameState): Boolean = runCatching {
         val tmp = File(file.parentFile, "state.json.tmp")
         tmp.writeText(json.encodeToString(GameState.serializer(), state))
