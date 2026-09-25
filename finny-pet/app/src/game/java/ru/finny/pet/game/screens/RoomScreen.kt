@@ -12,6 +12,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -42,7 +43,9 @@ import kotlinx.coroutines.delay
 import ru.finny.pet.R
 import ru.finny.pet.domain.Need
 import ru.finny.pet.game.GameViewModel
+import ru.finny.pet.game.LocalAnimate
 import ru.finny.pet.game.LocalLayout
+import ru.finny.pet.game.orNone
 import ru.finny.pet.game.ui.LocalParticles
 import ru.finny.pet.game.LocalPetAction
 import ru.finny.pet.game.Screen
@@ -106,7 +109,7 @@ fun RoomScreen(vm: GameViewModel) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 BubbleHost(vm, bubble, Modifier.height(if (layout.compact) 88.dp else 104.dp).widthIn(max = 420.dp))
                 PetSprite(
-                    speciesId = pet.speciesId, colorId = pet.colorId, stage = stage, face = e.face(pet), animate = s.animations,
+                    speciesId = pet.speciesId, colorId = pet.colorId, stage = stage, face = e.face(pet), animate = LocalAnimate.current,
                     size = petSize, bounceKey = vm.bounce, action = petAction.action, actionKey = petAction.key,
                     description = "${pet.name}, ${e.stageTitle(pet.growth)}. ${e.faceReason(pet)}",
                     modifier = Modifier.particleTarget(particles, "pet"),
@@ -116,17 +119,19 @@ fun RoomScreen(vm: GameViewModel) {
         }
 
         // ---- needs panel (left in landscape, top-right below HUD in portrait)
+        // side panels grow with the font until the longest word fits, then phrases wrap (ТЗ 3.6)
+        val sidePanelWidth = Modifier.widthIn(min = if (layout.compact) 170.dp else 200.dp, max = 240.dp).width(IntrinsicSize.Min)
         Column(
             Modifier
                 .align(if (layout.landscape) Alignment.CenterStart else Alignment.TopEnd)
                 .padding(start = 12.dp, end = 12.dp, top = if (layout.landscape) 60.dp else 72.dp)
-                .width(if (layout.compact) 170.dp else 200.dp)
+                .then(sidePanelWidth)
                 .background(G.purpleDeep.copy(alpha = 0.55f), RoundedCornerShape(20.dp))
                 .padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text(pet.name, style = MaterialTheme.typography.titleLarge, color = Color.White)
-            Text("${e.stageTitle(pet.growth)} · неделя ${s.period}" + if (s.demo) " · демо" else "", style = MaterialTheme.typography.labelMedium, color = G.pink)
+            Text("${e.stageTitle(pet.growth)} · неделя ${s.period}" + if (s.demo) " · демо" else "", style = MaterialTheme.typography.bodySmall, color = G.pink)
             GameBar("Сытость", pet.hunger, G.gold, dark = true, icon = painterResource(R.drawable.item_food_basic))
             GameBar("Чистота", pet.clean, G.sky, dark = true, icon = painterResource(R.drawable.item_care_shampoo))
             GameBar("Настроение", pet.mood, G.green, dark = true, icon = painterResource(R.drawable.item_fun_ball))
@@ -137,7 +142,7 @@ fun RoomScreen(vm: GameViewModel) {
         if (layout.landscape) {
             Column(
                 Modifier.align(Alignment.CenterEnd).padding(start = 12.dp, end = 12.dp, top = 60.dp, bottom = 12.dp)
-                    .width(if (layout.compact) 170.dp else 200.dp)
+                    .then(sidePanelWidth)
                     .background(G.purpleDeep.copy(alpha = 0.55f), RoundedCornerShape(20.dp)).padding(12.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
@@ -147,7 +152,7 @@ fun RoomScreen(vm: GameViewModel) {
                         Image(painterResource(goalRes(goal.id)), null, Modifier.size(44.dp))
                         Text(goal.title, style = MaterialTheme.typography.titleSmall, color = Color.White)
                     }
-                    Text("${s.savings} из ${goal.price} монет", style = MaterialTheme.typography.labelMedium, color = Color.White)
+                    Text("${s.savings} из ${goal.price} монет", style = MaterialTheme.typography.bodySmall, color = Color.White)
                     GameBar("", s.savings, G.magenta, max = goal.price, dark = true)
                 } else {
                     Text("Пока не выбрана", style = MaterialTheme.typography.bodyMedium, color = Color.White)
@@ -164,12 +169,12 @@ fun RoomScreen(vm: GameViewModel) {
                 if (goal != null) {
                     Image(painterResource(goalRes(goal.id)), null, Modifier.size(44.dp))
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text("Цель: ${goal.title} · ${s.savings} из ${goal.price}", style = MaterialTheme.typography.labelMedium, color = Color.White, maxLines = 1)
+                        Text("Цель: ${goal.title} · ${s.savings} из ${goal.price}", style = MaterialTheme.typography.bodySmall, color = Color.White)
                         GameBar("", s.savings, G.magenta, max = goal.price, dark = true)
                     }
                 } else {
                     Text("Цель пока не выбрана", style = MaterialTheme.typography.bodyMedium, color = Color.White, modifier = Modifier.weight(1f))
-                    GameButton("Выбрать", style = ButtonStyle.MAGENTA, minHeight = 44.dp) { vm.navigate(Screen.Savings) }
+                    GameButton("Выбрать", style = ButtonStyle.MAGENTA, minHeight = 48.dp) { vm.navigate(Screen.Savings) }
                 }
             }
         }
@@ -214,10 +219,10 @@ fun RoomScreen(vm: GameViewModel) {
 @Composable
 private fun BubbleHost(vm: GameViewModel, bubble: ru.finny.pet.game.Bubble?, modifier: Modifier) {
     Box(modifier, contentAlignment = Alignment.BottomCenter) {
-        AnimatedVisibility(visible = bubble != null, enter = fadeIn(tween(200)) + scaleIn(tween(260), initialScale = 0.7f), exit = fadeOut(tween(150)) + scaleOut(tween(150))) {
+        AnimatedVisibility(visible = bubble != null, enter = (fadeIn(tween(200)) + scaleIn(tween(260), initialScale = 0.7f)).orNone(), exit = (fadeOut(tween(150)) + scaleOut(tween(150))).orNone()) {
             val b = bubble ?: return@AnimatedVisibility
             SpeechBubble(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                TypewriterText(b.text, animate = vm.state.animations)
+                TypewriterText(b.text, animate = LocalAnimate.current)
                 if (b.options.isNotEmpty()) {
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         b.options.forEachIndexed { i, o -> GameButton(o, style = ButtonStyle.PAPER, minHeight = 48.dp) { vm.answerBubble(i) } }

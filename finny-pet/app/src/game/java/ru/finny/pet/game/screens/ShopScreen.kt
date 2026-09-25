@@ -39,7 +39,6 @@ import ru.finny.pet.domain.Category
 import ru.finny.pet.domain.ShopItem
 import ru.finny.pet.game.GameViewModel
 import ru.finny.pet.game.LocalLayout
-import ru.finny.pet.game.ui.ButtonStyle
 import ru.finny.pet.game.ui.G
 import ru.finny.pet.game.ui.GameButton
 import ru.finny.pet.game.ui.HudChip
@@ -67,8 +66,8 @@ fun ShopScreen(vm: GameViewModel) {
     Box {
         PanelScreen(vm, "Магазин") {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                GameButton("Обязательное", Modifier.weight(1f), style = if (category == Category.MANDATORY) ButtonStyle.MAGENTA else ButtonStyle.PAPER, minHeight = 48.dp, icon = if (layout.landscape) painterResource(R.drawable.ui_lid_mandatory) else null, iconSize = 26.dp) { category = Category.MANDATORY }
-                GameButton("Желаемое", Modifier.weight(1f), style = if (category == Category.OPTIONAL) ButtonStyle.MAGENTA else ButtonStyle.PAPER, minHeight = 48.dp, icon = if (layout.landscape) painterResource(R.drawable.ui_lid_optional) else null, iconSize = 26.dp) { category = Category.OPTIONAL }
+                GameButton("Обязательное", Modifier.weight(1f), selected = category == Category.MANDATORY, minHeight = 48.dp, icon = if (layout.landscape) painterResource(R.drawable.ui_lid_mandatory) else null, iconSize = 26.dp) { category = Category.MANDATORY }
+                GameButton("Желаемое", Modifier.weight(1f), selected = category == Category.OPTIONAL, minHeight = 48.dp, icon = if (layout.landscape) painterResource(R.drawable.ui_lid_optional) else null, iconSize = 26.dp) { category = Category.OPTIONAL }
                 if (layout.landscape) HudChip(painterResource(R.drawable.ui_coin), s.balance, "Монеты", Modifier.particleTarget(particles, "coins"))
             }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -97,12 +96,12 @@ fun ShopScreen(vm: GameViewModel) {
                         ) {
                             Image(painterResource(itemRes(item.id)), null, Modifier.size(if (layout.compact) 64.dp else 76.dp).alpha(if (affordable) 1f else 0.45f))
                             Text(item.title, style = MaterialTheme.typography.labelMedium, color = G.ink, textAlign = TextAlign.Center, maxLines = 2, minLines = 2)
-                            Text(item.effectText(), style = MaterialTheme.typography.labelSmall, color = G.greenDark, textAlign = TextAlign.Center, maxLines = 2, minLines = 2)
+                            Text(item.effectText(), style = MaterialTheme.typography.bodySmall, color = G.greenDark, textAlign = TextAlign.Center, minLines = 2)
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center, modifier = Modifier.fillMaxWidth().background(if (affordable) G.gold else G.paperTint, RoundedCornerShape(50)).padding(vertical = 4.dp)) {
                                 Image(painterResource(R.drawable.ui_coin), null, Modifier.size(18.dp)); Spacer(Modifier.width(4.dp))
                                 Text("${item.price}", style = MaterialTheme.typography.labelLarge, color = G.purpleDeep)
                             }
-                            if (!affordable) Text("не хватает", style = MaterialTheme.typography.labelSmall, color = G.red)
+                            if (!affordable) Text("не хватает", style = MaterialTheme.typography.bodySmall, color = G.red)
                         }
                     }
                 }

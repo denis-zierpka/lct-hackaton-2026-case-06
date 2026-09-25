@@ -56,7 +56,7 @@ object G {
 private fun montserrat(weight: FontWeight) = Font(R.font.montserrat, weight, variationSettings = FontVariation.Settings(weight, FontStyle.Normal))
 val Montserrat = FontFamily(montserrat(FontWeight.Normal), montserrat(FontWeight.Medium), montserrat(FontWeight.SemiBold), montserrat(FontWeight.Bold), montserrat(FontWeight.ExtraBold))
 
-/** Big and bold: children read short phrases, not paragraphs (ТЗ 3.6: body ≥ 16 sp). */
+/** Big and bold: children read short phrases, not paragraphs (ТЗ 3.6: every phrase ≥ 16 sp; labels 14 sp only for one word or a number). */
 private val GameTypography = Typography(
     displayMedium = TextStyle(fontFamily = Montserrat, fontSize = 44.sp, lineHeight = 50.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.5).sp),
     displaySmall = TextStyle(fontFamily = Montserrat, fontSize = 34.sp, lineHeight = 40.sp, fontWeight = FontWeight.ExtraBold),
@@ -67,10 +67,10 @@ private val GameTypography = Typography(
     titleSmall = TextStyle(fontFamily = Montserrat, fontSize = 16.sp, lineHeight = 20.sp, fontWeight = FontWeight.Bold),
     bodyLarge = TextStyle(fontFamily = Montserrat, fontSize = 17.sp, lineHeight = 24.sp, fontWeight = FontWeight.SemiBold),
     bodyMedium = TextStyle(fontFamily = Montserrat, fontSize = 16.sp, lineHeight = 22.sp, fontWeight = FontWeight.Medium),
-    bodySmall = TextStyle(fontFamily = Montserrat, fontSize = 14.sp, lineHeight = 18.sp, fontWeight = FontWeight.Medium),
+    bodySmall = TextStyle(fontFamily = Montserrat, fontSize = 16.sp, lineHeight = 22.sp, fontWeight = FontWeight.Medium),
     labelLarge = TextStyle(fontFamily = Montserrat, fontSize = 17.sp, lineHeight = 20.sp, fontWeight = FontWeight.ExtraBold),
     labelMedium = TextStyle(fontFamily = Montserrat, fontSize = 14.sp, lineHeight = 16.sp, fontWeight = FontWeight.Bold),
-    labelSmall = TextStyle(fontFamily = Montserrat, fontSize = 12.sp, lineHeight = 14.sp, fontWeight = FontWeight.Bold),
+    labelSmall = TextStyle(fontFamily = Montserrat, fontSize = 14.sp, lineHeight = 18.sp, fontWeight = FontWeight.Bold),
 )
 
 @Composable

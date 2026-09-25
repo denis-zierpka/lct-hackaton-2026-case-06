@@ -1,8 +1,12 @@
 package ru.finny.pet.game
 
+import android.content.Context
+import android.provider.Settings
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -45,10 +49,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -90,6 +96,22 @@ val LocalVm = staticCompositionLocalOf<GameViewModel> { error("no view model") }
 class PetActionState { var action by mutableStateOf<PetAct?>(null); var key by mutableIntStateOf(0) }
 val LocalPetAction = staticCompositionLocalOf { PetActionState() }
 
+/** Whether anything moves: the parent toggle and the system «remove animations» setting together (ТЗ 3.6). */
+val LocalAnimate = staticCompositionLocalOf { true }
+
+/** The transition while animations are on, an instant appear/disappear otherwise. */
+@Composable fun EnterTransition.orNone(): EnterTransition = if (LocalAnimate.current) this else EnterTransition.None
+@Composable fun ExitTransition.orNone(): ExitTransition = if (LocalAnimate.current) this else ExitTransition.None
+
+private fun systemAnimates(context: Context) = Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) > 0f
+
+/** Room and mini-game have fixed geometry: their text follows the system font scale up to 1.3; panels follow it fully. */
+@Composable
+private fun SceneFontScale(content: @Composable () -> Unit) {
+    val d = LocalDensity.current
+    if (d.fontScale <= 1.3f) content() else CompositionLocalProvider(LocalDensity provides Density(d.density, 1.3f), content = content)
+}
+
 private val Emphasized = CubicBezierEasing(0.2f, 0f, 0f, 1f)
 
 @Composable
@@ -98,13 +120,16 @@ fun GameApp(vm: GameViewModel = viewModel()) {
     val sfx = remember { Sfx(context) }
     val particles = remember { ParticleController() }
     val petAction = remember { PetActionState() }
+    var systemAnim by remember { mutableStateOf(systemAnimates(context)) }
+    val animate = vm.state.animations && systemAnim
     particles.coinImage = ImageBitmap.imageResource(R.drawable.ui_coin)
+    particles.enabled = animate
     sfx.enabled = vm.state.sounds
 
-    // pause music when the app goes to background
+    // pause music when the app goes to background; re-read the system animation scale on return
     val owner = LocalLifecycleOwner.current
     DisposableEffect(owner) {
-        val obs = LifecycleEventObserver { _, e -> if (e == Lifecycle.Event.ON_PAUSE) sfx.pause() else if (e == Lifecycle.Event.ON_RESUME) sfx.resume() }
+        val obs = LifecycleEventObserver { _, e -> if (e == Lifecycle.Event.ON_PAUSE) sfx.pause() else if (e == Lifecycle.Event.ON_RESUME) { sfx.resume(); systemAnim = systemAnimates(context) } }
         owner.lifecycle.addObserver(obs)
         onDispose { owner.lifecycle.removeObserver(obs); sfx.stopMusic() }
     }
@@ -130,7 +155,7 @@ fun GameApp(vm: GameViewModel = viewModel()) {
         BoxWithConstraints(Modifier.fillMaxSize().background(G.purpleDeep)) {
             val landscape = maxWidth > maxHeight
             val layout = Layout(landscape, compact = (if (landscape) maxHeight else maxWidth) < 420.dp)
-            CompositionLocalProvider(LocalLayout provides layout, LocalSfx provides sfx, LocalParticles provides particles, LocalPetAction provides petAction, LocalVm provides vm) {
+            CompositionLocalProvider(LocalLayout provides layout, LocalSfx provides sfx, LocalParticles provides particles, LocalPetAction provides petAction, LocalVm provides vm, LocalAnimate provides animate) {
                 val screen = vm.screen
                 val atRoot = screen == Screen.Title || (screen == Screen.Room)
                 BackHandler(enabled = !atRoot) { vm.back() }
@@ -140,7 +165,8 @@ fun GameApp(vm: GameViewModel = viewModel()) {
                     AnimatedContent(
                         targetState = screen,
                         transitionSpec = {
-                            (fadeIn(tween(320, easing = Emphasized)) + scaleIn(tween(320, easing = Emphasized), initialScale = 0.96f))
+                            if (!animate) EnterTransition.None togetherWith ExitTransition.None
+                            else (fadeIn(tween(320, easing = Emphasized)) + scaleIn(tween(320, easing = Emphasized), initialScale = 0.96f))
                                 .togetherWith(fadeOut(tween(160)) + scaleOut(tween(160), targetScale = 1.02f))
                         },
                         label = "screen",
@@ -149,13 +175,13 @@ fun GameApp(vm: GameViewModel = viewModel()) {
                             Screen.Title -> TitleScreen(vm)
                             Screen.Intro -> IntroScreen(vm)
                             Screen.CreatePet -> CreatePetScreen(vm)
-                            Screen.Room -> RoomScreen(vm)
+                            Screen.Room -> SceneFontScale { RoomScreen(vm) }
                             Screen.Plan -> PlanScreen(vm)
                             Screen.Shop -> ShopScreen(vm)
                             Screen.Savings -> SavingsScreen(vm)
                             Screen.Tasks -> TasksScreen(vm)
                             is Screen.Task -> TaskScreen(vm, s.id)
-                            Screen.MiniGame -> MiniGameScreen(vm)
+                            Screen.MiniGame -> SceneFontScale { MiniGameScreen(vm) }
                             Screen.WeekEnd -> WeekEndScreen(vm)
                             Screen.Progress -> ProgressScreen(vm)
                             Screen.Parent -> ParentScreen(vm)
@@ -176,7 +202,7 @@ fun GameApp(vm: GameViewModel = viewModel()) {
 private fun RoomBackground(landscape: Boolean, evening: Boolean) {
     Box(Modifier.fillMaxSize()) {
         Image(painterResource(if (landscape) R.drawable.room_land_day else R.drawable.room_port_day), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-        AnimatedVisibility(visible = evening, enter = fadeIn(tween(900)), exit = fadeOut(tween(900))) {
+        AnimatedVisibility(visible = evening, enter = fadeIn(tween(900)).orNone(), exit = fadeOut(tween(900)).orNone()) {
             Image(painterResource(if (landscape) R.drawable.room_land_evening else R.drawable.room_port_evening), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
         }
     }
@@ -186,13 +212,13 @@ private fun RoomBackground(landscape: Boolean, evening: Boolean) {
 @Composable
 private fun FeedbackOverlay(vm: GameViewModel) {
     val fb = vm.feedback
-    AnimatedVisibility(visible = fb != null, enter = fadeIn(tween(200)), exit = fadeOut(tween(200))) {
+    AnimatedVisibility(visible = fb != null, enter = fadeIn(tween(200)).orNone(), exit = fadeOut(tween(200)).orNone()) {
         Box(Modifier.fillMaxSize().background(G.scrim)) {}
     }
     AnimatedVisibility(
         visible = fb != null,
-        enter = fadeIn(tween(220)) + scaleIn(tween(320, easing = Emphasized), initialScale = 0.8f),
-        exit = fadeOut(tween(160)) + scaleOut(tween(160), targetScale = 0.9f),
+        enter = (fadeIn(tween(220)) + scaleIn(tween(320, easing = Emphasized), initialScale = 0.8f)).orNone(),
+        exit = (fadeOut(tween(160)) + scaleOut(tween(160), targetScale = 0.9f)).orNone(),
     ) {
         val f = fb ?: return@AnimatedVisibility
         Box(Modifier.fillMaxSize().padding(16.dp), contentAlignment = Alignment.Center) {

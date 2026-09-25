@@ -2,7 +2,9 @@ package ru.finny.pet.game.screens
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -66,7 +68,9 @@ import ru.finny.pet.domain.Step
 import ru.finny.pet.domain.Tile
 import ru.finny.pet.domain.Turn
 import ru.finny.pet.game.GameViewModel
+import ru.finny.pet.game.LocalAnimate
 import ru.finny.pet.game.LocalLayout
+import ru.finny.pet.game.orNone
 import ru.finny.pet.game.audio.Sound
 import ru.finny.pet.game.ui.ButtonStyle
 import ru.finny.pet.game.ui.CloseButton
@@ -119,7 +123,8 @@ fun MiniGameScreen(vm: GameViewModel) {
     val popups = remember { mutableStateListOf<Popup>() }
     var boardOrigin by remember { mutableStateOf(Offset.Zero) }
     var cellPx by remember { mutableStateOf(1f) }
-    val animate = s.animations
+    val animate = LocalAnimate.current
+    val swapSpec: AnimationSpec<Float> = if (animate) spring(stiffness = Spring.StiffnessMediumLow) else snap()
 
     // initial board
     LaunchedEffect(Unit) {
@@ -141,10 +146,10 @@ fun MiniGameScreen(vm: GameViewModel) {
                     if (a != null && b != null) {
                         a.col = step.b.col; a.row = step.b.row; b.col = step.a.col; b.row = step.a.row
                         coroutineScope {
-                            launch { a.x.animateTo(a.col.toFloat(), spring(stiffness = Spring.StiffnessMediumLow)); }
-                            launch { a.y.animateTo(a.row.toFloat(), spring(stiffness = Spring.StiffnessMediumLow)) }
-                            launch { b.x.animateTo(b.col.toFloat(), spring(stiffness = Spring.StiffnessMediumLow)) }
-                            launch { b.y.animateTo(b.row.toFloat(), spring(stiffness = Spring.StiffnessMediumLow)) }
+                            launch { a.x.animateTo(a.col.toFloat(), swapSpec) }
+                            launch { a.y.animateTo(a.row.toFloat(), swapSpec) }
+                            launch { b.x.animateTo(b.col.toFloat(), swapSpec) }
+                            launch { b.y.animateTo(b.row.toFloat(), swapSpec) }
                         }
                     }
                 }
@@ -285,7 +290,7 @@ fun MiniGameScreen(vm: GameViewModel) {
                         key(p.key) {
                             var shown by remember { mutableStateOf(false) }
                             LaunchedEffect(p.key) { shown = true; delay(900); popups.remove(p) }
-                            AnimatedVisibility(shown, enter = fadeIn() + scaleIn(initialScale = 0.5f), exit = fadeOut()) {
+                            AnimatedVisibility(shown, enter = (fadeIn() + scaleIn(initialScale = 0.5f)).orNone(), exit = fadeOut().orNone()) {
                                 Text(p.text, style = MaterialTheme.typography.headlineSmall, color = G.gold, modifier = Modifier.offset { IntOffset((p.cell.col * px).roundToInt(), ((p.cell.row - 0.4f) * px).roundToInt()) })
                             }
                         }
@@ -307,7 +312,7 @@ fun MiniGameScreen(vm: GameViewModel) {
 
         // the pet asks a question → a bomb
         val pet = s.pet
-        AnimatedVisibility(bubble != null, enter = fadeIn() + scaleIn(initialScale = 0.85f), exit = fadeOut()) {
+        AnimatedVisibility(bubble != null, enter = (fadeIn() + scaleIn(initialScale = 0.85f)).orNone(), exit = fadeOut().orNone()) {
             val b = bubble ?: return@AnimatedVisibility
             Box(Modifier.fillMaxSize().background(G.scrim).pointerInput(Unit) {}, contentAlignment = Alignment.Center) {
                 Row(Modifier.padding(16.dp).widthIn(max = 640.dp), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -322,7 +327,7 @@ fun MiniGameScreen(vm: GameViewModel) {
         }
 
         // round over
-        AnimatedVisibility(over, enter = fadeIn() + scaleIn(initialScale = 0.8f), exit = fadeOut()) {
+        AnimatedVisibility(over, enter = (fadeIn() + scaleIn(initialScale = 0.8f)).orNone(), exit = fadeOut().orNone()) {
             Box(Modifier.fillMaxSize().background(G.scrim), contentAlignment = Alignment.Center) {
                 Panel(Modifier.widthIn(max = 420.dp)) {
                     Text("Игра окончена!", style = MaterialTheme.typography.headlineSmall, color = G.purpleDeep)

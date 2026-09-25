@@ -2,6 +2,7 @@ package ru.finny.pet.game.screens
 
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -17,6 +18,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -29,10 +31,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import ru.finny.pet.R
 import ru.finny.pet.game.GameViewModel
+import ru.finny.pet.game.LocalAnimate
 import ru.finny.pet.game.LocalLayout
 import ru.finny.pet.game.LocalVm
 import ru.finny.pet.game.ui.ButtonStyle
@@ -86,11 +90,11 @@ private fun Jar(title: String, hint: String, lid: Int, value: Int, max: Int, col
     val particles = LocalParticles.current
     val vm = LocalVm.current
     val layout = LocalLayout.current
-    val fill by animateFloatAsState((value.toFloat() / max.coerceAtLeast(1)).coerceIn(0f, 1f), spring(stiffness = Spring.StiffnessLow), label = "fill")
+    val fill by animateFloatAsState((value.toFloat() / max.coerceAtLeast(1)).coerceIn(0f, 1f), if (LocalAnimate.current) spring(stiffness = Spring.StiffnessLow) else snap(), label = "fill")
     val jarH: Dp = if (layout.compact) 84.dp else 110.dp
     Column(modifier.background(G.paperTint, RoundedCornerShape(20.dp)).padding(if (layout.landscape) 8.dp else 4.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(title, style = if (layout.landscape) MaterialTheme.typography.titleSmall else MaterialTheme.typography.labelMedium, color = color, maxLines = 1)
-        Text(hint, style = MaterialTheme.typography.labelSmall, color = G.inkSoft, maxLines = 1)
+        Text(title, style = if (layout.landscape) MaterialTheme.typography.titleSmall else MaterialTheme.typography.labelMedium, color = color, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(hint, style = MaterialTheme.typography.bodySmall, color = G.inkSoft, textAlign = TextAlign.Center)
         Box(Modifier.height(jarH + 20.dp).fillMaxWidth().particleTarget(particles, target), contentAlignment = Alignment.BottomCenter) {
             // The jar sprite is a 512px frame with the glass in the middle ~52% width, ~78% height; coins stack inside that area.
             Box(Modifier.size(jarH), contentAlignment = Alignment.BottomCenter) {
@@ -105,15 +109,20 @@ private fun Jar(title: String, hint: String, lid: Int, value: Int, max: Int, col
             }
             Image(painterResource(lid), null, Modifier.size(jarH * 0.5f).align(Alignment.TopCenter).offset(y = (-4).dp))
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) {
-            GameButton("−", Modifier.width(if (layout.landscape) 54.dp else 44.dp), style = ButtonStyle.PAPER, enabled = value > 0, minHeight = 44.dp) { onChange((value - STEP).coerceAtLeast(0)); vm.sfx(Sound.POP) }
-            Text("$value", style = MaterialTheme.typography.titleLarge, color = G.purpleDeep, modifier = Modifier.width(if (layout.landscape) 54.dp else 36.dp), textAlign = TextAlign.Center)
-            GameButton("+", Modifier.width(if (layout.landscape) 54.dp else 44.dp), style = ButtonStyle.PRIMARY, enabled = canAdd, minHeight = 44.dp) {
+        val minus: @Composable () -> Unit = {
+            GameButton("−", Modifier.width(48.dp), style = ButtonStyle.PAPER, enabled = value > 0, minHeight = 48.dp) { onChange((value - STEP).coerceAtLeast(0)); vm.sfx(Sound.POP) }
+        }
+        val number: @Composable () -> Unit = { Text("$value", style = MaterialTheme.typography.titleLarge, color = G.purpleDeep, modifier = Modifier.widthIn(min = 36.dp), textAlign = TextAlign.Center) }
+        val plus: @Composable () -> Unit = {
+            GameButton("+", Modifier.width(48.dp), style = ButtonStyle.PRIMARY, enabled = canAdd, minHeight = 48.dp) {
                 onChange(value + STEP)
                 particles.targetOf("purse")?.let { particles.coins(it, target, 1, 40f) }
                 vm.sfx(Sound.COIN)
             }
         }
+        // a portrait jar is ~90 dp wide: two 48 dp buttons (ТЗ 3.6) do not fit side by side, so they stack
+        if (layout.landscape) Row(horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) { minus(); number(); plus() }
+        else Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp)) { plus(); number(); minus() }
     }
 }
 

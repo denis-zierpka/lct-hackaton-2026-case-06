@@ -43,8 +43,10 @@ import ru.finny.pet.domain.PeriodSummary
 import ru.finny.pet.domain.Theme
 import ru.finny.pet.game.Effect
 import ru.finny.pet.game.GameViewModel
+import ru.finny.pet.game.LocalAnimate
 import ru.finny.pet.game.LocalLayout
 import ru.finny.pet.game.Screen
+import ru.finny.pet.game.orNone
 import ru.finny.pet.game.audio.Sound
 import ru.finny.pet.game.ui.ButtonStyle
 import ru.finny.pet.game.ui.G
@@ -61,9 +63,10 @@ fun WeekEndScreen(vm: GameViewModel) {
     val s = vm.state
     val pet = s.pet ?: return
     val layout = LocalLayout.current
-    var shown by remember { mutableIntStateOf(if (s.animations) 0 else 5) }
+    val animate = LocalAnimate.current
+    var shown by remember { mutableIntStateOf(if (animate) 0 else 5) }
     LaunchedEffect(sum.period) {
-        if (s.animations) {
+        if (animate) {
             for (i in 1..4) { delay(if (i == 1) 700L else 550L); shown = i; vm.sfx(if (i == 1 && sum.mandatoryCovered || i == 2 && sum.planKept || i == 3 && sum.saved) Sound.SUCCESS else Sound.POP) }
             delay(500); shown = 5
             if (sum.stageAfter > sum.stageBefore) { vm.sfx(Sound.FANFARE); vm.effects.tryEmit(Effect.Confetti) }
@@ -73,8 +76,8 @@ fun WeekEndScreen(vm: GameViewModel) {
         val petCol: @Composable () -> Unit = {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("Неделя ${sum.period} завершена", style = MaterialTheme.typography.headlineSmall, color = Color.White, textAlign = TextAlign.Center)
-                PetSprite(pet.speciesId, pet.colorId, if (shown >= 5) sum.stageAfter else sum.stageBefore, if (sum.score >= 2) Face.HAPPY else Face.NEUTRAL, s.animations, size = if (layout.compact) 170.dp else 220.dp, description = "", bounceKey = if (shown >= 5) 1 else 0)
-                if (sum.stageAfter > sum.stageBefore) AnimatedVisibility(shown >= 5, enter = fadeIn() + scaleIn(initialScale = 0.5f)) {
+                PetSprite(pet.speciesId, pet.colorId, if (shown >= 5) sum.stageAfter else sum.stageBefore, if (sum.score >= 2) Face.HAPPY else Face.NEUTRAL, animate, size = if (layout.compact) 170.dp else 220.dp, description = "", bounceKey = if (shown >= 5) 1 else 0)
+                if (sum.stageAfter > sum.stageBefore) AnimatedVisibility(shown >= 5, enter = (fadeIn() + scaleIn(initialScale = 0.5f)).orNone()) {
                     Text("${pet.name} вырос! Теперь ${vm.economy.stageTitle(sum.growthAfter).lowercase()}", style = MaterialTheme.typography.titleMedium, color = G.gold, textAlign = TextAlign.Center)
                 }
             }
@@ -85,13 +88,13 @@ fun WeekEndScreen(vm: GameViewModel) {
                 Stamp("Еда и уход куплены", sum.mandatoryCovered, shown >= 1)
                 Stamp("Траты по плану", sum.planKept, shown >= 2)
                 Stamp("Копилка выросла", sum.saved, shown >= 3)
-                AnimatedVisibility(shown >= 4, enter = fadeIn(tween(300))) {
+                AnimatedVisibility(shown >= 4, enter = fadeIn(tween(300)).orNone()) {
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         GameBar("Рост: +${sum.score} (${sum.growthBefore} → ${sum.growthAfter})", sum.growthAfter, G.gold, max = vm.economy.rules.stageThresholds.last().coerceAtLeast(1), icon = painterResource(R.drawable.ui_trophy))
                         PlanFact(listOf(Triple("Обязательное", sum.plan.mandatory, sum.factMandatory), Triple("Желаемое", sum.plan.optional, sum.factOptional), Triple("Копилка", sum.plan.savings, sum.factSavings)))
                     }
                 }
-                AnimatedVisibility(shown >= 5, enter = fadeIn(tween(300))) {
+                AnimatedVisibility(shown >= 5, enter = fadeIn(tween(300)).orNone()) {
                     SpeechBubble(tailAtStart = true) {
                         Label("Что случилось и почему", G.purpleDeep)
                         sum.messages.forEach { m -> Text("• $m", style = MaterialTheme.typography.bodyMedium, color = G.ink) }
@@ -115,7 +118,7 @@ fun WeekEndScreen(vm: GameViewModel) {
 @Composable
 private fun Stamp(text: String, ok: Boolean, visible: Boolean) {
     Row(Modifier.fillMaxWidth().alpha(if (visible) 1f else 0.15f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        AnimatedVisibility(visible, enter = scaleIn(tween(350), initialScale = 2.2f) + fadeIn()) {
+        AnimatedVisibility(visible, enter = (scaleIn(tween(350), initialScale = 2.2f) + fadeIn()).orNone()) {
             Box(Modifier.size(38.dp).background(if (ok) G.green else G.paperTint, RoundedCornerShape(50)), contentAlignment = Alignment.Center) {
                 Text(if (ok) "✓" else "–", style = MaterialTheme.typography.titleLarge, color = if (ok) Color.White else G.inkSoft)
             }
