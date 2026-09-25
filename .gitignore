@@ -10,7 +10,7 @@ __pycache__/
 *.pyc
 
 # Скриншоты эмулятора — рабочий материал, не артефакт
-finny-pet/screenshots/emu_*.png
+finny-pet/screenshots/emu_*
 
 # worktrees of parallel agents
 .claude/worktrees/
