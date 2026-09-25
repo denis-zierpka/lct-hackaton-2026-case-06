@@ -41,6 +41,8 @@ import ru.finny.pet.R
 import ru.finny.pet.domain.Face
 import ru.finny.pet.domain.PeriodSummary
 import ru.finny.pet.domain.Theme
+import ru.finny.pet.domain.Case
+import ru.finny.pet.domain.Economy
 import ru.finny.pet.game.Effect
 import ru.finny.pet.game.GameViewModel
 import ru.finny.pet.game.LocalAnimate
@@ -160,7 +162,7 @@ fun ProgressScreen(vm: GameViewModel) {
             Label("Цель")
             val goal = s.goal
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (goal != null) { Image(painterResource(goalRes(goal.id)), null, Modifier.size(48.dp)); Text("${goal.title}: ${s.savings} из ${goal.price} монет", style = MaterialTheme.typography.bodyLarge, color = G.ink) }
+                if (goal != null) { Image(painterResource(goalRes(goal.id)), null, Modifier.size(48.dp)); Text("${goal.title}: ${s.savings} из ${Economy.coins(goal.price, Case.GEN)}", style = MaterialTheme.typography.bodyLarge, color = G.ink) }
                 else Text("Не выбрана", style = MaterialTheme.typography.bodyLarge, color = G.ink)
             }
             if (s.achievedGoals.isNotEmpty()) Text("Достигнуто: ${s.achievedGoals.joinToString { it.title }}", style = MaterialTheme.typography.bodySmall, color = G.inkSoft)

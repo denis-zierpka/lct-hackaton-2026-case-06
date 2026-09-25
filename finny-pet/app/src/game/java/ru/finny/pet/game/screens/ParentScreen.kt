@@ -30,6 +30,8 @@ import androidx.compose.ui.unit.dp
 import androidx.core.view.SoftwareKeyboardControllerCompat
 import ru.finny.pet.BuildConfig
 import ru.finny.pet.domain.Theme
+import ru.finny.pet.domain.Case
+import ru.finny.pet.domain.Economy
 import ru.finny.pet.game.GameViewModel
 import ru.finny.pet.game.LocalAnimate
 import ru.finny.pet.game.ui.ButtonStyle
@@ -108,7 +110,7 @@ private fun ParentPanel(vm: GameViewModel) {
                 // 2.5.12: coins for deeds, limited per week; each grant is a ledger entry the child sees
                 Label("Бонус ребёнку")
                 val left = e.parentBonusesLeft(s)
-                Text("До ${e.rules.parentBonusPerPeriod} раз в неделю по ${e.rules.parentBonusAmount} монет — за дела, а не за оценки. Осталось на этой неделе: $left.", style = MaterialTheme.typography.bodyMedium, color = G.ink)
+                Text("Бонусов в неделю: до ${e.rules.parentBonusPerPeriod}, каждый — +${Economy.coins(e.rules.parentBonusAmount)}. За дела, а не за оценки. Осталось на этой неделе: $left.", style = MaterialTheme.typography.bodyMedium, color = G.ink)
                 when {
                     !s.hasProfile -> Text("Бонус можно начислить, когда питомец создан.", style = MaterialTheme.typography.bodyMedium, color = G.inkSoft)
                     left == 0 -> Text("Все бонусы этой недели начислены. Новые — со следующей игровой недели.", style = MaterialTheme.typography.bodyMedium, color = G.inkSoft)
@@ -144,7 +146,7 @@ private fun ParentPanel(vm: GameViewModel) {
         }
         bonus?.let { i ->
             val reason = vm.content.parentBonusReasons[i]
-            ConfirmPanel("Начислить ${e.rules.parentBonusAmount} монет?", listOf("За: «$reason»", "Монеты появятся у ребёнка сразу, в журнале будет запись."), "Начислить",
+            ConfirmPanel("Начислить ${Economy.coins(e.rules.parentBonusAmount, Case.ACC)}?", listOf("За: «$reason»", "Монеты появятся у ребёнка сразу, в журнале будет запись."), "Начислить",
                 onConfirm = { bonus = null; vm.parentBonus(i) }, onDismiss = { bonus = null })
         }
     }

@@ -403,7 +403,7 @@ class Economy(val content: Content) {
         val left = nextStageLeft(growthAfter)
         msgs += when {
             stageAfter > stageBefore -> "${pet.name} вырос! Теперь ${stageTitle(growthAfter).lowercase()}."
-            left != null -> "До следующей стадии: $left очков роста."
+            left != null -> "До следующей стадии: ${points(left)} роста."
             else -> "${pet.name} достиг высшей стадии — так держать!"
         }
         // off-plan coins are shown apart from the plan checks (2.8)
@@ -491,18 +491,24 @@ class Economy(val content: Content) {
 
         /** "$n монета/монеты/монет" agreeing with |n| in [case], so texts stay right for any number from content.json. */
         fun coins(n: Int, case: Case = Case.NOM): String {
-            val r = abs(n % 100)
-            val form = when {
-                r % 10 == 1 && r != 11 -> 0
-                r % 10 in 2..4 && r !in 12..14 -> 1
-                else -> 2
-            }
             val words = when (case) {
                 Case.NOM -> listOf("монета", "монеты", "монет")
                 Case.ACC -> listOf("монету", "монеты", "монет")
                 Case.GEN -> listOf("монеты", "монет", "монет")
             }
-            return "$n ${words[form]}"
+            return "$n ${words[form(n)]}"
+        }
+
+        /** "$n очко/очка/очков" agreeing with |n|, same rule as [coins] (MVP-T11). */
+        fun points(n: Int): String = "$n ${listOf("очко", "очка", "очков")[form(n)]}"
+
+        private fun form(n: Int): Int {
+            val r = abs(n % 100)
+            return when {
+                r % 10 == 1 && r != 11 -> 0
+                r % 10 in 2..4 && r !in 12..14 -> 1
+                else -> 2
+            }
         }
     }
 }

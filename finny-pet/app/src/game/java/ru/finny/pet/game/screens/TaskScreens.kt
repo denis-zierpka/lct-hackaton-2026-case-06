@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import ru.finny.pet.R
 import ru.finny.pet.domain.TaskType
 import ru.finny.pet.domain.Theme
+import ru.finny.pet.domain.Economy
 import ru.finny.pet.game.GameViewModel
 import ru.finny.pet.game.LocalAnimate
 import ru.finny.pet.game.LocalLayout
@@ -64,7 +65,7 @@ fun TasksScreen(vm: GameViewModel) {
         Row(Modifier.fillMaxWidth().background(G.lavenderLight, RoundedCornerShape(16.dp)).padding(10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Image(painterResource(R.drawable.ui_coin), null, Modifier.size(36.dp))
             Column {
-                Text("Верный ответ +${e.rules.rewardCorrect}, попытка +${e.rules.rewardWrong} монет", style = MaterialTheme.typography.titleSmall, color = G.purpleDeep)
+                Text("Верный ответ: +${Economy.coins(e.rules.rewardCorrect)}, попытка: +${Economy.coins(e.rules.rewardWrong)}", style = MaterialTheme.typography.titleSmall, color = G.purpleDeep)
                 Text("Задание — это история с выбором. Объяснение будет в любом случае.", style = MaterialTheme.typography.bodySmall, color = G.inkSoft)
             }
         }

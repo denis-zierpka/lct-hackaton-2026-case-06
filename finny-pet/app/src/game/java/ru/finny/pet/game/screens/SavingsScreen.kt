@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import ru.finny.pet.R
 import ru.finny.pet.domain.Economy
 import ru.finny.pet.domain.Goal
+import ru.finny.pet.domain.Case
 import ru.finny.pet.game.GameViewModel
 import ru.finny.pet.game.LocalLayout
 import ru.finny.pet.game.ui.ButtonStyle
@@ -84,7 +85,7 @@ fun SavingsScreen(vm: GameViewModel) {
                             Column {
                                 Label("Моя цель")
                                 Text(goal.title, style = MaterialTheme.typography.titleLarge, color = G.ink)
-                                Text("Стоит ${goal.price} монет", style = MaterialTheme.typography.bodyMedium, color = G.inkSoft)
+                                Text("Стоит ${Economy.coins(goal.price, Case.ACC)}", style = MaterialTheme.typography.bodyMedium, color = G.inkSoft)
                             }
                         }
                         GameBar("Накоплено", s.savings, G.magenta, max = goal.price)
@@ -120,7 +121,7 @@ fun SavingsScreen(vm: GameViewModel) {
             ConfirmPanel("Забрать $amount из копилки?", e.withdrawPreview(s, amount), "Забрать", onConfirm = { confirmWithdraw = false; vm.withdraw(amount) }, onDismiss = { confirmWithdraw = false })
         }
         if (confirmAchieve && goal != null) {
-            ConfirmPanel("Забрать «${goal.title}»?", listOf("Из копилки уйдёт ${goal.price} монет, останется ${s.savings - goal.price}.", "Питомец очень обрадуется!"), "Забрать", onConfirm = { confirmAchieve = false; vm.achieveGoal() }, onDismiss = { confirmAchieve = false })
+            ConfirmPanel("Забрать «${goal.title}»?", listOf("Из копилки уйдёт ${Economy.coins(goal.price)}, останется ${s.savings - goal.price}.", "Питомец очень обрадуется!"), "Забрать", onConfirm = { confirmAchieve = false; vm.achieveGoal() }, onDismiss = { confirmAchieve = false })
         }
     }
 }
@@ -138,7 +139,7 @@ private fun GoalPicker(vm: GameViewModel, onDone: () -> Unit) {
             Column(
                 Modifier.weight(1f).shadow(3.dp, RoundedCornerShape(18.dp)).background(Color.White, RoundedCornerShape(18.dp))
                     .clickable(role = Role.Button) { vm.chooseGoal(Goal(g.id, g.title, g.emoji, g.price)); onDone() }
-                    .semantics(mergeDescendants = true) { contentDescription = "${g.title}, ${g.price} монет" }
+                    .semantics(mergeDescendants = true) { contentDescription = "${g.title}, ${Economy.coins(g.price)}" }
                     .padding(6.dp),
                 horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {

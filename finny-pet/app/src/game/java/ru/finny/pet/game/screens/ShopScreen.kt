@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import ru.finny.pet.R
 import ru.finny.pet.domain.Category
 import ru.finny.pet.domain.ShopItem
+import ru.finny.pet.domain.Economy
 import ru.finny.pet.game.GameViewModel
 import ru.finny.pet.game.LocalLayout
 import ru.finny.pet.game.ui.G
@@ -92,7 +93,7 @@ fun ShopScreen(vm: GameViewModel) {
                                 .shadow(4.dp, RoundedCornerShape(18.dp))
                                 .background(Color.White, RoundedCornerShape(18.dp))
                                 .clickable(role = Role.Button) { if (affordable && s.plan.confirmed) pendingId = item.id else vm.buy(item.id) }
-                                .semantics { contentDescription = "${item.title}, ${item.price} монет, ${item.effectText()}" }
+                                .semantics { contentDescription = "${item.title}, ${Economy.coins(item.price)}, ${item.effectText()}" }
                                 .padding(horizontal = 4.dp, vertical = 8.dp),
                             horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp),
                         ) {
@@ -126,7 +127,7 @@ fun ShopScreen(vm: GameViewModel) {
             ConfirmPanel(
                 title = "Купить «${item.title}»?",
                 lines = listOf(
-                    "Цена: ${item.price} монет, у тебя ${s.balance}. Останется ${s.balance - item.price}.",
+                    "Цена: ${Economy.coins(item.price)}, у тебя ${s.balance}. Останется ${s.balance - item.price}.",
                     "Категория: ${item.category.label()}.",
                     "Питомцу: ${item.effectText()}.",
                 ),

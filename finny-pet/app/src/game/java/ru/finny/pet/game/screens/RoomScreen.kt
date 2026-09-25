@@ -47,6 +47,8 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import ru.finny.pet.R
 import ru.finny.pet.domain.Need
+import ru.finny.pet.domain.Case
+import ru.finny.pet.domain.Economy
 import ru.finny.pet.game.GameViewModel
 import ru.finny.pet.game.LocalAnimate
 import ru.finny.pet.game.LocalLayout
@@ -124,7 +126,9 @@ fun RoomScreen(vm: GameViewModel) {
     }
     // the active task stays on screen (2.5.3); the week end asks first, like the moon button
     val now: @Composable (Modifier) -> Unit = { mod ->
-        GameButton("Сейчас: ${step.second}", mod.fillMaxWidth(), style = ButtonStyle.GOLD, minHeight = 48.dp) {
+        // landscape panel is narrow: «Сейчас» goes above the button, so the step is never cut (MVP-T11)
+        if (!portrait) Text("Сейчас", style = MaterialTheme.typography.labelMedium, color = G.pink)
+        GameButton(if (portrait) "Сейчас: ${step.second}" else step.second, mod.fillMaxWidth(), style = ButtonStyle.GOLD, minHeight = 48.dp) {
             if (step.third == Screen.WeekEnd) confirmEnd = true else vm.navigate(step.third)
         }
     }
@@ -187,7 +191,7 @@ fun RoomScreen(vm: GameViewModel) {
                         Image(painterResource(goalRes(goal.id)), null, Modifier.size(44.dp))
                         Text(goal.title, style = MaterialTheme.typography.titleSmall, color = Color.White)
                     }
-                    Text("${s.savings} из ${goal.price} монет", style = MaterialTheme.typography.bodySmall, color = Color.White)
+                    Text("${s.savings} из ${Economy.coins(goal.price, Case.GEN)}", style = MaterialTheme.typography.bodySmall, color = Color.White)
                     GameBar("", s.savings, G.magenta, max = goal.price, dark = true)
                 } else {
                     Text("Пока не выбрана", style = MaterialTheme.typography.bodyMedium, color = Color.White)
@@ -245,7 +249,7 @@ fun RoomScreen(vm: GameViewModel) {
             ConfirmPanel(
                 title = "Завершить неделю ${s.period}?",
                 lines = listOfNotNull(
-                    "${pet.name} получит итог недели, а ты — новые ${vm.content.rules.allowance} монет.",
+                    "${pet.name} получит итог недели, а ты — карманные деньги: +${Economy.coins(vm.content.rules.allowance)}.",
                     if (!food) "Еда на этой неделе ещё не куплена — ${pet.name} проголодается." else null,
                     if (!care) "Уход на этой неделе ещё не куплен — ${pet.name} запачкается." else null,
                     if (s.factSavings <= 0) "Копилка на этой неделе не выросла." else null,

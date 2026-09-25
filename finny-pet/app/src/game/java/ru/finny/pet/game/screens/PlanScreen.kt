@@ -38,6 +38,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import ru.finny.pet.R
+import ru.finny.pet.domain.Case
+import ru.finny.pet.domain.Economy
 import ru.finny.pet.game.GameViewModel
 import ru.finny.pet.game.LocalAnimate
 import ru.finny.pet.game.LocalLayout
@@ -71,7 +73,7 @@ fun PlanScreen(vm: GameViewModel) {
                 Image(painterResource(R.drawable.ui_purse), null, Modifier.size(if (layout.compact) 52.dp else 64.dp))
             }
             Column(Modifier.weight(1f)) {
-                Text(if (rest < 0) "Не хватает ${-rest} монет" else "В кошельке: $rest из ${s.balance}", style = MaterialTheme.typography.titleMedium, color = if (rest < 0) G.red else G.purpleDeep)
+                Text(if (rest < 0) "Не хватает ${Economy.coins(-rest, Case.GEN)}" else "В кошельке: $rest из ${s.balance}", style = MaterialTheme.typography.titleMedium, color = if (rest < 0) G.red else G.purpleDeep)
                 Text("Реши заранее, сколько на что. Потом сравним план с тем, что вышло.", style = MaterialTheme.typography.bodySmall, color = G.inkSoft)
             }
             if (layout.landscape) GameButton("Подтвердить", style = ButtonStyle.GOLD, minHeight = 48.dp, enabled = rest >= 0 && plan.total > 0) { vm.confirmPlan() }

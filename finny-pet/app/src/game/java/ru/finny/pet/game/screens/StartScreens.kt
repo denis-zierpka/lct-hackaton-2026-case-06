@@ -46,6 +46,8 @@ import androidx.compose.ui.unit.dp
 import ru.finny.pet.PetSprites
 import ru.finny.pet.R
 import ru.finny.pet.domain.Face
+import ru.finny.pet.domain.Case
+import ru.finny.pet.domain.Economy
 import ru.finny.pet.game.GameViewModel
 import ru.finny.pet.game.LocalAnimate
 import ru.finny.pet.game.LocalLayout
@@ -97,7 +99,7 @@ private class Page(val text: String, val icons: List<Int>)
 
 private fun introPages(allowance: Int) = listOf(
     Page("Привет! Я твой питомец. Мне нужны еда, уход и радость. Ты решаешь, на что тратить монеты, а я показываю, что из этого вышло.", listOf(R.drawable.item_food_basic, R.drawable.item_care_shampoo, R.drawable.item_fun_ball)),
-    Page("Каждую неделю у тебя $allowance новых монет. Их надо разделить на три части: обязательное, желаемое и копилка на мечту.", listOf(R.drawable.ui_lid_mandatory, R.drawable.ui_lid_optional, R.drawable.ui_lid_savings)),
+    Page("Каждую неделю ты получаешь ${Economy.coins(allowance, Case.ACC)}. Их надо разделить на три части: обязательное, желаемое и копилка на мечту.", listOf(R.drawable.ui_lid_mandatory, R.drawable.ui_lid_optional, R.drawable.ui_lid_savings)),
     Page("Ошибаться можно! После каждого решения я расскажу, что изменилось и почему. Не вышло на этой неделе — поправим на следующей.", listOf(R.drawable.ui_book, R.drawable.ui_gamepad, R.drawable.ui_trophy)),
 )
 

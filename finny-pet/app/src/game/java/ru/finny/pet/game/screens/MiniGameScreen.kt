@@ -240,7 +240,7 @@ fun MiniGameScreen(vm: GameViewModel) {
                     Stat("Очки", "${cur.score}")
                     Stat("Ходы", "${cur.movesLeft}")
                 }
-                Text("Монет за игру: до ${vm.economy.miniGameCoinsLeft(s)} (1 за ${vm.content.rules.miniGameScorePerCoin} очков)", style = MaterialTheme.typography.bodySmall, color = G.pink, textAlign = TextAlign.Center)
+                Text("Монет за игру: до ${vm.economy.miniGameCoinsLeft(s)}. Очков на монету: ${vm.content.rules.miniGameScorePerCoin}.", style = MaterialTheme.typography.bodySmall, color = G.pink, textAlign = TextAlign.Center)
                 GameButton(if (bombMode) "Куда бомбочку?" else "Бомбочка ×${cur.bombs}", Modifier.fillMaxWidth(), style = if (bombMode) ButtonStyle.MAGENTA else ButtonStyle.GOLD, enabled = cur.bombs > 0 && !busy, icon = painterResource(R.drawable.tile_bomb), iconSize = 30.dp) { bombMode = !bombMode; selected = null }
                 GameButton("Вопрос → бомбочка", Modifier.fillMaxWidth(), style = ButtonStyle.PAPER, minHeight = 48.dp, enabled = bubble == null && vm.economy.availableQuiz(s).isNotEmpty()) { vm.askQuestion() }
                 GameButton("Закончить", Modifier.fillMaxWidth(), style = ButtonStyle.GHOST, minHeight = 48.dp, enabled = !busy) { over = true }

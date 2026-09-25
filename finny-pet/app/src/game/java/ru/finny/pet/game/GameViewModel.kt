@@ -21,6 +21,7 @@ import ru.finny.pet.domain.Outcome
 import ru.finny.pet.domain.PeriodSummary
 import ru.finny.pet.domain.QuizQuestion
 import ru.finny.pet.domain.Turn
+import ru.finny.pet.domain.Case
 import ru.finny.pet.game.audio.Sound
 
 sealed interface Screen {
@@ -236,7 +237,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         val s = state
         val name = s.pet?.name ?: "Питомец"
         return when {
-            !s.plan.confirmed -> Triple("Давай разделим ${s.balance} монет: обязательное, желаемое и копилка!", "Составить план", Screen.Plan)
+            !s.plan.confirmed -> Triple("Давай разделим ${Economy.coins(s.balance, Case.ACC)}: обязательное, желаемое и копилка!", "Составить план", Screen.Plan)
             s.purchases.none { it.need == Need.FOOD } -> Triple("Я проголодался. В магазине есть корм!", "В магазин", Screen.Shop)
             s.purchases.none { it.need == Need.CARE } -> Triple("Мне бы шампунь или расчёску.", "В магазин", Screen.Shop)
             s.goal == null -> Triple("На что будем копить? Выбери цель!", "Выбрать цель", Screen.Savings)
