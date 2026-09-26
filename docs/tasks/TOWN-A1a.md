@@ -59,9 +59,12 @@ ART_PIPELINE) правит оркестратор после приёмки.
 ## --python-exit-code 1 до -P/--python-expr; время рендеров записать)
   1. GPU по состоянию, а не по печати:
      "$B" -b --factory-startup --python-exit-code 1 --python-expr "import sys,bpy; sys.path.insert(0, r'$RW/finny-pet/tools/art'); import lib; s=lib.reset_scene(8,64); p=bpy.context.preferences.addons['cycles'].preferences; on=[d.type for d in p.devices if d.use]; print('PROBE', s.cycles.device, p.compute_device_type, on); assert s.cycles.device=='GPU' and p.compute_device_type=='HIP' and on and set(on)=={'HIP'}"
-     -> exit 0, «PROBE GPU HIP ['HIP', …]»; grep -c "Metal" finny-pet/tools/art/lib.py -> 0
-  2. smoke на GPU и CPU: "$B" -b --python-exit-code 1 -P finny-pet/tools/art/smoke.py -- $TW/s_gpu.png и то же
-     с `--cycles-device CPU` в конце -> $TW/s_cpu.png; оба файла 512×512 RGBA; время GPU < время CPU
+     -> exit 0, «PROBE GPU HIP ['HIP', …]»; grep -c "Metal GPU\|on Metal" finny-pet/tools/art/lib.py -> 0
+     (голое «Metal» совпадает с входом «Metallic» у Principled BSDF — не критерий; поправка по приёмке)
+  2. smoke: "$B" -b --python-exit-code 1 -P finny-pet/tools/art/smoke.py -- $TW/s_gpu.png -> 512×512 RGBA. Время
+     GPU против CPU — на тяжёлом кадре (smoke 512² × 64 упирается в запуск Blender: 11,8 против 11,0 с):
+     room.render_variant('room_port_day', …, 64) через --python-expr, CPU — подменой scene.cycles.device в
+     room.reset_scene; время GPU < время CPU (2026-09-26: 28,8 с против 103 с)
   3. импорт без побочных эффектов (cwd = пустой $T/imp):
      cd $T/imp && "$B" -b --factory-startup --python-exit-code 1 --python-expr "import sys,bpy; sys.path.insert(0, r'$RW/finny-pet/tools/art'); n=(len(bpy.data.objects),len(bpy.data.materials)); import lib, room, uiprops, props; m=(len(bpy.data.objects),len(bpy.data.materials)); assert m==n, m; print('IMPORT OK', n)" -- --only room_port_day --out $TW/leak.png > $T/imp.log 2>&1
      -> exit 0; «IMPORT OK» в логе; «cycles device» и «Saved» в логе нет; $T/imp пуст; $TW/leak.png нет
