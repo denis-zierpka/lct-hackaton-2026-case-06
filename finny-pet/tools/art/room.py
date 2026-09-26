@@ -34,20 +34,10 @@ def build_room(evening, portrait):
     m_green2 = material("green2", hexc("#5EAA66"), rough=0.5, sss=0.3, coat=0.3)
     m_blue = material("blue", hexc("#6FB1E0"), rough=0.5, sss=0.2, coat=0.3)
 
-    # floor: planks running towards the wall (perspective lines), slightly different tints
-    for i in range(-9, 10):
-        box("plank", (X(i * 0.8), -3, -0.06), (X(0.78), 16, 0.12), wood[abs(i) % 4], bevel=0.015)
-
-    # back wall with a window opening, side walls, skirting boards
+    # floor, back wall with a window opening, side walls, skirting boards (lib: interior shell)
+    plank_floor(wood, k)
     ww, wz0, wz1 = X(1.5), 1.9, 4.1  # window half-width, bottom, top
-    box("wall_l", (X(-6) - ww, WALL_Y + 0.15, 7), (X(12), 0.3, 14), m_wall, bevel=0)
-    box("wall_r", (X(6) + ww, WALL_Y + 0.15, 7), (X(12), 0.3, 14), m_wall, bevel=0)
-    box("wall_b", (0, WALL_Y + 0.15, wz0 / 2), (2 * ww, 0.3, wz0), m_wall, bevel=0)
-    box("wall_t", (0, WALL_Y + 0.15, (wz1 + 14) / 2), (2 * ww, 0.3, 14 - wz1), m_wall, bevel=0)
-    for sx in (-1, 1):
-        box("side", (X(5.2) * sx, -2, 7), (0.3, 10, 14), m_side, bevel=0)
-        box("skirt_s", (X(5.05) * sx, -2, 0.11), (0.06, 10, 0.24), m_white, bevel=0.01)
-    box("skirt", (0, WALL_Y - 0.03, 0.11), (X(10.2), 0.07, 0.24), m_white, bevel=0.01)
+    shell_walls(m_wall, m_side, m_white, k, WALL_Y, window=(ww, wz0, wz1))
 
     # window: frame, cross bars, sill, curtains, rod
     t = 0.12

@@ -148,6 +148,34 @@ def text3d(name, txt, loc, size, mat, extrude=0.06, rot=(math.radians(90), 0, 0)
     o.location = loc; o.rotation_euler = rot; td.materials.append(mat); return o
 
 
+# Interior shell (room.py, place.py): floor is z = 0, the back wall stands at y = wall_y, x is squeezed by k for
+# portrait framing (k = 1: landscape). Materials come from the caller, so every place keeps its own colours.
+def plank_floor(mats, k=1.0, n=9, pitch=0.8, y0=-11.0, y1=5.0):
+    """Planks running towards the back wall (perspective lines), 2n + 1 of them, tints cycle through `mats`."""
+    for i in range(-n, n + 1):
+        box("plank", (i * pitch * k, (y0 + y1) / 2, -0.06), ((pitch - 0.02) * k, y1 - y0, 0.12), mats[abs(i) % len(mats)], bevel=0.015)
+
+
+def shell_walls(m_wall, m_side, m_skirt, k=1.0, wall_y=3.0, half=5.2, height=14.0, depth=10.0, reach=12.0, window=None, back=True):
+    """Back wall (solid, or around a `window` hole (half-width, bottom z, top z) — half-width already squeezed),
+    side walls at x = ±half·k running `depth` towards the camera, white skirting. back=False: no back wall and
+    no back skirting (outdoor places show sky/river there). `reach` = how far the back wall runs past the hole."""
+    h, r = height, reach * k
+    if back and window:
+        ww, z0, z1 = window
+        box("wall_l", (-r / 2 - ww, wall_y + 0.15, h / 2), (r, 0.3, h), m_wall, bevel=0)
+        box("wall_r", (r / 2 + ww, wall_y + 0.15, h / 2), (r, 0.3, h), m_wall, bevel=0)
+        box("wall_b", (0, wall_y + 0.15, z0 / 2), (2 * ww, 0.3, z0), m_wall, bevel=0)
+        box("wall_t", (0, wall_y + 0.15, (z1 + h) / 2), (2 * ww, 0.3, h - z1), m_wall, bevel=0)
+    elif back:
+        box("wall_back", (0, wall_y + 0.15, h / 2), (2 * r, 0.3, h), m_wall, bevel=0)
+    for sx in (-1, 1):
+        box("side", (half * k * sx, wall_y - depth / 2, h / 2), (0.3, depth, h), m_side, bevel=0)
+        box("skirt_s", ((half - 0.15) * k * sx, wall_y - depth / 2, 0.11), (0.06, depth, 0.24), m_skirt, bevel=0.01)
+    if back:
+        box("skirt", (0, wall_y - 0.03, 0.11), ((2 * half - 0.2) * k, 0.07, 0.24), m_skirt, bevel=0.01)
+
+
 def _track(o, target):
     c = o.constraints.new("TRACK_TO"); t = bpy.data.objects.new(o.name + "_t", None); t.location = target
     bpy.context.collection.objects.link(t); c.target = t; c.track_axis = "TRACK_NEGATIVE_Z"; c.up_axis = "UP_Y"
