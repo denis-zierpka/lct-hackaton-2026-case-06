@@ -1,6 +1,7 @@
 package ru.finny.pet.domain
 
 import kotlinx.serialization.Serializable
+import ru.finny.pet.domain.town.TownContent
 
 /** Educational content. Lives in assets/content/content.json, never in code. */
 @Serializable
@@ -19,9 +20,13 @@ data class Content(
     val chatter: Chatter = Chatter(),
     /** Reasons an adult picks when granting a bonus (2.5.12). */
     val parentBonusReasons: List<String> = emptyList(),
+    /** «Городок» (§16.1); null пока контент не заведён. */
+    val town: TownContent? = null,
 ) {
     fun quiz(id: String): QuizQuestion = quiz.first { it.id == id }
-    fun item(id: String): ShopItem = items.first { it.id == id }
+    fun item(id: String): ShopItem =
+        items.firstOrNull { it.id == id } ?: town?.items?.firstOrNull { it.id == id }
+            ?: throw NoSuchElementException("item $id not found")
     fun task(id: String): Task = tasks.first { it.id == id }
     fun taskOrNull(id: String): Task? = tasks.firstOrNull { it.id == id }
 
@@ -75,11 +80,11 @@ data class PetSpecies(val id: String, val title: String)
 data class PetColor(val id: String, val title: String, val hex: String)
 
 @Serializable
-enum class Category { MANDATORY, OPTIONAL }
+enum class Category { MANDATORY, OPTIONAL, UNPLANNED }
 
 /** What a purchase satisfies. FOOD and CARE are the mandatory needs checked at period end. */
 @Serializable
-enum class Need { FOOD, CARE, FUN }
+enum class Need { FOOD, CARE, FUN, UNPLANNED }
 
 @Serializable
 data class ShopItem(
@@ -94,6 +99,16 @@ data class ShopItem(
     val mood: Int = 0,
     val description: String,
     val reaction: String,
+    /** Вещь остаётся в доме (сундук и места для вещей), а не расходуется (GAME_CONCEPT §5.3). */
+    val keep: Boolean = false,
+    /** Тип места в комнате для вещи с keep: floor, wall, table (§5.3). */
+    val slot: String? = null,
+    /** С какой игровой недели товар появляется в лавке; в демо не проверяется (§5.3, §7.4). */
+    val unlockPeriod: Int = 1,
+    /** Метки для фактов BUY:#tag, например gift (§7.3). */
+    val tags: List<String> = emptyList(),
+    /** Сам на полке не стоит: оплата в сцене события (доктор) или замена сломанной вещи дома (§5.3, §16.1). */
+    val eventOnly: Boolean = false,
 )
 
 @Serializable

@@ -157,7 +157,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         val item = content.item(itemId)
         if (apply("Покупка", economy.buy(state, itemId), hop = false)) {
             sfx(Sound.COIN)
-            emit(Effect.PetAction(when (item.need) { Need.FOOD -> PetAct.EAT; Need.CARE -> PetAct.WASH; Need.FUN -> PetAct.PLAY }))
+            emit(Effect.PetAction(when (item.need) { Need.FOOD -> PetAct.EAT; Need.CARE -> PetAct.WASH; Need.FUN, Need.UNPLANNED -> PetAct.PLAY }))
             emit(Effect.CoinsFrom("coins", "pet", (item.price / 10).coerceIn(3, 8)))
         }
     }
