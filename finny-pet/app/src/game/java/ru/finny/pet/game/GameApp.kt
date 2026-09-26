@@ -63,9 +63,11 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
+import ru.finny.pet.BuildConfig
 import ru.finny.pet.R
 import ru.finny.pet.game.audio.Sfx
 import ru.finny.pet.game.audio.Sound
+import ru.finny.pet.game.mock.TownMockHost
 import ru.finny.pet.game.screens.CreatePetScreen
 import ru.finny.pet.game.screens.GlossaryScreen
 import ru.finny.pet.game.screens.IntroScreen
@@ -208,6 +210,7 @@ fun GameApp(vm: GameViewModel = viewModel()) {
                     // invisible centre target for confetti
                     Box(Modifier.align(Alignment.Center).size(1.dp).then(ru.finny.pet.game.ui.particleTargetModifier(particles, "center")))
                     FeedbackOverlay(vm)
+                    if (BuildConfig.DEBUG) TownMockHost(showEntry = screen == Screen.Parent)
                 }
                 ParticleLayer(particles)
             }
