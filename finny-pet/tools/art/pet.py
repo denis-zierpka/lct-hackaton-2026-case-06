@@ -5,16 +5,27 @@ Full set:   Blender -b -P tools/art/pet.py -- --all /abs/outdir [--only-species 
             renders species x colour x stage x face (3 x 3 x 3 x 4 = 108 frames) as pet_<species>_<colour>_<stage>_<face>.png;
             existing PNGs are skipped. Then: python tools/art/import_sprites.py /abs/outdir
 
+Town residents: Blender -b -P tools/art/pet.py -- --residents /abs/outdir [--only-resident marta] [--size N --samples N]
+            renders town.residents of content.json (species, accessory, stage 0, happy face, colour from
+            RESIDENT_COLORS) as res_<id>.png. A single frame takes --accessory apron|cap|glasses as well.
+
 Colours and species ids mirror app/src/main/assets/content/content.json. The ground shadow is drawn by the
 app (PetView), so no shadow catcher here. All geometry is primitives + subdivision: the art belongs to the team.
 """
-import bpy, math, sys, argparse, os
+import bpy, math, sys, argparse, os, json
 from mathutils import Vector
 
 SPECIES = ["cat", "bunny", "puppy"]
 COLORS = {"orange": "#F4A261", "blue": "#6FB1E0", "green": "#7BC47F"}
+# Residents get their own body colours so they never look like the child's pet (owner's decision 33 a):
+# a hue from the look.color family, dE76 >= 20 to every pet colour and between residents of one species.
+RESIDENT_COLORS = {"marta": "#EE8266", "foma": "#5A7FC4", "borya": "#B7C46A", "osya": "#9098AE",
+                   "tosha": "#B0733C", "stepan": "#3A86A0", "kesha": "#7FCBB0", "liza": "#F7C996",
+                   "asya": "#B7AEEA"}
+ACCESSORIES = ["apron", "cap", "glasses"]
 FACES = ["happy", "neutral", "sad", "blink"]
 STAGES = [0, 1, 2]
+CONTENT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../app/src/main/assets/content/content.json"))
 
 argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
 ap = argparse.ArgumentParser()
@@ -23,6 +34,8 @@ ap.add_argument("--face", default="happy"); ap.add_argument("--stage", type=int,
 ap.add_argument("--out", default=None); ap.add_argument("--all", default=None)
 ap.add_argument("--samples", type=int, default=96); ap.add_argument("--size", type=int, default=512)
 ap.add_argument("--only-species", default=None, choices=SPECIES)
+ap.add_argument("--accessory", default=None, choices=ACCESSORIES)
+ap.add_argument("--residents", default=None); ap.add_argument("--only-resident", default=None)
 A = ap.parse_args(argv)
 
 
@@ -116,7 +129,34 @@ def curve(name, pts, bevel, mat, taper=False):
     cd.materials.append(mat); return o
 
 
-def build_pet(species, color_hex, stage, face):
+def add_accessory(kind, species):
+    """A resident's accessory, the same colours for everyone; it never covers the eyes or the mouth (build_pet)."""
+    accent = material("acc_accent", hexc("#FF0053"), rough=0.45, sss=0.1, coat=0.3)
+    if kind == "apron":  # a bib on the belly (belly sphere in build_pet), a red pocket and red straps over the shoulders
+        cloth = material("apron", hexc("#FFF3D6"), rough=0.7, sss=0.2, coat=0.1)
+        smooth(sphere("apron", (0, -0.62, 0.82), 1.0, (0.56, 0.43, 0.64), cloth))
+        smooth(sphere("apron_pocket", (0, -1.04, 0.58), 0.15, (1.3, 0.3, 0.85), accent), 1)
+        for sx in (-1, 1):
+            curve("apron_strap", [(0.3 * sx, -0.9, 1.2), (0.46 * sx, -0.68, 1.42), (0.56 * sx, -0.3, 1.64)], 0.045, accent)
+    elif kind == "cap":  # a dome on the crown of the head, visor tipped down to face the camera; bunny: like the crown
+        felt = material("cap", hexc("#520978"), rough=0.6, sss=0.1, coat=0.2)
+        hz, hy, rad, tilt = {"bunny": (2.74, -0.42, 0.44, -22), "cat": (2.78, -0.32, 0.42, 14),
+                             "puppy": (2.82, -0.12, 0.5, 10)}[species]
+        bpy.ops.object.empty_add(location=(0, hy, hz)); pivot = bpy.context.object; pivot.rotation_euler = (math.radians(tilt), 0, 0)
+        smooth(sphere("cap", (0, 0, 0), rad, (1.0, 1.0, 0.85), felt)).parent = pivot
+        smooth(sphere("cap_visor", (0, -rad * 0.9, -0.03), rad * 0.85, (1.05, 0.9, 0.2), accent, (math.radians(20), 0, 0))).parent = pivot
+        smooth(sphere("cap_button", (0, 0, rad * 0.85), 0.07, (1, 1, 0.6), accent), 1).parent = pivot
+    elif kind == "glasses":  # round rims around the eyes (eye coordinates in build_pet) and a bridge
+        rim = material("glasses", hexc("#2B2B2B"), rough=0.25, coat=0.8, sss=0.0)
+        for sx in (-1, 1):
+            bpy.ops.mesh.primitive_torus_add(major_radius=0.25, minor_radius=0.055, location=(0.3 * sx, -1.0, 2.28),
+                                             rotation=(math.radians(90), 0, math.radians(15 * sx)), major_segments=48, minor_segments=12)
+            o = bpy.context.object; o.name = "glasses_rim"; o.scale = (1.0, 1.1, 1.0); o.data.materials.append(rim)
+            for pg in o.data.polygons: pg.use_smooth = True
+        curve("glasses_bridge", [(-0.05, -1.03, 2.34), (0, -1.05, 2.37), (0.05, -1.03, 2.34)], 0.04, rim)
+
+
+def build_pet(species, color_hex, stage, face, accessory=None):
     BODY = hexc(color_hex)
     DARK = mix(BODY, (0, 0, 0, 1), 0.35)
     LIGHT = mix(BODY, (1, 1, 1, 1), 0.38)
@@ -201,6 +241,7 @@ def build_pet(species, color_hex, stage, face):
             pt = cone("crown_pt", (rad * math.cos(a), rad * math.sin(a), 0.3), 0.1, 0.3, (0, 0, 0), m_gold); pt.parent = pivot
         gem = smooth(sphere("gem", (0, -rad, 0.02), 0.09, (1, 0.6, 1.2), material("gem", hexc("#5CC8FF"), rough=0.1, coat=1.0, sss=0.0)), 1)
         gem.parent = pivot
+    if accessory: add_accessory(accessory, species)
 
 
 def light(name, kind, loc, energy, size=3.0, color=(1, 1, 1), target=(0, 0, 1.6)):
@@ -227,17 +268,29 @@ def setup_lights_camera(scene):
     scene.camera = cam
 
 
-def render(species, color_hex, stage, face, out):
+def render(species, color_hex, stage, face, out, accessory=None):
     MATS.clear()
     scene = setup_scene(A.samples, A.size)
-    build_pet(species, color_hex, stage, face)
+    build_pet(species, color_hex, stage, face, accessory)
     setup_lights_camera(scene)
     scene.render.filepath = out
     bpy.ops.render.render(write_still=True)
     print("rendered", out, flush=True)
 
 
-if A.all:
+if A.residents:
+    residents = json.load(open(CONTENT, encoding="utf-8"))["town"]["residents"]
+    # everything is checked before the first frame: a new resident is a row in RESIDENT_COLORS, there is no fallback
+    for r in residents:
+        if r["id"] not in RESIDENT_COLORS: sys.exit(f"resident {r['id']!r} has no colour in RESIDENT_COLORS (pet.py)")
+        if r["look"].get("accessory") not in (None, *ACCESSORIES): sys.exit(f"resident {r['id']!r}: unknown accessory {r['look']['accessory']!r}")
+    if A.only_resident and A.only_resident not in [r["id"] for r in residents]:
+        sys.exit(f"unknown resident {A.only_resident!r}: not in town.residents of {CONTENT}")
+    os.makedirs(A.residents, exist_ok=True)
+    for r in residents:
+        if A.only_resident in (None, r["id"]):
+            render(r["look"]["species"], RESIDENT_COLORS[r["id"]], 0, "happy", os.path.join(A.residents, f"res_{r['id']}.png"), r["look"].get("accessory"))
+elif A.all:
     os.makedirs(A.all, exist_ok=True)
     for sp in [A.only_species] if A.only_species else SPECIES:
         for cid, chex in COLORS.items():
@@ -246,4 +299,4 @@ if A.all:
                     out = os.path.join(A.all, f"pet_{sp}_{cid}_{st}_{f}.png")
                     if not os.path.exists(out): render(sp, chex, st, f, out)
 else:
-    render(A.species, A.color, A.stage, A.face, A.out or os.path.abspath("pet.png"))
+    render(A.species, A.color, A.stage, A.face, A.out or os.path.abspath("pet.png"), A.accessory)
