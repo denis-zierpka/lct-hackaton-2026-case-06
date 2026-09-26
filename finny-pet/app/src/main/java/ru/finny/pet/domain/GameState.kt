@@ -60,6 +60,8 @@ data class GameState(
     val factMandatory: Int get() = purchases.filter { it.category == Category.MANDATORY }.sumOf { it.price }
     val factOptional: Int get() = purchases.filter { it.category == Category.OPTIONAL }.sumOf { it.price }
     val factSavings: Int get() = depositedThisPeriod - withdrawnThisPeriod
+    /** «Запас» (до плана — «Не разложено»): кошелёк минус банки; не сериализуется (TOWN-S1a §0). */
+    val reserve: Int get() = balance - jarNeed - jarWant
 }
 
 @Serializable

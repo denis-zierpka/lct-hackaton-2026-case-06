@@ -12,7 +12,12 @@ data class TownContent(
     val homeItems: List<HomeItem>, val goals: List<TownGoal>, val jobs: List<Job>,
     val residents: List<Resident>, val events: List<EventDef>, val stickers: List<StickerDef>,
     val quiz: List<QuizQuestion>, val parentBonusReasons: List<String>,
+    val spots: List<Spot>,
 )
+
+/** Место для вещи в доме и его тип: floor, wall, table (§5.3). */
+@Serializable
+data class Spot(val id: String, val slot: String)
 
 /** Числа «Городка» (§5.9): без умолчаний, чтобы число жило только в content.json. */
 @Serializable
@@ -44,7 +49,7 @@ data class ShopOffer(val item: String, val price: Int)
 
 /** Лавка на месте, что она продаёт (§5.4). */
 @Serializable
-data class Shop(val id: String, val place: String, val title: String, val sells: List<ShopOffer>)
+data class Shop(val id: String, val place: String, val title: String, val at: String, val sells: List<ShopOffer>)
 
 /** Стартовая вещь дома: декор на своём месте или вещь, которая ломается и чинится (§16.1, С2). */
 @Serializable
