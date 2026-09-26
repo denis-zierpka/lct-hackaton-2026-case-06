@@ -177,7 +177,7 @@ class GameStateCompatTest {
             jarWant = 25,
             envelope = listOf(LedgerEntry("Сдача", 5)),
             owned = listOf("fun_robot"),
-            placed = mapOf("fun_robot" to "shelf"),
+            placed = mapOf("spot_5" to "fun_robot"),
             broken = listOf("home_lamp"),
             houseColor = "green",
             shiftsThisPeriod = 2,

@@ -98,7 +98,7 @@ class MigrationTest {
         }
         val s = migration.migrate(withBall)
         assertEquals("сундук", listOf("fun_ball"), s.owned)
-        assertEquals("мячик не встал на первое свободное место пола", "spot_5", s.placed["fun_ball"])
+        assertEquals("мячик не встал на первое свободное место пола", "fun_ball", s.placed["spot_5"])
         assertEquals("«Нужное»", 5, s.jarNeed)
         assertEquals("«Хочу» — план минус потраченное", 5, s.jarWant)
         assertEquals("сумма журнала не равна балансу", s.balance, s.ledger.sumOf { it.amount })

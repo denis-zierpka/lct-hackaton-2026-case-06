@@ -275,6 +275,8 @@ fun Town.place(s: GameState, spotId: String, itemId: String?): TownResult
 fun Town.makeGoal(s: GameState, itemId: String): TownResult
 fun Town.achieveGoal(s: GameState): TownResult
 fun Town.visit(s: GameState, placeId: String): TownOutcome
+- s.placed — «место → вещь»: ключ — id места (spot_N), значение — id вещи; стартовые вещи в placed не
+  пишутся (их места читаются из homeItems[].spot).
 - Места — town.spots по порядку; место занято стартовой вещью, если у homeItem spot == его id
   (стартовые вещи стоят на своих местах всегда). Свободное место для вещи — первое по порядку с
   slot == item.slot, не занятое стартовой вещью и не ключ в s.placed. Нет свободного — вещь только

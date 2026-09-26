@@ -450,7 +450,7 @@ class WalletTest {
         assertNull("мечта осталась выбранной", s.goal)
         assertEquals("мечта в списке достигнутых", 1, s.achievedGoals.size)
         assertTrue("палатки нет в сундуке", "fun_tent" in s.owned)
-        assertEquals("палатка не встала на первое свободное место пола", "spot_5", s.placed["fun_tent"])
+        assertEquals("палатка не встала на первое свободное место пола", "fun_tent", s.placed["spot_5"])
         assertEquals("строка", "Мечта сбылась: Домик-палатка!", r.s1aOutcome().line)
         val diary = s.diary.last()
         assertEquals("строка дневника", "Мечта сбылась: домик-палатка", diary.text)

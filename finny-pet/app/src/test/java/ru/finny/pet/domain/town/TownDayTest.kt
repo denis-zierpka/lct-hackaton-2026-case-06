@@ -444,12 +444,12 @@ class TownDayTest {
         // цветок и кресло стоят на spot_1 и spot_4 всегда, свободного пола остаётся два места
         var s = S1aStand.planned(0, 100, 0)
         s = town.buyAt(s, "fun_ball", "shop_foma", Source.WANT).s1aState()
-        assertEquals("мячик на полу", "spot_5", s.placed["fun_ball"])
+        assertEquals("мячик на полу", "fun_ball", s.placed["spot_5"])
         s = town.buyAt(s, "fun_rug", "shop_foma", Source.WANT).s1aState()
-        assertEquals("коврик на следующем месте пола", "spot_6", s.placed["fun_rug"])
+        assertEquals("коврик на следующем месте пола", "fun_rug", s.placed["spot_6"])
         s = town.buyAt(s, "fun_robot", "shop_foma", Source.WANT).s1aState()
         assertTrue("робот не в сундуке", "fun_robot" in s.owned)
-        assertNull("свободных мест пола не осталось, а робот встал на место", s.placed["fun_robot"])
+        assertFalse("свободных мест пола не осталось, а робот встал на место", "fun_robot" in s.placed.values)
         assertEquals("занятых мест", 2, s.placed.size)
     }
 
@@ -457,12 +457,12 @@ class TownDayTest {
     fun `вещь стола и вещь стены встают на места своего типа`() {
         var s = S1aStand.planned(0, 100, 0)
         s = town.buyAt(s, "fun_book", "shop_foma", Source.WANT).s1aState()
-        assertEquals("книжка на столе", "spot_3", s.placed["fun_book"])
+        assertEquals("книжка на столе", "fun_book", s.placed["spot_3"])
         s = town.buyAt(s, "fun_kite", "shop_foma", Source.WANT).s1aState()
-        assertEquals("змей на стене", "spot_2", s.placed["fun_kite"])
+        assertEquals("змей на стене", "fun_kite", s.placed["spot_2"])
         s = town.buyAt(s, "fun_spinner", "shop_foma", Source.WANT).s1aState()
         assertTrue("вертушка не в сундуке", "fun_spinner" in s.owned)
-        assertNull("стол один, вертушке места нет", s.placed["fun_spinner"])
+        assertFalse("стол один, вертушке места нет", "fun_spinner" in s.placed.values)
     }
 
     @Test
@@ -472,13 +472,14 @@ class TownDayTest {
         s = town.buyAt(s, "fun_rug", "shop_foma", Source.WANT).s1aState()
 
         val moved = town.place(s, "spot_6", "fun_ball").s1aState()
-        assertEquals("мячик не переехал", "spot_6", moved.placed["fun_ball"])
-        assertNull("коврик остался на месте", moved.placed["fun_rug"])
+        assertEquals("мячик не переехал", "fun_ball", moved.placed["spot_6"])
+        assertNull("прежнее место мячика не освободилось", moved.placed["spot_5"])
+        assertFalse("коврик остался на месте", "fun_rug" in moved.placed.values)
         assertTrue("коврик пропал из сундука", "fun_rug" in moved.owned)
         assertEquals("строка", "", town.place(s, "spot_6", "fun_ball").s1aOutcome().line)
 
         val freed = town.place(moved, "spot_6", null).s1aState()
-        assertNull("место не освободилось", freed.placed["fun_ball"])
+        assertNull("место не освободилось", freed.placed["spot_6"])
         assertTrue("мячик пропал из сундука", "fun_ball" in freed.owned)
     }
 
@@ -490,7 +491,7 @@ class TownDayTest {
         assertEquals("занято креслом", "Здесь стоит кресло", town.place(s, "spot_4", "fun_ball").s1aRefusal())
         assertEquals("вещи нет в сундуке", "Этой вещи нет в сундуке", town.place(s, "spot_2", "fun_kite").s1aRefusal())
         assertEquals("мячик не вешают на стену", "Эта вещь сюда не встанет", town.place(s, "spot_2", "fun_ball").s1aRefusal())
-        assertEquals("места не поменялись", mapOf("fun_ball" to "spot_5"), s.placed)
+        assertEquals("места не поменялись", mapOf("spot_5" to "fun_ball"), s.placed)
     }
 
     @Test
