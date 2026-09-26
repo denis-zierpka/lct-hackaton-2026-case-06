@@ -88,7 +88,9 @@ EOF
 ## Задача, затрагивающая контент (`content.json`)
 
 ```
-1. ./gradlew testClassicDebugUnitTest                        -> exit 0 (ContentTest читает реальный файл)
+1. ./gradlew testClassicDebugUnitTest                        -> exit 0 (ContentTest и ContentValidationTest
+   читают реальный файл; он объявлен входом задачи тестов — правка одного контента их перезапускает,
+   WORKFLOW правило №25; в логе не должно быть `testClassicDebugUnitTest UP-TO-DATE`)
 2. python3 -c "import json;json.load(open('app/src/main/assets/content/content.json'))" -> exit 0
 3. git diff --name-only <BASE> -- app/src/main/java/         -> пусто (контент без правки кода, ТЗ 2.5.14)
 ```

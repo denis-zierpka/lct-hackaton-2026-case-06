@@ -73,6 +73,12 @@ android {
     }
 }
 
+// JVM tests read content.json straight from src/main/assets (TestContent): declare it an input,
+// otherwise a content-only change leaves the test task UP-TO-DATE with stale results (WORKFLOW rule 25).
+tasks.withType<Test>().configureEach {
+    inputs.dir("src/main/assets/content").withPathSensitivity(PathSensitivity.RELATIVE).withPropertyName("content")
+}
+
 dependencies {
     val composeBom = platform("androidx.compose:compose-bom:2026.06.01")
     implementation(composeBom)
