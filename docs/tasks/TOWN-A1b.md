@@ -52,19 +52,46 @@ room.py/uiprops.py/props.py импортируются, to_webp.py, tools/sheets
    своя часть «забор + калитка», замок НЕ запекается (оверлей ui_lock в UI). В задаче рендерится market.
 3. pet.py: `--accessory apron|cap|glasses` (без флага — кадр как сейчас) и `--residents DIR
    [--only-resident ID] [--size N] [--samples N]`: читает town.residents из content.json (путь от
-   __file__), для каждого — вид, цвет, аксессуар, stage 0, лицо happy → DIR/res_<id>.png. Цвет жителя —
-   ПО РЕШЕНИЮ ВЛАДЕЛЬЦА № 33 (вопрос ниже; до ответа — палитра питомца). Аксессуары — примитивами в
-   стиле pet.py: фартук на пузе (pet.py:135), кепка (у зайки со сдвигом, как корона, pet.py:194–195;
-   у кота — между ушами, pet.py:160), очки на координатах глаз (pet.py:140). Камера и свет не меняются
-   (pet.py:215–227 без правок).
+   __file__), для каждого — вид, аксессуар, stage 0, лицо happy, цвет тела из RESIDENT_COLORS[id] →
+   DIR/res_<id>.png. Цвет — по решению владельца № 33 (а): своя палитра жителей в pet.py, литерал на
+   уровне модуля рядом с COLORS, ровно эти значения (оттенок в семье look.color; ΔE76 ≥ 20 до каждого
+   из трёх цветов питомца и между жителями одного вида — проверено `python tools/art_check.py palette`):
+       RESIDENT_COLORS = {"marta": "#EE8266", "foma": "#5A7FC4", "borya": "#B7C46A", "osya": "#9098AE",
+                          "tosha": "#B0733C", "stepan": "#3A86A0", "kesha": "#7FCBB0", "liza": "#F7C996",
+                          "asya": "#B7AEEA"}
+   id из content.json, которого нет в RESIDENT_COLORS (как и неизвестный --only-resident), → exit ≠ 0 с
+   этим id в тексте, ни одного кадра (запасного цвета нет: новый житель = строка в таблице + рендер).
+   look.color в контенте остаётся семьёй цвета для запасного PetSprites в UI. Аксессуары — примитивами в
+   стиле pet.py, одни цвета для всех жителей: фартук #FFF3D6 (кант/карман — #FF0053) на пузе
+   (pet.py:135), кепка #520978 с козырьком #FF0053 (у зайки со сдвигом, как корона, pet.py:194–195;
+   у кота — между ушами, pet.py:160), очки — оправа #2B2B2B на координатах глаз (pet.py:140), толщина
+   оправы в кадре 512 ≥ 9 px (≥ 2 px при 120 px = 40 dp). Камера и свет не меняются (pet.py:215–227 без
+   правок); кадр без --accessory и без --residents — прежний (п. 6).
 Ассеты в app/ в этой задаче НЕ кладутся (UI — A1c и дальше).
 
-## ВОПРОС ВЛАДЕЛЬЦУ (№ 33, до полного рендера жителей в A1f)
-Цвета жителей в content.json — палитра питомца (orange, blue, green): Тоша (щенок, рыжий, без
-аксессуара) — точная копия рыжего щенка ребёнка; Фома и Ася (коты, голубые) различаются только кепкой
-и очками (очки при 40 dp ≈ 1 px оправы). Варианты: а) своя палитра жителей в pet.py (look.color →
-свои оттенки, id в контенте не меняются) — рекомендую; б) правка content.json (аксессуар Тоше, другой
-цвет Асе) — сначала оракул test-author. Лист A1b показывает Марту рядом с pet_bunny_orange_0_happy.
+## РЕШЕНИЕ ВЛАДЕЛЬЦА № 33 (2026-09-26): а — своя палитра жителей в pet.py
+Было: жители в content.json на палитре питомца — Тоша (рыжий щенок без аксессуара) копировал щенка
+ребёнка, Фома и Ася (голубые коты) различались только кепкой и очками. Теперь — RESIDENT_COLORS
+(CONTRACT п. 3), content.json не меняется, test-author не нужен. Таблицу подобрал оркестратор
+(ΔE76 до питомца 20,6–24,9, между жителями одного вида ≥ 24,7); вид таблицы одобряет владелец на
+воротах по листу п. 5 г.
+
+## ГРУППЫ КОДЕРА (по очереди, после каждой — проверка оркестратора и коммит «TOWN-A1b: группа k»)
+  1. lib.py (оболочка интерьера: пол, стены, плинтус) + room.py на ней — п. 6 (комната) и импорт из A1a п. 3
+  2. lib.py (навес, табличка с текстом) + place.py — п. 1, 4, 5 а, б, д
+  3. facade.py (+ lib.py, если нужна общая часть) — п. 2, 5 в, д
+  4. pet.py — п. 3, 5 г, 6 (питомцы)
+Финальная приёмка — вся задача от BASE со скоупом всех групп.
+
+## ЯВНО НЕ ОПРЕДЕЛЕНО (решает кодер, результат судят листы и ворота)
+Детали композиции мест в пределах зон CONTRACT п. 1: число и форма лотков и полок, мелкий декор,
+оттенки стен «У Фомы» и пекарни, облака и берег у рынка, форма навеса (полосатый — по желанию).
+Слово на табличке рынка — «РЫНОК» или без текста; у фасада — без текста. Любая развилка вне этого
+(например, place.py не укладывается в зоны без нового параметра Place) — STATUS: BLOCKED с вопросом.
+
+## БЮДЖЕТ
+дифф: ≤ 900 строк (place.py + facade.py — новые, ≈ 550; lib.py ≈ 120; room.py ≈ ±60; pet.py ≈ 150)
+новые файлы: 2 (place.py, facade.py); зависимости: 0
 
 ## SCOPE (allow)
 finny-pet/tools/art/lib.py (новые общие части; reset_scene не менять), finny-pet/tools/art/room.py
@@ -75,7 +102,9 @@ finny-pet/tools/art/facade.py (новый), finny-pet/tools/art/pet.py
 app/, content.json, docs/, props.py (декор — импортом билдеров), срез 2–3, 3D-питомец. Рендеры кодера —
 только вне репозитория (как в A1a).
 
-## ACCEPTANCE (оркестратор; B, T, TW, RW — как в TOWN-A1a; у каждого Blender --python-exit-code 1)
+## ACCEPTANCE (оркестратор; B, T, TW, RW — как в TOWN-A1a; у каждого Blender --python-exit-code 1;
+## зонды — tools/art_check.py (оркестратора, самопроверен: мутант 0,001 по месту и 1/255 по цвету →
+## DUMP DIFF, тёмное пятно 120 × 30 px под текстом → CONTRAST FAIL); кодеру — для самопроверки)
   1. place.py -- --place market --out $TW/bg_market_port.png -> PNG 1080×1920 mode RGB; «cycles device: HIP»;
      to_webp --rgb --dst $TW/w -> getsize ≤ 61 440; place.py -- --place foma --preview --out $TW/bg_foma_prev.png
   2. facade.py -- --place market --out $TW/fac_market.png -> 384×384 RGBA; четыре угла alpha 0; альфа-bbox
@@ -83,9 +112,12 @@ app/, content.json, docs/, props.py (декор — импортом билде�
   3. pet.py -- --residents $TW/res --only-resident marta -> res_marta.png 512×512; альфа-bbox ±3 px от
      pet_bunny_orange_0_happy (162,36,350,441) и ≥ 2 px от краёв; черновик всех: --residents $TW/res9 --size 128
      --samples 8 -> 9 файлов res_<id> ровно по id town.residents (сверка скриптом), у каждого bbox ≥ 2 px от
-     краёв; на лист — osya (зайка+кепка), foma (кот+кепка), asya (очки), tosha (без аксессуара)
-  4. контраст: на композите п. 5 под прямоугольниками текста HUD-2 и заголовка средняя яркость фона даёт с
-     G.ink ≥ 4,5 : 1 (скрипт PIL, формула WCAG); полоса 0–5 % (статус-бар) — светлая
+     краёв (`art_check.py bbox`); на лист — osya (зайка+кепка), foma (кот+кепка), asya (очки), tosha (без
+     аксессуара); `python tools/art_check.py palette` -> PALETTE OK; --only-resident nobody -> exit ≠ 0, файла нет
+  4. контраст: `python tools/art_check.py bg $TW/bg_market_port.png $T/comp` -> CONTRAST OK: под
+     прямоугольниками текста HUD-2 и заголовка и в полосе 0–5 % (статус-бар) средняя относительная яркость
+     фона даёт с G.ink ≥ 4,5 : 1, 10-й перцентиль ≥ 3 : 1 (формула WCAG), на 360 × 640 и в пересчёте на S23
+     (фон ×1,219, срез 118 px с боков); композиты п. 5 а — $T/comp/comp_*.png
   5. листы finny-pet/screenshots/town/a1b_style_*.jpg (tools/sheets.py; квадраты не растянуты):
      а) композиты «как увидит ребёнок»: маска |снимок − room_port_day.webp| < 12 переносит UI с
         emu_demo05a_market.png (до плана), emu_demo06b_order.png (после плана), emu_demo06c_order.png
@@ -93,11 +125,14 @@ app/, content.json, docs/, props.py (декор — импортом билде�
      б) фон рынка целиком и черновик «У Фомы»; рядом room_port_day — единство стиля;
      в) фасад в макете карточки 1:1 (360 px, фасад, Марта 192 px, подпись) рядом с нынешней карточкой;
      г) Марта при 120, 192, 216 px (40/64/72 dp) на G.sky #6FB1E0, на белом и на Panel, рядом
-        pet_bunny_orange_0_happy; osya, foma, asya, tosha из черновика;
+        pet_bunny_orange_0_happy; osya, foma, asya, tosha из черновика; все 9 жителей черновика рядом
+        с питомцем того же вида и цвета семьи (решение № 33 — видно, что житель ≠ питомец);
      д) вырезка вывески (фон и фасад) 1:1 и ×2 — кириллица читается
-  6. регрессия без шума рендера: дамп сцены (имя, location, dimensions, материалы всех объектов, по
-     имени) для room.py --only room_port_day и для pet.py (bunny, cat, puppy × stage 0 и 2, без
-     --accessory) в BASE-версии скриптов (git show BASE:… в $T/base) и в новой — diff пуст
+  6. регрессия без шума рендера: дамп сцены (по имени объекта: тип, место, поворот, масштаб, dimensions,
+     родитель, материалы с параметрами Principled, свет, камера; мир и вид) для room.py --only
+     room_port_day и для pet.py (bunny, cat, puppy × stage 0 и 2, без --accessory) в BASE-версии скриптов
+     (git show BASE:… в $T/base) и в новой: `art_check.py regress $T/base $T/d0`, `regress
+     finny-pet/tools/art $T/d1`, `art_check.py diff $T/d0 $T/d1` -> DUMP DIFF EMPTY
   7. git diff --name-only BASE и git status --porcelain -uall -> только allow (place.py, facade.py как ??);
      git status --porcelain -uall -- finny-pet/app -> пусто
   8. ревьювер: PASS
