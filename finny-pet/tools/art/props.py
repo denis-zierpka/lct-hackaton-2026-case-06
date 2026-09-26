@@ -2,6 +2,7 @@
 
 All:  Blender -b -P tools/art/props.py -- --all /abs/outdir [--samples 96]
 One:  Blender -b -P tools/art/props.py -- --only tile_apple [--out /abs/file.png]
+Many: Blender -b -P tools/art/props.py -- --only a,b --out DIR
 
 Every builder puts its object at the origin, standing on z = 0, front facing -Y, and returns nothing.
 The camera is fitted automatically to the bounding box of what was built (see `fit_camera`), so a
@@ -394,6 +395,11 @@ if __name__ == "__main__":
         os.makedirs(A.all, exist_ok=True)
         for n in PROPS: render_prop(n, os.path.join(A.all, n + ".png"), A.samples)
     elif A.only:
-        for n in A.only.split(","): render_prop(n, A.out or os.path.abspath(n + ".png"), A.samples)
+        names = A.only.split(",")
+        if A.out and (os.path.isdir(A.out) or len(names) > 1):
+            os.makedirs(A.out, exist_ok=True)
+            for n in names: render_prop(n, os.path.join(A.out, n + ".png"), A.samples)
+        else:
+            for n in names: render_prop(n, A.out or os.path.abspath(n + ".png"), A.samples)
     else:
         ap.error("use --all DIR or --only NAME")

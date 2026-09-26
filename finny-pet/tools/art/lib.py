@@ -27,18 +27,24 @@ def mix(c1, c2, t):
 
 
 def reset_scene(samples=96, size=512, width=None, height=None):
-    """Fresh scene: Cycles on Metal GPU (CPU fallback), transparent background, PNG RGBA."""
+    """Fresh scene: Cycles on GPU if available (CPU fallback), transparent background, PNG RGBA."""
     MATS.clear()
     bpy.ops.wm.read_factory_settings(use_empty=True)
     scene = bpy.context.scene
     scene.render.engine = "CYCLES"
+    scene.cycles.device = "CPU"
     prefs = bpy.context.preferences.addons["cycles"].preferences
-    try:
-        prefs.compute_device_type = "METAL"
-        for d in prefs.devices: d.use = True
-        scene.cycles.device = "GPU"
-    except Exception:
-        scene.cycles.device = "CPU"
+    for kind in ("OPTIX", "CUDA", "HIP", "ONEAPI", "METAL"):  # first GPU backend with a device wins, else CPU
+        try:
+            prefs.compute_device_type = kind
+            gpus = [d for d in prefs.get_devices_for_type(kind) if d.type == kind]
+        except (TypeError, ValueError):  # backend not built for this OS
+            continue
+        if gpus:
+            for d in prefs.devices: d.use = d.type == kind
+            scene.cycles.device = "GPU"
+            break
+    print("cycles device:", prefs.compute_device_type if scene.cycles.device == "GPU" else "CPU", flush=True)
     scene.cycles.samples = samples
     scene.cycles.use_denoising = True
     scene.render.film_transparent = True

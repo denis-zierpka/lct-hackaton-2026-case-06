@@ -185,7 +185,7 @@ Compose перерисовывает экраны по state / screen / lines / 
 | `uiprops.py` | Иконки интерфейса: банка и крышки бюджета, копилка, кошелёк и др. (PNG) | там же: `ui_*` |
 | `sounds.py` | Синтез эффектов и музыки на stdlib Python, кодирование ffmpeg в OGG | `app/src/game/res/raw/*.ogg` |
 
-`lib.py` — общие хелперы Blender (материалы, свет, камера), `smoke.py` — проверка `lib.py`. `room.py`, `props.py`, `uiprops.py` выдают PNG; скрипта их конвертации в WebP в репозитории нет.
+`lib.py` — общие хелперы Blender (материалы, свет, камера, выбор GPU: OptiX, CUDA, HIP, oneAPI, Metal, иначе CPU), `smoke.py` — проверка `lib.py`. `room.py`, `props.py`, `uiprops.py` выдают PNG и импортируются другими скриптами (CLI — под `__main__`); `to_webp.py` переводит PNG в WebP (фоны `--rgb`, спрайты RGBA).
 
 ## Тесты
 

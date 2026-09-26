@@ -304,9 +304,13 @@ python tools/art/import_sprites.py C:/tmp/pets
 | `smoke.py` | `<blender> -b -P tools/art/smoke.py -- <dir>/smoke.png` | проверка общих хелперов `lib.py` |
 | `sounds.py` | `python tools/art/sounds.py` (Linux — `python3`) | 13 эффектов и музыкальная петля сразу в `app/src/game/res/raw/*.ogg`; нужен `ffmpeg` в `PATH` (Vorbis, если в сборке ffmpeg есть `libvorbis`, иначе Opus) |
 
-Для `room.py`, `props.py`, `uiprops.py` конвертера в WebP в репозитории нет: PNG переводят в WebP
-вручную и кладут в `app/src/game/res/drawable-nodpi/` под теми же именами. Эти три скрипта
-через `lib.py` включают GPU только на Metal (macOS), на Windows и Linux рендер идёт на CPU.
+PNG из `room.py`, `props.py`, `uiprops.py` переводит в WebP `tools/art/to_webp.py` (Pillow; quality 88,
+alpha 90, method 6, как у питомца): фоны — с `--rgb`, спрайты — RGBA, `--size N` или `WxH` — ресайз,
+`--dst` — каталог выхода (например `app/src/game/res/drawable-nodpi/`). GPU `lib.py` выбирает так же, как
+`pet.py` (OptiX, CUDA, HIP, oneAPI, Metal, иначе CPU): на этой машине — HIP, фон 1080 × 1920 при
+160 сэмплах ≈ 46 с. Вызовы Blender в проверках — с `--python-exit-code 1` (иначе исключение в скрипте
+даёт код 0). `props.py --only a,b --out DIR` пишет каждый кадр в DIR/<имя>.png. Листы для ревью —
+`python tools/sheets.py` (альфа на белом, пропорции сохраняются).
 
 3D-питомец с ручной анимацией — к финалу, план — [docs/ART_PIPELINE.md](../../docs/ART_PIPELINE.md).
 

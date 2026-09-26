@@ -10,12 +10,6 @@ returns (height, radius, view): view "3q" = three-quarter from front-left slight
 import sys, os, math, argparse
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__))); from lib import *
 
-argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
-ap = argparse.ArgumentParser()
-ap.add_argument("--all"); ap.add_argument("--only"); ap.add_argument("--out")
-ap.add_argument("--samples", type=int, default=160); ap.add_argument("--size", type=int, default=512)
-A = ap.parse_args(argv)
-
 PURPLE, MAGENTA, PINK, LAV, GOLD = "#520978", "#FF0053", "#FFD6E4", "#8A83D1", "#FFC94D"
 INK = hexc("#2B2B2B"); WHITE = (1, 1, 1, 1)
 
@@ -269,8 +263,8 @@ PROPS = {
 }
 
 
-def render_prop(name, out):
-    scene = reset_scene(A.samples, A.size)
+def render_prop(name, out, samples=160, size=512):
+    scene = reset_scene(samples, size)
     h, r, view = PROPS[name]()
     studio(scene, target=(0, 0, h * 0.5))  # no shadow catcher: UI props sit on panels
     if view == "top":
@@ -281,9 +275,15 @@ def render_prop(name, out):
     render(scene, out)
 
 
-if A.all:
-    os.makedirs(A.all, exist_ok=True)
-    for n in PROPS: render_prop(n, os.path.join(A.all, n + ".png"))
-else:
-    n = A.only or "ui_jar"
-    render_prop(n, A.out or os.path.abspath(n + ".png"))
+if __name__ == "__main__":
+    argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--all"); ap.add_argument("--only"); ap.add_argument("--out")
+    ap.add_argument("--samples", type=int, default=160); ap.add_argument("--size", type=int, default=512)
+    A = ap.parse_args(argv)
+    if A.all:
+        os.makedirs(A.all, exist_ok=True)
+        for n in PROPS: render_prop(n, os.path.join(A.all, n + ".png"), A.samples, A.size)
+    else:
+        n = A.only or "ui_jar"
+        render_prop(n, A.out or os.path.abspath(n + ".png"), A.samples, A.size)

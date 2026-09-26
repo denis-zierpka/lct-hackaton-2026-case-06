@@ -17,12 +17,6 @@ VARIANTS = {  # name: (width, height, evening)
 }
 WALL_Y = 3.0
 
-argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
-ap = argparse.ArgumentParser()
-ap.add_argument("--all"); ap.add_argument("--only"); ap.add_argument("--out")
-ap.add_argument("--samples", type=int, default=160); ap.add_argument("--preview", action="store_true")
-A = ap.parse_args(argv)
-
 
 def build_room(evening, portrait):
     k = 0.68 if portrait else 1.0  # horizontal squeeze for the vertical framing
@@ -171,9 +165,15 @@ def render_variant(name, out, samples, preview=False):
     render(scene, out)
 
 
-if A.all:
-    os.makedirs(A.all, exist_ok=True)
-    for n in VARIANTS: render_variant(n, os.path.join(A.all, n + ".png"), A.samples, A.preview)
-else:
-    n = A.only or "room_land_day"
-    render_variant(n, A.out or os.path.abspath(n + ".png"), A.samples, A.preview)
+if __name__ == "__main__":
+    argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--all"); ap.add_argument("--only"); ap.add_argument("--out")
+    ap.add_argument("--samples", type=int, default=160); ap.add_argument("--preview", action="store_true")
+    A = ap.parse_args(argv)
+    if A.all:
+        os.makedirs(A.all, exist_ok=True)
+        for n in VARIANTS: render_variant(n, os.path.join(A.all, n + ".png"), A.samples, A.preview)
+    else:
+        n = A.only or "room_land_day"
+        render_variant(n, A.out or os.path.abspath(n + ".png"), A.samples, A.preview)
