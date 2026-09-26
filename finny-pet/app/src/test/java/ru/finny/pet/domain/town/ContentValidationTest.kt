@@ -671,4 +671,39 @@ class ContentValidationTest {
     fun `у засчитываемого события есть неверный путь для демо`() = countable.forEach {
         assertTrue("событие «${it.id}»: пустой demo.wrongPath", it.demo.wrongPath.isNotBlank())
     }
+
+    // ---------- 23. Места для вещей и «где» лавок (TOWN-S1a §0, ORACLE) ----------
+
+    @Test
+    fun `мест для вещей шесть и их id уникальны`() {
+        assertEquals("town.spots ${town.spots.map { it.id }}", 6, town.spots.size)
+        dup("town.spots", town.spots.map { it.id })
+    }
+
+    @Test
+    fun `у каждой вещи которая остаётся есть место такого типа`() {
+        val slots = town.spots.map { it.slot }.toSet()
+        val keep = allItems.filter { it.keep }
+        assertTrue("нет ни одного товара keep", keep.isNotEmpty())
+        keep.forEach { item ->
+            assertNotNull("товар «${item.id}»: keep, но slot не задан", item.slot)
+            assertTrue(
+                "товар «${item.id}»: slot «${item.slot}», а места есть только типов $slots",
+                slots.any { it == item.slot },
+            )
+        }
+    }
+
+    @Test
+    fun `стартовая вещь на месте ссылается на существующее место`() {
+        val spotIds = town.spots.map { it.id }.toSet()
+        val placed = town.homeItems.filter { it.spot != null }
+        assertTrue("ни одна стартовая вещь не стоит на месте", placed.isNotEmpty())
+        placed.forEach { ref("вещь дома «${it.id}».spot", it.spot, spotIds) }
+    }
+
+    @Test
+    fun `у каждой лавки сказано где она находится`() = town.shops.forEach {
+        assertTrue("лавка «${it.id}»: пустое поле at", it.at.isNotBlank())
+    }
 }

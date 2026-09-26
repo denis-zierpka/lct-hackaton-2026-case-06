@@ -23,7 +23,7 @@ BRANCH: feat/town
 jw = jarWant, r = reserve, M/O/S = plan.mandatory/optional/savings, fM/fO/fs =
 factMandatory/factOptional/factSavings, p = цена товара в этой лавке, T = item.title,
 t = T с первой буквой в нижнем регистре, step = content.rules.planStep,
-days = town.rules.daysPerWeek. Числа в строках — без слова «монет». Строка вида «X: a → b»
+days = town.rules.daysPerWeek. Числа в строках — без слова «монет»; {pet} в любой строке → pet.name. Строка вида «X: a → b»
 в why и preview ОПУСКАЕТСЯ, если a == b.
 
 ### 0. Вне пакета (единственные правки)
@@ -85,6 +85,7 @@ class Prices(content: Content) {
 enum class PayKind { PAY, CHEAPER, WAIT, MAKE_GOAL }
 data class PayOption(val kind: PayKind, val label: String, val source: Source? = null,
     val itemId: String? = null, val preview: List<String> = emptyList(), val more: Boolean = false)
+// itemId заполнен только у CHEAPER (другой товар) и MAKE_GOAL (этот товар); у PAY и WAIT — null.
 data class Quote(val itemId: String, val shopId: String?, val price: Int, val line: String,
     val note: String = "", val options: List<PayOption> = emptyList())
 fun Town.quote(s: GameState, itemId: String, shopId: String?): Quote
@@ -136,18 +137,19 @@ TownOutcome.why — движение монет «было → стало», н�
   UNPLANNED + RESERVE [«Из запаса: {r} → {r'}», «Из «Хочу»: {jw} → {jw'}»];
   TRANSFER_WANT [«Из «Хочу»: {jw} → {jw'}», «Из «Нужного»: {jn} → 0»];
   TRANSFER_NEED [«Из «Нужного»: {jn} → {jn'}», «Из «Хочу»: {jw} → 0»];
-  SAVINGS [«Из копилки: {sv} → {sv'}»].
+  SAVINGS [«Из копилки: {sv} → {sv'}»]; UNPLANNED + WANT — как WANT.
 TownOutcome.effects и eventResults в S1a пусты (события — S1c).
 
 quote. Отказы 1–6 → Quote(line = строка отказа, options = []); price = 0, если товара нет в
-контенте или лавка его не продаёт, иначе p. Дальше по категории; WALLET = «Не хватает {p − b}:
+контенте или shopId != null и лавка его не продаёт, иначе p (при shopId == null — item.price). Дальше по категории; WALLET = «Не хватает {p − b}:
 в кошельке {b}, {t} {p}»; miss = p − (родная банка).
 - MANDATORY.
   jn ≥ p → line "", options [PAY NEED «Купить за {p}» preview [«Из «Нужного»: {jn} → {jn − p}»] + STAMP?].
   Иначе line = b < p ? WALLET : «В «Нужном» {jn}, {t} стоит {p}. Не хватает {miss}». Основные:
    CHEAPER?; PAY RESERVE? (выполним) label: y = max(0, miss − r); y == 0 → (jn > 0 ? «Добавить {miss}
    из запаса» : «Из запаса {p}»), y > 0 → «Запас {miss − y} + «Хочу» {y}»; preview [«{T} будет!»,
-   «Штамп «Нужное куплено» — да» (если после покупки за неделю есть и FOOD, и CARE), STAMP?];
+   «Штамп «Нужное куплено» — да» (если после покупки за неделю есть и FOOD, и CARE — даже если
+   были и до неё), STAMP?];
    PAY TRANSFER_WANT? «Взять {miss} из «Хочу»» preview [«В «Хочу» будет {jw − miss}», STAMP?].
    Под «Ещё» (more = true): PAY SAVINGS? «Из копилки {p}» preview SAVE(p) + STAMP?.
    Нет ни одного основного → первым WAIT (more = false), «Ещё» сохраняется.
@@ -265,7 +267,7 @@ fun Town.chooseTweak(s: GameState, tweak: Recovery.PlanTweak?): TownResult
   избыток (total + n − b) ≤ O; RESERVE — O ≥ n.
 - chooseTweak. Refused: pet; plan.confirmed «План уже готов»; невыполнимо — «В плане больше монет,
   чем в кошельке» (NEED, WANT, SAVINGS) или «В «Хочу» меньше {n}» (RESERVE). null → Done без
-  изменений. Иначе: NEED → M += n, SAVINGS → S += n (и если total > b — O −= избыток), WANT →
+  изменений. Иначе: NEED → M += n и SAVINGS → S += n (у обоих: если total > b — O −= избыток), WANT →
   O += n, RESERVE → O −= n. line "". Разрешена и ночью (итог недели идёт ночью).
 
 ### 6. Дом, мечта, места, посещение
@@ -287,7 +289,7 @@ fun Town.visit(s: GameState, placeId: String): TownOutcome
   basePrice)); line «Мечта: {t} — {basePrice}».
 - achieveGoal. Refused: pet; asleep; нет цели «Сначала выбери мечту»; sv < цены «До мечты ещё
   {цена − sv}». Done: Economy.achieveGoal; цель вида «item:{x}» → x в owned и на свободное место;
-  DiaryLine «Мечта сбылась: {title цели с маленькой буквы}»; line «Мечта сбылась: {title}!».
+  DiaryLine(s.period, s.day, «Мечта сбылась: {title цели с маленькой буквы}»); line «Мечта сбылась: {title}!».
   (Что открывают мечты town.goals — срез 2.)
 - visit (вход в место, §6.1). Неизвестное место → состояние без изменений. visited += placeId (без
   дублей). Если у места есть лавка: для каждого ShelfItem её полки запись seenPrices[itemId] =
