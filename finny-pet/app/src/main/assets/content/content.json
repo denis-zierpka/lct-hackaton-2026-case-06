@@ -808,6 +808,7 @@
         "id": "shop_market",
         "place": "market",
         "title": "Рынок у реки",
+        "at": "у реки",
         "sells": [
           {
             "item": "food_basic",
@@ -847,6 +848,7 @@
         "id": "shop_foma",
         "place": "foma",
         "title": "Лавка «У Фомы»",
+        "at": "у Фомы",
         "sells": [
           {
             "item": "food_basic",
@@ -926,6 +928,7 @@
         "id": "shop_workshop",
         "place": "workshop",
         "title": "Мастерская",
+        "at": "в мастерской",
         "sells": [
           {
             "item": "lamp_new",
@@ -1168,6 +1171,14 @@
         "emoji": "🛋️",
         "spot": "spot_4"
       }
+    ],
+    "spots": [
+      { "id": "spot_1", "slot": "floor" },
+      { "id": "spot_2", "slot": "wall" },
+      { "id": "spot_3", "slot": "table" },
+      { "id": "spot_4", "slot": "floor" },
+      { "id": "spot_5", "slot": "floor" },
+      { "id": "spot_6", "slot": "floor" }
     ],
     "goals": [
       {
