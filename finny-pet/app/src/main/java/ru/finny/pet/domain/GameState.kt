@@ -1,6 +1,10 @@
 package ru.finny.pet.domain
 
 import kotlinx.serialization.Serializable
+import ru.finny.pet.domain.town.DiaryLine
+import ru.finny.pet.domain.town.EventState
+import ru.finny.pet.domain.town.SeenPrice
+import ru.finny.pet.domain.town.Source
 
 /** The whole local game profile. Persisted as one JSON file. */
 @Serializable
@@ -28,6 +32,29 @@ data class GameState(
     val miniGameEarned: Int = 0,
     val quizResults: List<TaskResult> = emptyList(),
     val parentBonusesThisPeriod: Int = 0,
+    // town (TOWN-S0a §5)
+    val stateVersion: Int = 0,
+    val day: Int = 1,
+    val asleep: Boolean = false,
+    val seed: Long = 0,
+    val jarNeed: Int = 0,
+    val jarWant: Int = 0,
+    val envelope: List<LedgerEntry> = emptyList(),
+    val owned: List<String> = emptyList(),
+    val placed: Map<String, String> = emptyMap(),
+    val broken: List<String> = emptyList(),
+    val houseColor: String? = null,
+    val shiftsThisPeriod: Int = 0,
+    val jobShifts: Map<String, Int> = emptyMap(),
+    val records: Map<String, Int> = emptyMap(),
+    val events: List<EventState> = emptyList(),
+    val stickers: List<String> = emptyList(),
+    val visited: List<String> = emptyList(),
+    val seenPrices: Map<String, SeenPrice> = emptyMap(),
+    val notes: List<String> = emptyList(),
+    val planDraft: BudgetPlan? = null,
+    val freeFunDay: Int = 0,
+    val diary: List<DiaryLine> = emptyList(),
 ) {
     val hasProfile: Boolean get() = pet != null
     val factMandatory: Int get() = purchases.filter { it.category == Category.MANDATORY }.sumOf { it.price }
@@ -57,7 +84,15 @@ data class BudgetPlan(
 }
 
 @Serializable
-data class Purchase(val itemId: String, val title: String, val category: Category, val need: Need, val price: Int)
+data class Purchase(
+    val itemId: String,
+    val title: String,
+    val category: Category,
+    val need: Need,
+    val price: Int,
+    val shop: String? = null,
+    val source: Source? = null,
+)
 
 @Serializable
 data class Goal(val id: String, val title: String, val emoji: String, val price: Int)
@@ -88,6 +123,7 @@ data class PeriodSummary(
     /** Off-plan coins of the period: mini-game and adult bonus (2.8). */
     val miniGameEarned: Int = 0,
     val parentBonus: Int = 0,
+    val shiftEarned: Int = 0,
 )
 
 enum class Face { HAPPY, NEUTRAL, SAD }
