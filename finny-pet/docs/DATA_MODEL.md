@@ -4,20 +4,21 @@
 профиль — [`domain/GameState.kt`](../app/src/main/java/ru/finny/pet/domain/GameState.kt),
 контент — [`domain/Content.kt`](../app/src/main/java/ru/finny/pet/domain/Content.kt).
 Игровые изменения профиля делает [`domain/Economy.kt`](../app/src/main/java/ru/finny/pet/domain/Economy.kt):
-каждая функция возвращает новый `GameState` (формулы — [ECONOMY.md](ECONOMY.md)). Исключение —
+каждая функция возвращает новый `GameState` (формулы — [ECONOMY.md](ECONOMY.md)). В `game` денежные и временные действия идут
+через [`domain/town/Town.kt`](../app/src/main/java/ru/finny/pet/domain/town/Town.kt) поверх `Economy` (новый `GameState` — в `TownOutcome.state`, отказ — `TownResult.Refused`). Исключение —
 переключатели раздела для взрослого: `demo`, `animations`, `sounds`, `music` `GameViewModel`
 меняет напрямую (`state.copy`).
 
-Описан сдаваемый вариант `game` (`ru.finny.pet`, 1.3.0). Альтернативная сборка `classic`
+Описан сдаваемый вариант `game` (`ru.finny.pet`). Альтернативная сборка `classic`
 (`ru.finny.pet.classic`, в сдачу не входит) использует те же классы и тот же формат файла.
 Поля и классы концепции «Городок» (срез 1, движок `domain/town`) — в разделе
-[«Городок»](#городок-срез-1-движок) ниже; интерфейс `game` переходит на них в задаче TOWN-S1d.
+[«Городок»](#городок-срез-1-движок) ниже; на них с TOWN-S1d работает `game`, `classic` движок не вызывает.
 
 ## Профиль — `GameState`
 
 | Поле | Тип | По умолчанию | Назначение |
 |---|---|---|---|
-| `demo` | Boolean | `false` | Демо-режим: все задания открыты сразу, `unlockPeriod` не учитывается |
+| `demo` | Boolean | `false` | Демо-режим: `unlockPeriod` не учитывается — в `classic` все задания открыты сразу, в `game` товары лавок не ждут своей недели; в «Городке» ещё конец недели с любого дня и доска всех живых событий с «Начать», работы с `opensBy.week` открыты сразу, в пекарне `demoMoves` (5) ходов вместо 15 ([ECONOMY.md](ECONOMY.md), «Городок») |
 | `animations` | Boolean | `true` | Анимации; UI анимирует, только если они включены и здесь, и в системных настройках |
 | `pet` | `Pet?` | `null` | Питомец; `null` — профиль не создан |
 | `period` | Int | `1` | Номер игровой недели |
@@ -35,10 +36,10 @@
 | `ledger` | List<`LedgerEntry`> | `[]` | Журнал недели «откуда монеты» ⟲ — новая неделя начинается с записей «Остаток с прошлой недели» (если > 0) и «Карманные деньги на неделю» |
 | `sounds` | Boolean | `true` | Переключатель «Звуки» в разделе для взрослого: звуковые эффекты при действиях |
 | `music` | Boolean | `false` | Переключатель «Музыка» в разделе для взрослого: фоновая мелодия |
-| `bombs` | Int | `0` | Бомбочки для мини-игры «Монетки в ряд»: `+rules.quizBombReward` за верный ответ на вопрос питомца, минус использованные в завершённом раунде |
-| `miniGameEarned` | Int | `0` | Монеты из мини-игры за неделю, не больше `rules.miniGameCap` ⟲ |
-| `quizResults` | List<`TaskResult`> | `[]` | Ответы на вопросы питомца, `reward` всегда 0. Неверный ответ можно повторить, поэтому на вопрос бывает несколько записей |
-| `parentBonusesThisPeriod` | Int | `0` | Число бонусов от взрослого за неделю ⟲. Растёт в `Economy.parentBonus` — кнопки причин в разделе «Бонус ребёнку» для взрослого; не больше `rules.parentBonusPerPeriod` |
+| `bombs` | Int | `0` | Бомбочки для поля Match3: `+rules.quizBombReward` за верный ответ — в `game` на «Загадку Бори» (`Town.answerQuestion`), в 1.3.0 на вопрос питомца; минус использованные в завершённом раунде (в смене пекарни — сверх бомб уровня `jobLevelBombs`) |
+| `miniGameEarned` | Int | `0` | Монеты из мини-игры 1.3.0 за неделю, не больше `rules.miniGameCap` ⟲; интерфейс ветки мини-игру 1.3.0 не вызывает — смена пекарни платит в `envelope` |
+| `quizResults` | List<`TaskResult`> | `[]` | Ответы на вопросы питомца 1.3.0 (`Economy.answerQuiz`; интерфейс ветки их не пишет, ответы на «Загадку Бори» — в `riddles`), `reward` всегда 0. Неверный ответ можно повторить, поэтому на вопрос бывает несколько записей |
+| `parentBonusesThisPeriod` | Int | `0` | Число бонусов от взрослого за неделю ⟲. Растёт в `Town.parentBonus` — в `game` кнопки причин в разделе «Бонус ребёнку» для взрослого (`Economy.parentBonus` 1.3.0 интерфейс не вызывает); не больше `rules.parentBonusPerPeriod` |
 
 ⟲ — сбрасывается в `Economy.endPeriod` при завершении недели.
 
@@ -67,7 +68,7 @@
 
 ### Пример файла
 
-Профиль после первой недели (в файле — одна строка, здесь отформатировано, `messages` сокращены):
+Профиль 1.3.0 после первой недели — сохранение до «Городка», без его полей; `game` переносит такое при загрузке через `Migration.migrate` (в файле — одна строка, здесь отформатировано, `messages` сокращены):
 
 ```json
 {
@@ -107,7 +108,7 @@
 | Запись | Во временный `state.json.tmp`, затем переименование поверх `state.json`; если переименование не удалось — копирование tmp поверх и удаление tmp |
 | Ошибка записи | `save` возвращает `false`, игра показывает «Не удалось сохранить». Если не записался `state.json.tmp`, прежний файл цел. Если сорвалось копирование tmp поверх, прежний файл потерян: `copyTo(overwrite = true)` сначала удаляет `state.json`, и файла нет или он записан не полностью (при следующем запуске — `GameState()`, неполный файл уходит в `state.json.bad`) |
 
-**Версии схемы нет** — ни поля версии в файле, ни миграций. Совместимость старых
+**Версия схемы** — поле `stateVersion` (раздел «Городок»): `game` при загрузке прогоняет `Migration.migrate`, `classic` миграций не делает. В остальном совместимость старых
 сохранений держится на двух правилах:
 
 - новое поле добавляется только со значением по умолчанию — старый файл без него читается
@@ -123,8 +124,9 @@
 В classic такой питомец рисуется запасным спрайтом `PetSprites.id` — рыжий кот стадии 0 с довольной
 мордой (`pet_cat_orange_0_happy`); результаты удалённых заданий пропускаются (`Economy.completedTasks`).
 
-Не сохраняются: текущий экран, реплика питомца и поле мини-игры (`Match3State`) — они живут
-в памяти `GameViewModel`. Выход из раунда без завершения не тратит бомбочки и не даёт монет.
+Не сохраняются: стек экранов, строки LINE, реплика питомца, отчёт ночи и итога недели (`night`, `weekEnd`), метки «новое» на доске и поле раунда смены (`Match3State`) — они
+живут в памяти `GameViewModel`. «Назад» и ⌂ в раунде завершают смену (`Town.finishShift`); раунд,
+оборванный закрытием приложения, не тратит бомбочки и не даёт монет. Ночь (`asleep`) сохраняется: после перезапуска игра открывается на экране ночи (без строки дня), «Проснуться» ведёт в комнату; итог недели после перезапуска заново не показывается.
 
 ### Сброс и удаление (раздел для взрослого)
 
@@ -134,7 +136,7 @@
 | Удалить профиль и данные | `Economy.deleteProfile` | `animations`, `sounds`, `music`; `demo = false` |
 | Создать тестовый профиль | `GameViewModel.createTestProfile` → `Economy.newGame` | `animations`, `sounds`, `music`; `demo = true` |
 
-Остальные поля получают значения по умолчанию, и `state.json` перезаписывается.
+Остальные поля получают значения по умолчанию (в `game` затем новое `seed` и `Migration.migrate`), и `state.json` перезаписывается.
 
 ## Учебный контент — `Content`
 
@@ -172,10 +174,11 @@
 | `Task` | `id`: String; `theme`: `Theme`; `title`, `situation`: String; `type`: `TaskType`; `options`: List<`TaskOption`> = []; `answer`: Int? = null; `explanationCorrect`, `explanationWrong`: String = ""; `unlockPeriod`: Int = 1 | `CHOICE` — `options`, `NUMBER` — `answer` и два объяснения; открывается с недели `unlockPeriod` (в демо — сразу) |
 | `TaskOption` | `text`: String; `correct`: Boolean; `explanation`: String | |
 | `GlossaryEntry` | `term`, `definition`: String | Справочник |
-| `QuizQuestion` | `id`: String; `theme`: `Theme`; `question`: String; `options`: List<String>; `correct`: Int (индекс); `explanation`: String | Вопрос питомца в комнате, все поля обязательны |
-| `Chatter` | `idle`, `hungry`, `dirty`, `bored`, `proud`, `facts`: List<String> = [] | Реплики питомца в комнате: `hungry`/`dirty`/`bored` — при показателе ниже 40, иначе `idle`, `facts` и подсказка следующего шага; `{pet}` → имя. `proud` в коде не используется |
+| `QuizQuestion` | `id`: String; `theme`: `Theme`; `question`: String; `options`: List<String>; `correct`: Int (индекс); `explanation`: String | Вопрос питомца в комнате `game` 1.3.0 (`quiz`) и «Загадка Бори» (`town.quiz`); все поля обязательны |
+| `Chatter` | `idle`, `hungry`, `dirty`, `bored`, `proud`, `facts`: List<String> = [] | Реплики питомца в комнате `game` 1.3.0: `hungry`/`dirty`/`bored` — при показателе ниже 40, иначе `idle`, `facts` и подсказка следующего шага; `{pet}` → имя. В ветке `chatter` код не читает: у `game` реплики — `town.chatter` |
 
-`parentBonusReasons` — причины бонуса от взрослого; `Economy.parentBonus` принимает индекс
+`parentBonusReasons` — причины бонуса от взрослого 1.3.0 (в `game` — `town.parentBonusReasons`, их берёт `Town.parentBonus`
+и пишет причину в конверт). `Economy.parentBonus` принимает индекс
 причины и пишет её в журнал.
 
 ### `Rules` — числа экономики
@@ -199,7 +202,7 @@
 [`docs/tasks/TOWN-S0a.md`](../../docs/tasks/TOWN-S0a.md), [`TOWN-S1a.md`](../../docs/tasks/TOWN-S1a.md).
 Движок — классы `Town`, `Prices`, `Migration` в
 [`domain/town/`](../app/src/main/java/ru/finny/pet/domain/town/), формулы — [ECONOMY.md](ECONOMY.md),
-раздел «Городок». Интерфейс `game` пока работает на `Economy` 1.3.0 (переход — TOWN-S1d).
+раздел «Городок». С TOWN-S1d ([`TOWN-S1d.md`](../../docs/tasks/TOWN-S1d.md)) на движке работает `game`, `classic` его не вызывает.
 
 ### Поля `GameState` «Городка» (все с умолчаниями, старое сохранение читается)
 
@@ -235,7 +238,8 @@
 (`id`, `place`, `title`, `at` — «у реки», `sells` — товар и цена лавки), `items`, `homeItems`,
 `spots` (6 мест: `id`, `slot` — `floor`, `wall`, `table`), `goals`, `jobs`, `residents`, `events`,
 `stickers`, `quiz`, `parentBonusReasons`; `eventsOff` (по умолчанию пусто) — id событий, которые в этой
-сборке не приходят (сцены среза 2). Проверяет `ContentValidationTest`. `Content.item(id)`
+сборке не приходят (сцены среза 2); `chatter` (по умолчанию пусто) — реплики питомца по нажатию `needFood`, `needCare`,
+`sad`, `calm` (`Town.petLine`). Проверяет `ContentValidationTest`. `Content.item(id)`
 ищет товар и в `items`, и в `town.items`.
 
 ## Прогресс и стадии
@@ -244,4 +248,4 @@
 название — `rules.stageTitles[i]`, а если его нет — «Стадия N». За неделю `growth` растёт
 на `score` итога (0–3). По умолчанию `[0, 4, 9]` → «Малыш», «Подросток», «Взрослый».
 
-Актуально на версию 1.3.0 (2026-09-25)
+Актуально на ветку `feat/town`: код TOWN-S1d на 12a4394 (2026-09-26, ревью не проведено); отметки «1.3.0» — выпуск 1.3.0, `versionName` не менялся

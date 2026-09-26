@@ -7,7 +7,7 @@ Android-приложение без сервера. Один Gradle-модуль
 | `game` | `ru.finny.pet` | **сдаётся**: комната с питомцем, звуки, мини-игра |
 | `classic` | `ru.finny.pet.classic` | альтернативный вариант сборки (обычный интерфейс Material 3: [src/classic/](../app/src/classic/)), в сдачу не входит |
 
-Дальше описан только общий код и вариант `game`.
+Дальше описан только общий код и вариант `game` ветки `feat/town`: с TOWN-S1d `game` работает на движке «Городка» (`domain/town`), `classic` — на `Economy` по правилам 1.3.0. Экраны `game` выпуска 1.3.0 (план, магазин, задания) и `FeedbackOverlay` — на теге `v1.3.0`.
 
 ## Раскладка исходников
 
@@ -16,6 +16,7 @@ app/src/
 ├── main/                          общий код обоих вариантов
 │   ├── java/ru/finny/pet/
 │   │   ├── domain/                правила: Economy, Match3, Content, GameState — чистый Kotlin
+│   │   │   └── town/              «Городок»: Town, Prices, TownEvents, Migration, PetTalk — правила game
 │   │   ├── data/                  ContentRepository (assets) · StateStore (filesDir/state.json)
 │   │   └── PetSprites.kt          таблица спрайтов питомца (генерируется)
 │   ├── assets/content/content.json   учебный контент и числа правил (`Rules`)
@@ -41,7 +42,7 @@ app/src/
              ▼                   ▼                     ▼
    main/data                 main/domain           main/PetSprites.kt
    ContentRepository ──────▶ Economy, Match3,      (id спрайта → R.drawable)
-   StateStore        ──────▶ Content, GameState
+   StateStore        ──────▶ Content, GameState, town/
       ▲       ▲
       │       └──▶ filesDir/state.json (чтение и запись)
       └── assets/content/content.json (только чтение)
@@ -56,8 +57,9 @@ app/src/
 | Компонент | Файл | Ответственность |
 |---|---|---|
 | Правила экономики | [domain/Economy.kt](../app/src/main/java/ru/finny/pet/domain/Economy.kt) | Профиль, план, покупки, копилка и цели, задания, вопросы питомца, итог мини-игры, конец недели, рост и выражение питомца, склонение «монет» (`Economy.coins`). Действия — функции `(GameState, …) → Outcome`, кроме `newGame`, `resetProfile`, `deleteProfile`: они сразу возвращают новое `GameState`; запросы (`stageIndex`, `goalEta`, `availableTasks`, `canEndPeriod` …) ничего не меняют. Формулы — [ECONOMY.md](ECONOMY.md) |
-| Мини-игра | [domain/Match3.kt](../app/src/main/java/ru/finny/pet/domain/Match3.kt) | «Три в ряд» 7×6: обмен, бомба 3×3, каскады с множителем. Ход возвращает `Turn` — новое `Match3State` и список шагов анимации `Step` |
-| Модель контента | [domain/Content.kt](../app/src/main/java/ru/finny/pet/domain/Content.kt) | Схема `content.json`: `Rules` (числа экономики), виды и цвета питомца, товары, цели, задания, глоссарий, вопросы питомца, реплики |
+| Правила «Городка» | [domain/town/](../app/src/main/java/ru/finny/pet/domain/town/) | `Town` — все денежные и временные действия `game`: раскладка по банкам, касса с вариантами оплаты (`quote`, `buyAt`), перенос между банками, копилка и мечта, места для вещей, дни, сон, конец недели и «что поменяем», смены (`shiftQuote`, `finishShift`), «Загадка Бори», бонус взрослого в конверт. Результат — `TownResult`: `Done(TownOutcome)` с состоянием, строкой `line` и `why` или `Refused(line)`. `Prices` — цена в лавке, `TownEvents` — приход и исход событий, `Migration` — профиль 1.3.0 → «Городок», `PetTalk` — реплика питомца по тапу. Поверх `Economy`: зовёт его `buy` (с ценой лавки — параметр `price`, TOWN-S1a), `confirmPlan`, `deposit`, `withdraw`, `endPeriod`, `chooseGoal` (для «Сделать мечтой»), `achieveGoal`, `goalEta`. Формулы — [ECONOMY.md](ECONOMY.md), раздел «Городок» |
+| Мини-игра | [domain/Match3.kt](../app/src/main/java/ru/finny/pet/domain/Match3.kt) | «Три в ряд» `w × h` (по умолчанию 7×6; смена в пекарне `game` — 6×6 из `town.jobs[].board`): обмен, бомба 3×3, каскады с множителем. Ход возвращает `Turn` — новое `Match3State` и список шагов анимации `Step` |
+| Модель контента | [domain/Content.kt](../app/src/main/java/ru/finny/pet/domain/Content.kt) | Схема `content.json`: `Rules` (числа экономики), виды и цвета питомца, товары, цели, задания, глоссарий, вопросы питомца, реплики; ключ `town` — `TownContent` (места, лавки, товары, мечты, работы, жители, события, реплики `chatter`, загадки, свои `rules`) |
 | Модель профиля | [domain/GameState.kt](../app/src/main/java/ru/finny/pet/domain/GameState.kt) | `GameState` и вложенные `Pet`, `BudgetPlan`, `Purchase`, `Goal`, `LedgerEntry`, `TaskResult`, `PeriodSummary` — неизменяемые `@Serializable data class`. `Outcome` (`Ok`/`Error`) — `sealed interface` результата действия, в `state.json` не пишется. Поля — [DATA_MODEL.md](DATA_MODEL.md) |
 | Загрузка контента | [data/ContentRepository.kt](../app/src/main/java/ru/finny/pet/data/ContentRepository.kt) | `load(context)` читает `assets/content/content.json`; `parse(text)` не трогает Android — через неё контент грузят тесты |
 | Хранение профиля | [data/StateStore.kt](../app/src/main/java/ru/finny/pet/data/StateStore.kt) | `load()` / `save()` файла `filesDir/state.json`, см. «Хранение» |
@@ -68,66 +70,67 @@ app/src/
 | Компонент | Файл | Ответственность |
 |---|---|---|
 | Точка входа | [MainActivity.kt](../app/src/game/java/ru/finny/pet/MainActivity.kt) | Edge-to-edge, `setContent { GameApp() }` |
-| Оболочка | [game/GameApp.kt](../app/src/game/java/ru/finny/pet/game/GameApp.kt) | Тема, фон комнаты (день/вечер), смена экранов `AnimatedContent`, корневой `BackHandler`, окно обратной связи `FeedbackOverlay`, слой частиц; сбор эффектов VM; `CompositionLocal`: `LocalVm`, `LocalLayout`, `LocalSfx`, `LocalParticles`, `LocalPetAction`, `LocalAnimate` |
-| Состояние UI | [game/GameViewModel.kt](../app/src/game/java/ru/finny/pet/game/GameViewModel.kt) | `AndroidViewModel`: `state`, `screen`, `feedback`, `bubble` (реплика или вопрос питомца), `match` (текущая партия), `matchOver` (показана панель «Игра окончена» — во ViewModel, чтобы пережить пересоздание Activity и не попасть в следующую партию после смерти процесса). При загрузке неизвестные `speciesId`/`colorId` питомца заменяются первыми из контента. Типы `Screen`, `Effect`, `Feedback`, `Bubble`, `PetAct`. Правил не содержит — только вызывает `Economy`/`Match3` и сохраняет |
+| Оболочка | [game/GameApp.kt](../app/src/game/java/ru/finny/pet/game/GameApp.kt) | Тема, фон комнаты (день/вечер), смена экранов `AnimatedContent`, корневой `BackHandler`, строка `LineHost` ([ui/TownUi.kt](../app/src/game/java/ru/finny/pet/game/ui/TownUi.kt)) поверх экранов, слой частиц; сбор эффектов VM; `CompositionLocal`: `LocalLayout`, `LocalParticles`, `LocalPetAction`, `LocalAnimate`, `LocalClipped` (зонд обрезки текста; узел `overflow` — только в debug) |
+| Состояние UI | [game/GameViewModel.kt](../app/src/game/java/ru/finny/pet/game/GameViewModel.kt) | `AndroidViewModel`: `state`; стек экранов (`screen` — верхний); очередь строк `lines` для `LineHost`; `petLine` — реплика по тапу; `night` и `weekEnd` — отчёт ночи и итога недели; `fresh` — «новое» на доске событий; раунд работы — `match`, `matchOver` (во ViewModel, чтобы пережить пересоздание Activity), `taps`, `roundResult`. При загрузке неизвестные `speciesId`/`colorId` питомца заменяются первыми из контента, затем `Migration.migrate` и `Town.tick`. Типы `Screen`, `Effect`, `Line`, `Report`, `PetAct`. Правил не содержит — вызывает `Town` (деньги и время), `Economy` (только `createPet`, `setPlan`, `chooseGoal`, профиль и запросы) и `Match3`, сохраняет |
 | Звук | [game/audio/Sfx.kt](../app/src/game/java/ru/finny/pet/game/audio/Sfx.kt) | 13 эффектов `Sound` на `SoundPool` и музыкальная петля на `MediaPlayer`; `effects` = тумблер «Звуки», `music` = тумблер «Музыка» (на заставке музыка не играет); `GameApp` ставит музыку на паузу, когда приложение свёрнуто |
-| Общие виджеты | [game/ui/](../app/src/game/java/ru/finny/pet/game/ui/) | `GameTheme.kt` (палитра `G`, шрифт Montserrat, тема M3), `Widgets.kt` (кнопки, панели, HUD, полосы, пузырь речи), `GameTextField.kt`, `PetSprite.kt` (спрайт с дыханием, морганием, прыжком и действиями), `Particles.kt` (одна система частиц поверх всего экрана) |
+| Общие виджеты | [game/ui/](../app/src/game/java/ru/finny/pet/game/ui/) | `GameTheme.kt` (палитра `G`, шрифт Montserrat, тема M3), `Widgets.kt` (кнопки, панели, HUD, полосы, пузырь речи), `GameTextField.kt`, `PetSprite.kt` (спрайт с дыханием, морганием, прыжком и действиями), `Particles.kt` (одна система частиц поверх всего экрана), `TownUi.kt` (текст `TText` с зондом обрезки, картинки `itemRes`/`goalRes`, HUD `Hud1`/`Hud2`, строка `LineHost`) |
 | Экраны | [game/screens/](../app/src/game/java/ru/finny/pet/game/screens/) | См. таблицу ниже; `Common.kt` — каркас панельного экрана, адаптивная раскладка, панель подтверждения |
 
 ## Функциональная архитектура
 
-Экраны читают `vm.state`, `vm.content` и функции-запросы `vm.economy`; менять состояние могут только через методы `GameViewModel`.
+Экраны читают `vm.state`, `vm.content`, `vm.tc` (ключ `town`) и функции-запросы `vm.economy` и `vm.town`; менять состояние могут только через методы `GameViewModel`.
 
 | Функция | `Screen` | Файл экрана | Методы VM | Правило |
 |---|---|---|---|---|
-| Заставка, знакомство, создание питомца | `Title`, `Intro`, `CreatePet` | `StartScreens.kt` | `start`, `createPet` | `Economy.createPet` |
-| Комната: питомец, подсказка следующего шага, реплики и вопросы питомца, конец недели | `Room` | `RoomScreen.kt` | `petTapped`, `askQuestion`, `answerBubble`, `nextStep`, `endPeriod` | `answerQuiz`, `endPeriod` |
-| План недели | `Plan` | `PlanScreen.kt` | `setPlan`, `confirmPlan` | `setPlan`, `confirmPlan` |
-| Магазин | `Shop` | `ShopScreen.kt` | `buy` | `buy` |
-| Копилка и цель | `Savings` | `SavingsScreen.kt` | `deposit`, `withdraw`, `chooseGoal`, `achieveGoal` | те же |
-| Задания | `Tasks`, `Task(id)` | `TaskScreens.kt` | `answerChoice`, `answerNumber` | те же |
-| Мини-игра | `MiniGame` | `MiniGameScreen.kt` | `startMiniGame`, `matchSwap`, `matchBomb`, `finishMiniGame` | `Match3.*`, `Economy.finishMiniGame` |
-| Итог недели, прогресс, справочник | `WeekEnd`, `Progress`, `Glossary` | `ProgressScreens.kt` | — (только чтение) | `stageTitle`, `stageIndex`, `nextStageLeft`, `completedTasks` |
-| Раздел для взрослого | `Parent` | `ParentScreen.kt` | `setDemo`, `setAnimations`, `setSounds`, `setMusic`, `parentBonus`, `createTestProfile`, `resetProfile`, `deleteProfile` | `parentBonus`, `newGame`, `resetProfile`, `deleteProfile` |
+| Заставка, знакомство, создание питомца | `Title`, `Intro`, `CreatePet` | `StartScreens.kt` | `start`, `createPet` | `Economy.createPet`, `Migration.migrate`, `Town.tick` |
+| Комната: HUD, «В городке», полка-банки, холодильник, ящик, кровать, реплика питомца по тапу | `Room` | `RoomScreen.kt` | `petTapped`, `sleep`, `endWeek`, `openPlace`, `goEvent` | `Town.petLine`, `card`, `sleep`, `endWeek`, `weekEndPreview` |
+| Банки: раскладка, план и факт, перенос; «Обустроить» | `Jars`, `Arrange` | `JarsScreen.kt` | `setPlan`, `confirmPlan`, `transfer`, `place` | `Economy.setPlan`; `Town.confirmPlan`, `transfer`, `place` |
+| Копилка и мечта | `Savings` | `SavingsScreen.kt` | `deposit`, `withdraw`, `chooseGoal`, `achieveGoal` | `Town.deposit`, `withdraw`, `achieveGoal`; `Economy.chooseGoal` |
+| Ночь, итог недели и «что поменяем» | `Night`, `WeekEnd` | `NightScreens.kt` | `wake`, `endWeek`, `chooseTweak` | `Town.wake`, `endWeek`, `planTweaks`, `chooseTweak` |
+| Улица | `Street` | `StreetScreen.kt` | `openPlace`, `chooseGoal` | `Town.visit`; `Economy.chooseGoal` |
+| Лавка с кассой; работа: заказ, «Загадка Бори» | `Place(placeId)` | `PlaceScreen.kt` | `openPlace`, `buy`, `makeGoal`, `pass`, `startRound`, `answerRiddle` | `Town.visit`, `quote`, `buyAt`, `makeGoal`, `pass`, `shiftQuote`, `nextQuestion`, `answerQuestion` |
+| Смена: «три в ряд» или поручения, итог смены | `Round(jobId)` | `RoundScreen.kt`, `MiniGameScreen.kt` | `matchSwap`, `matchBomb`, `tapTask`, `finishRound`, `closeRound` | `Match3.*`, `Town.finishShift` |
+| Доска событий | `Board` | `BoardScreen.kt` | `goEvent`, `startEvent`, `openPlace` | `Town.activeEvents`, `orders`, `demoBoard`, `startEvent` |
+| Прогресс, справочник | `Progress`, `Glossary` | `ProgressScreens.kt` | — (только чтение) | `Economy.stageIndex`, `nextStageLeft`; `state`: `history`, `records`, `envelope`, `ledger` |
+| Раздел для взрослого | `Parent` | `ParentScreen.kt` | `setDemo`, `setAnimations`, `setSounds`, `setMusic`, `parentBonus`, `createTestProfile`, `resetProfile`, `deleteProfile` | `Town.parentBonus`; `Economy.newGame`, `resetProfile`, `deleteProfile` |
 
 ## Поток данных
 
 ```
-экран ──событие──▶ GameViewModel.buy(id) ──▶ Economy.buy(state, id) ──▶ Outcome
-                                                                         │
-      ┌──────────────────── Outcome.Ok(newState, messages) ◀─────────────┤
-      │  commit: state = newState; StateStore.save(newState)             │
-      │  feedback = «что изменилось и почему» (или переход на next)      │
-      │  effects.tryEmit(Sfx / Coins / Confetti / PetAction …)           │
-      │                                                                  │
-      │                     Outcome.Error(message, hints) ◀──────────────┘
-      │                     состояние не меняется; звук FAIL;
-      │                     feedback «Пока не получится» + «Вариант: …»
+экран ──событие──▶ GameViewModel.buy(item, shop, source) ──▶ Town.buyAt(state, …) ──▶ TownResult
+                                                                                      │
+      ┌──── Done(TownOutcome: state, line, why, eventResults, arrived) ◀──────────────┤
+      │  commit: state = outcome.state; StateStore.save(state)                        │
+      │  lines += line (+ why), строки исходов событий, intro пришедшего события      │
+      │  effects.tryEmit(Sfx / CoinsFrom / Confetti / Hearts / PetAction)             │
+      │                                                                               │
+      │                     Refused(line) ◀───────────────────────────────────────────┘
+      │                     состояние не меняется; lines += line; звук FAIL
       ▼
 GameApp: vm.effects.collect → Sfx.play · ParticleController · LocalPetAction → PetSprite
-Compose перерисовывает экраны по state / screen / feedback / bubble
+Compose перерисовывает экраны по state / screen / lines / petLine / night / weekEnd
 ```
 
-1. Экран вызывает метод VM (например `buy(itemId)`).
-2. VM передаёт текущее `GameState` в `Economy` и получает `Outcome`.
-3. `Ok` → `commit`: новое состояние заменяет старое целиком и сразу пишется `StateStore.save`. Если запись не удалась, `commit` ставит окно «Не удалось сохранить», но `apply` тут же заменяет его сообщениями `Ok`, если они есть. Поэтому ошибка записи видна только после действий без сообщений: `setPlan`, ответ на вопрос питомца, конец недели, тумблеры и действия с профилем в разделе для взрослого.
-4. Сообщения `Ok` показываются в `FeedbackOverlay`; у `Feedback` может быть `next` — экран, куда перейти после «Понятно».
-5. Одноразовые эффекты идут отдельно от состояния: `MutableSharedFlow<Effect>(extraBufferCapacity = 32)`. VM не касается Android-представлений; `GameApp` проигрывает звук, запускает частицы между именованными точками экрана (`coins`, `piggy`, `pet`, `center`) и передаёт действие питомцу (`EAT`, `WASH`, `PLAY`, `HOP`, `SLEEP`). Монеты плана `PlanScreen` пускает сам, без `Effect`: из кошелька `purse` в банки `jar0`–`jar2`.
+1. Экран вызывает метод VM (например `buy(itemId, shopId, source)`).
+2. VM передаёт текущее `GameState` в `Town` и получает `TownResult`.
+3. `Done` → `commit`: новое состояние заменяет старое целиком и сразу пишется `StateStore.save`. Если запись не удалась, в очередь строк встаёт «Не удалось сохранить» с причиной «Проверь, есть ли свободное место на устройстве».
+4. Строка живёт до следующего шага ребёнка: каждое действие VM и каждый переход (`navigate`, `back`, `openPlace`) сначала очищают `lines`. Затем в очередь встают строка действия, строки исходов событий, которые действие закрыло, и вступление первого пришедшего события (при входе на место — только если карточки события там не видно); одинаковый текст дважды не встаёт. `LineHost` показывает первую: портрет питомца, строка целиком (без `maxLines`; выше 40 % экрана — прокрутка внутри), «Почему?» раскрывает все строки `why`; тап закрывает её. В комнате пузырь стоит над нижним рядом (отступ 72 dp); пока открыта касса (`cashOpen`), пузыря нет, а открытие кассы очищает строки. Сон, конец недели и смена кладут свой отчёт не в очередь, а в `night`, `weekEnd` и `roundResult` — его показывают экраны `Night`, `WeekEnd` и `Round`.
+5. Одноразовые эффекты идут отдельно от состояния: `MutableSharedFlow<Effect>(extraBufferCapacity = 32)`. VM не касается Android-представлений; `GameApp` проигрывает звук, пускает монеты между именованными точками экрана (`CoinsFrom`: `coins`, `piggy`, `pet`, `mail`, `jar_save`, `job_result`) — только если обе точки есть на экране, конфетти (`center`) и сердечки (`pet`), и передаёт действие питомцу (`EAT`, `WASH`, `PLAY`, `HOP`, `SLEEP`).
 
-Отступления от общей схемы: тумблеры раздела для взрослого сохраняют `state.copy(...)` без `Economy`, а тестовый профиль, сброс и удаление — готовое `GameState` от `Economy`; `answerBubble` и `endPeriod` обрабатывают `Outcome` сами, но сохраняют тем же `commit`.
+Отступления от общей схемы: тумблеры раздела для взрослого сохраняют `state.copy(...)` без движка; тестовый профиль, сброс и удаление берут готовое `GameState` от `Economy`, затем `Migration.migrate` и `Town.tick`; `createPet`, `setPlan` и `chooseGoal` идут через `Economy` и его `Outcome` (ошибка — строка в `lines` и звук FAIL); все сохраняют тем же `commit`.
 
 ## Навигация
 
-`sealed interface Screen` (14 экранов) в `GameViewModel.kt`; смена экрана — присваивание `vm.screen` через `navigate()`, анимированная `AnimatedContent` в `GameApp`. Библиотека navigation-compose не используется.
+`sealed interface Screen` (16 экранов) в `GameViewModel.kt`; навигация — стек `stack` во ViewModel: `navigate()` кладёт экран наверх (переход из одного `Place` в другой заменяет верхний `Place`), `Room`, `Night` и `Title` очищают стек, `back()` снимает верхний экран. Пока питомец спит (`state.asleep`), вместо `Room` открывается `Night`. ⌂ (`home()`) очищает стек до `Room`, в раунде — «Закончить». Смена экрана анимирована `AnimatedContent` в `GameApp`. Библиотека navigation-compose не используется.
 
-Системная «Назад» (`BackHandler`) работает на всех экранах, кроме `Title` и `Room` — там она закрывает приложение, если не открыто окно. Окна регистрируют свой `BackHandler`, и он срабатывает первым, потому что добавлен позже корневого: `ConfirmPanel` ([Common.kt](../app/src/game/java/ru/finny/pet/game/screens/Common.kt)) закрывается как «Отмена», окно обратной связи — как «Понятно» (его `BackHandler` компонуется только пока окно открыто, поэтому перекрывает и `BackHandler` мини-игры), вопрос питомца в комнате и в мини-игре — закрывается без ответа. Затемнение окон поглощает касания (`pointerInput`), для TalkBack окно — панель с `paneTitle`. `vm.back()` ведёт на известного родителя: `Task` → `Tasks`, `Glossary` → `Progress`, `CreatePet` → `Title`, остальное (в том числе `Intro`) → `Room`, а без профиля → `Title`. На `MiniGame` `vm.back()` ничего не делает: «Назад» перехватывает `BackHandler` самого экрана — первое нажатие открывает окно «игра окончена», второе вызывает `finishMiniGame`.
+Системная «Назад» (`BackHandler` в `GameApp`) включена, пока в стеке больше одного экрана или идёт раунд; на дне стека (`Room`, `Night`, `Title`) она закрывает приложение без диалога. В раунде «Назад» = «Закончить» (`finishRound` → итог смены), на итоге — `closeRound` возвращает к месту работы. Окна (`Ask`, `ConfirmPanel` в [Common.kt](../app/src/game/java/ru/finny/pet/game/screens/Common.kt)) регистрируют свой `BackHandler` — он срабатывает первым, потому что добавлен позже корневого, и закрывает окно как «Отмена». Затемнение окон поглощает касания (`pointerInput`), для TalkBack окно — панель с `paneTitle`.
 
 ## Мини-игра
 
 - Правила — [domain/Match3.kt](../app/src/main/java/ru/finny/pet/domain/Match3.kt), детерминированы: вся случайность из `Random(seed)`, следующий seed хранится в `Match3State.seed`. Одинаковый seed — одинаковое поле (`Match3Test`).
-- Seed передаёт VM: `startMiniGame()` вызывает `Match3.newGame(moves = rules.miniGameMoves, bombs = state.bombs, seed = System.nanoTime())`.
+- Seed передаёт VM: `startRound(jobId)` для работы `MATCH3` вызывает `Match3.newGame(board.w, board.h, moves, state.bombs + levelBombs, seed = System.nanoTime())`; поле и ходы — из `town.jobs[]` (в демо — `demoMoves`), бомбы уровня — из `Town.shiftQuote`.
 - `matchSwap` / `matchBomb` возвращают `Turn`; `MiniGameScreen` проигрывает шаги `Swap → Match → Fall → Refill` по порядку.
-- Партия (`vm.match`) живёт только в памяти VM и в `state.json` не пишется. В профиль попадает только итог: `finishMiniGame` → `Economy.finishMiniGame(state, score, bombsUsed)` → монеты с недельным лимитом, списание бомб, запись в журнал.
+- Партия (`vm.match`) живёт только в памяти VM и в `state.json` не пишется. В профиль попадает только итог: `finishRound` → `Town.finishShift(state, jobId, score, bombsUsed)` → оплата смены в конверт (`envelope`, придёт с новым конвертом), счётчики смен, рекорд, списание бомб; строка итога — `roundResult` на экране `Round`. Работа `TAPS` («Помочь Марте») — три кнопки-поручения, счёт — число отмеченных.
 
 ## Анимации и доступность
 
@@ -138,7 +141,7 @@ Compose перерисовывает экраны по state / screen / feedback
 - `PetSprite` не дышит и не прыгает, текст реплик появляется сразу;
 - мини-игра ставит плитки мгновенно (`snap()` вместо пружин).
 
-`LocalLayout` сообщает ориентацию и «компактность» (узкая сторона < 420 dp). Экраны с фиксированной геометрией (`Room`, `MiniGame`) ограничивают системный масштаб шрифта 1,3; панельные экраны следуют ему полностью. Эффекты отключаются тумблером «Звуки», фоновая музыка — тумблером «Музыка»; звук не несёт уникальной информации. Подробно — [UX_ACCESSIBILITY.md](UX_ACCESSIBILITY.md).
+`LocalLayout` сообщает ориентацию и «компактность» (узкая сторона < 420 dp). Экраны с фиксированной геометрией — все, кроме `Parent`, `Progress` и `Glossary`, — и строка `LineHost` ограничивают системный масштаб шрифта 1,3; эти три панели следуют ему полностью. Эффекты отключаются тумблером «Звуки», фоновая музыка — тумблером «Музыка»; звук не несёт уникальной информации. Подробно — [UX_ACCESSIBILITY.md](UX_ACCESSIBILITY.md).
 
 ## Хранение
 
@@ -152,7 +155,7 @@ Compose перерисовывает экраны по state / screen / feedback
 
 Задания, товары, цели, глоссарий, вопросы и реплики питомца, виды и цвета питомца, числовые правила — в [app/src/main/assets/content/content.json](../app/src/main/assets/content/content.json). Контент читается при запуске, код экранов от конкретных записей не зависит.
 
-Добавить задание = добавить объект в массив `tasks`:
+«Городок» `game` — ключ `town`: места, лавки и цены, товары, мечты, работы, жители, события, реплики, загадки, свои `rules`; новое событие существующего вида — запись в `town.events` без правки кода. Задания `tasks` с TOWN-S1d показывает только `classic`. Добавить задание `classic` = добавить объект в массив `tasks`:
 
 ```json
 {
@@ -167,8 +170,8 @@ Compose перерисовывает экраны по state / screen / feedback
 
 - Типы: `CHOICE` (варианты с объяснением каждого) и `NUMBER` (поля `answer`, `explanationCorrect`, `explanationWrong`). Темы: `BUDGET`, `SAVINGS`, `SHOPPING`.
 - `ContentTest` проверяет реальный `content.json`: у задания `CHOICE` ≥ 2 варианта, ровно один верный, объяснения непустые; у `NUMBER` есть ответ и оба объяснения; id заданий и товаров уникальны; `unlockPeriod` в 1..5; соблюдён минимальный объём из ТЗ (≥ 9 сочетаний питомца, ≥ 6 заданий по 3 темам, ≥ 8 товаров обоих типов, ≥ 3 цели и 3 стадии).
-- Новый товар, цель, вид или цвет питомца работают без правки кода, но с запасной картинкой: `item_fun_tent`, `goal_custom`, оранжевый кот. Своя картинка товара или цели — WebP в `app/src/game/res/drawable-nodpi/` и строка в `itemRes`/`goalRes` ([RoomScreen.kt](../app/src/game/java/ru/finny/pet/game/screens/RoomScreen.kt)); питомца — рендер `pet.py` и `import_sprites.py`.
-- Правки кода требуют только новая тема (`enum Theme` + иконка и цвет в `TaskScreens.kt`) и новый тип задания.
+- Новый товар, мечта, вид или цвет питомца работают без правки кода: товар и мечта без своей картинки рисуются эмодзи из записи (своя мечта и демо-мечта — `goal_custom`), неизвестный вид — оранжевым котом. Своя картинка товара или мечты — WebP в `app/src/game/res/drawable-nodpi/` и строка в `itemRes`/`goalRes` ([ui/TownUi.kt](../app/src/game/java/ru/finny/pet/game/ui/TownUi.kt)); питомца — рендер `pet.py` и `import_sprites.py`.
+- В `classic` правки кода требуют только новая тема задания (`enum Theme` + иконка в [TasksScreen.kt](../app/src/classic/java/ru/finny/pet/ui/screens/TasksScreen.kt)) и новый тип задания; в `game` — новый вид события, факт или эффект вне закрытого словаря (`domain/town/Enums.kt`, `Dictionary.kt`; GAME_CONCEPT §7.3).
 
 ## Генераторы ассетов
 
@@ -194,6 +197,7 @@ JVM-тесты (JUnit 4) в [app/src/test/java/ru/finny/pet/domain/](../app/src/
 | `MvpRulesTest` | правила промежуточной сдачи: числа `Rules` совпадают с `content.json`, старые сохранения читаются, выражение питомца, тексты итога недели и копилки, мини-игра открыта только после плана, бонус взрослого, склонение «монет» и тексты без рода ребёнка, поле мини-игры по seed |
 | `Match3Test` | поле без готовых совпадений, отказ хода без совпадения, очки и ходы, бомба, конец партии, детерминизм по seed |
 | `ContentTest` | корректность и минимальный объём контента (см. выше) |
+| `town/*Test` (15 файлов: `TownDayTest`, `WalletTest`, `CheckoutTest`, `PlanRuleTest`, `PricesTest`, `MigrationTest`, `ShiftTest`, `EventCatalogTest`, `FactParserTest`, `BalanceSimTest`, `FiveDemoWeeksTownTest`, `PetTalkTest`, `ContentValidationTest`, `TownContentTest`, `GameStateCompatTest`) | движок «Городка»: дни и неделя, кошелёк и банки, касса, правило плана, цены лавок, миграция и чтение `state.json` 1.3.0, смены, события и симуляция баланса, 5 демо-недель подряд, реплики питомца, разбор словаря событий и проверка `town` в `content.json` |
 
 Запуск из `finny-pet/`: `gradlew.bat :app:testGameDebugUnitTest` (Linux: `./gradlew`). Сценарии, которые проверяются вручную, — [TEST_CASES.md](TEST_CASES.md).
 
@@ -209,4 +213,4 @@ JVM-тесты (JUnit 4) в [app/src/test/java/ru/finny/pet/domain/](../app/src/
 
 Пошаговая инструкция — [BUILD_AND_DEMO.md](BUILD_AND_DEMO.md).
 
-Актуально на версию 1.3.0 (2026-09-25)
+Актуально на ветку `feat/town`: код TOWN-S1d на 12a4394 (2026-09-26), после правки по живой проверке, ревью ещё не было; `versionName` 1.3.0 (`versionCode 4`) не менялся
