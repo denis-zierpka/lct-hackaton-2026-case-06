@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
@@ -374,10 +375,11 @@ private fun Riddle(vm: GameViewModel) {
     when (step) {
         0 -> {
             TText("Загадка Бори: отгадаешь — бомбочка")
-            // no IntrinsicSize.Min here: it does not see GameButton's minHeight and shrinks below 48 dp (правка №11)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                GameButton("Ответить", Modifier.weight(1f), ButtonStyle.PAPER, minHeight = 48.dp) { step = 1 }
-                GameButton("Нет, спасибо", Modifier.weight(1f), ButtonStyle.PAPER, minHeight = 48.dp) { step = 2 }
+            // heightIn(min = 48.dp) OUTER, then height(IntrinsicSize.Min): the row is coerced to ≥ 48 dp first, then
+            // both buttons fillMaxHeight to that same coerced height — equal size, never below 48 dp at 1.0 or 1.3 (R8)
+            Row(Modifier.heightIn(min = 48.dp).height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                GameButton("Ответить", Modifier.weight(1f).fillMaxHeight(), ButtonStyle.PAPER, minHeight = 48.dp) { step = 1 }
+                GameButton("Нет, спасибо", Modifier.weight(1f).fillMaxHeight(), ButtonStyle.PAPER, minHeight = 48.dp) { step = 2 }
             }
         }
         1 -> {
