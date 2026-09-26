@@ -97,12 +97,14 @@ EOF
 
 ## Релизная сборка
 
-Подпись требует `keystore.properties` и ключа вне репозитория — у кодера их нет и
-не должно быть. Релиз собирает **оркестратор или сеньор**, не агент:
+Сдаётся вариант `game`. Боевая подпись — `keystore.properties` или переменные
+окружения `FINNY_*` с ключом вне репозитория; у кодера их нет и не должно быть. Без
+них сборка проходит, но APK подписан debug-ключом — годится для проверки, не для
+сдачи. Релиз собирает **оркестратор или сеньор**, не агент:
 
 ```
-./gradlew assembleClassicRelease                             -> exit 0
-apksigner verify --print-certs app/build/outputs/apk/classic/release/*.apk -> exit 0
+./gradlew assembleGameRelease                                -> exit 0
+apksigner verify --print-certs app/build/outputs/apk/game/release/*.apk -> exit 0
 aapt2 dump badging <apk> | grep uses-permission               -> только согласованные
 ```
 

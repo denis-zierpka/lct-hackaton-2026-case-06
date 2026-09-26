@@ -10,7 +10,7 @@ Town residents: Blender -b -P tools/art/pet.py -- --residents /abs/outdir [--onl
             RESIDENT_COLORS) as res_<id>.png. A single frame takes --accessory apron|cap|glasses as well.
 
 Colours and species ids mirror app/src/main/assets/content/content.json. The ground shadow is drawn by the
-app (PetView), so no shadow catcher here. All geometry is primitives + subdivision: the art belongs to the team.
+app (PetSprite in game, PetView in classic), so no shadow catcher here. All geometry is primitives + subdivision: the art belongs to the team.
 """
 import bpy, bmesh, math, sys, argparse, os, json
 from mathutils import Vector

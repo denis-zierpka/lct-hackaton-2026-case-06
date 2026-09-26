@@ -5,7 +5,8 @@ One:        Blender -b -P tools/art/room.py -- --only room_land_evening --out /a
 
 Layout: floor is z = 0, the back wall stands at y = WALL_Y, the camera looks from -Y straight on and a little
 from above so the floor fills the lower ~35 % of the frame. The centre-bottom third (the rug) is kept empty:
-the app composites the pet sprite there and overlays trophies on the shelf. Portrait variants are the same
+the app composites the pet sprite there. The shelf stays empty: the app draws its own jar shelf (Shelf in
+RoomScreen) as an overlay at the top of the screen. Portrait variants are the same
 room re-framed: every x coordinate is squeezed by K so the composition fits a vertical camera.
 """
 import sys, os, math, argparse, random
@@ -73,7 +74,7 @@ def build_room(evening, portrait):
             for dx, dz, r in ((0, 0, 1.0), (-1.1, -0.15, 0.75), (1.1, -0.1, 0.8), (0.5, 0.45, 0.7)):
                 sphere("cloud", (cx + dx * s, WALL_Y + 3.0, cz + dz * s), r * s, mat=cloud, levels=1).visible_shadow = False
 
-    # shelf on the left wall (empty: trophies are overlaid by the app)
+    # shelf on the left wall (empty decor: the app puts nothing on it)
     sh_x, sh_w = X(-3.35), X(1.9)
     box("shelf", (sh_x, WALL_Y - 0.25, 3.3), (sh_w, 0.5, 0.11), wood[1], bevel=0.02)
     for dx in (-0.32, 0.32):

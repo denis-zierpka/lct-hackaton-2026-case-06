@@ -1,4 +1,5 @@
-"""Shared Blender helpers for Finny's toy-style renders (pets, props, room, places).
+"""Shared Blender helpers for Finny's toy-style renders (props, UI props, room, places, facades);
+pet.py does not import it and keeps its own copy of the scene and studio lights.
 
 Style contract (keep every asset consistent):
   * primitives + subdivision, no hard edges: `smooth()` on meshes, `cone()` gets a bevel

@@ -2,8 +2,9 @@
 
 Показывает уровень детализации, при котором кодеру нечего додумывать. Построен на
 реальном коде `Economy.kt` (коммит 83404be) и реальном нарушении инварианта «числа
-экономики — только в `content.json`». **Это образец, а не принятая задача**: брать
-в работу только после решения сеньора.
+экономики — только в `content.json`». **Это только образец формы спеки**: само
+нарушение закрыто в MVP-T01 (fede4d9, число теперь берётся из `rules`), в работу
+задачу не брать.
 
 ---
 
@@ -67,7 +68,7 @@ test-author, файл: finny-pet/app/src/test/java/ru/finny/pet/domain/SavingsHi
   1. ./gradlew testClassicDebugUnitTest                        -> exit 0
   2. tests = 34 + <N оракула>, skipped = 0 (подсчёт по XML)
   3. ./gradlew assembleClassicDebug assembleGameDebug          -> exit 0
-  4. ./gradlew lintClassicDebug lintGameDebug                  -> 0 ошибок, ≤ 9 / 10 предупреждений
+  4. ./gradlew lintClassicDebug lintGameDebug                  -> 0 ошибок, ≤ 9 / 10 предупреждений (на 83404be; сейчас — ≤ 5 / 6 без сетевых правил, ACCEPTANCE_PRESETS.md п. 4)
   5. git diff --name-only BASE -- app/src/test/                -> пусто
   6. git diff --shortstat BASE                                 -> ≤ 15 строк
   7. grep -n "хотя бы 10 монет" app/src/main/java              -> пусто

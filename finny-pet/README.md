@@ -82,8 +82,8 @@ tools/office/                        build_docx.js: DOCX из README.md и docs/
 tools/ui.py, tools/demo_run.sh       автопрогон сценария на эмуляторе, написан под classic и macOS, для game не адаптирован
 ```
 
-Уровнем выше лежат процесс разработки, ТЗ и спеки задач: [../docs/](../docs/), спеки этого этапа —
-`../docs/tasks/MVP-T*.md`, план 3D-питомца — [../docs/ART_PIPELINE.md](../docs/ART_PIPELINE.md).
+Уровнем выше лежат процесс разработки, ТЗ и спеки задач: [../docs/](../docs/), спеки —
+`../docs/tasks/<ID>.md` (MVP-* — выпуск 1.3.0, TOWN-* — «Городок»), план 3D-питомца — [../docs/ART_PIPELINE.md](../docs/ART_PIPELINE.md).
 
 ## Быстрый запуск
 

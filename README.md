@@ -145,8 +145,8 @@ APK: `app/build/outputs/apk/game/release/app-game-release.apk`
 - [DATA_MODEL.md](finny-pet/docs/DATA_MODEL.md) — профиль, экономика, задания, прогресс
 - [ECONOMY.md](finny-pet/docs/ECONOMY.md) — формулы монет, состояния и роста питомца
 - [CONTENT_MAP.md](finny-pet/docs/CONTENT_MAP.md) — темы, навыки, сценарии, объяснения
-- [REQUIREMENTS_MATRIX.md](finny-pet/docs/REQUIREMENTS_MATRIX.md) — матрица по пунктам ТЗ 2.5; пока
-  в редакции `classic` 1.0 и для `game` устарела, статусы 1.3.0 — в [Реализованных требованиях](#реализованные-требования)
+- [REQUIREMENTS_MATRIX.md](finny-pet/docs/REQUIREMENTS_MATRIX.md) — матрица по пунктам ТЗ 2.5 для `game`
+  на «Городке» (ветка `feat/town`), проверки 1.3.0 помечены отдельно; статусы выпуска 1.3.0 — в [Реализованных требованиях](#реализованные-требования)
 - [UX_ACCESSIBILITY.md](finny-pet/docs/UX_ACCESSIBILITY.md) — UX и доступность
 - [PRIVACY_PERMISSIONS.md](finny-pet/docs/PRIVACY_PERMISSIONS.md) — разрешения, данные, удаление профиля
 - [TEST_CASES.md](finny-pet/docs/TEST_CASES.md) — тест-кейсы и отчёт о проверке
@@ -166,7 +166,7 @@ APK: `app/build/outputs/apk/game/release/app-game-release.apk`
 ## Процесс разработки
 
 Код пишется в контуре с ИИ-агентами (Claude Code). Оркестратор пишет спеку задачи
-(`docs/tasks/MVP-T*.md`) и машинную приёмку. Отдельный агент до кода пишет тесты-оракул,
+(`docs/tasks/<ID>.md`: MVP-* — выпуск 1.3.0, TOWN-* — «Городок») и машинную приёмку. Отдельный агент до кода пишет тесты-оракул,
 кодер работает только в списке разрешённых файлов и не может менять тесты (хуки
 `.claude/hooks/`), ревьювер без контекста кодера выносит PASS/FAIL. Коммиты — по задачам.
 Процесс — [docs/WORKFLOW.md](docs/WORKFLOW.md), инварианты проекта («доки не врут о коде»,

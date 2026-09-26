@@ -4,7 +4,7 @@
 профиль — [`domain/GameState.kt`](../app/src/main/java/ru/finny/pet/domain/GameState.kt),
 контент — [`domain/Content.kt`](../app/src/main/java/ru/finny/pet/domain/Content.kt).
 Игровые изменения профиля делает [`domain/Economy.kt`](../app/src/main/java/ru/finny/pet/domain/Economy.kt):
-каждая функция возвращает новый `GameState` (формулы — [ECONOMY.md](ECONOMY.md)). В `game` денежные и временные действия идут
+каждое действие возвращает `Outcome` — `Ok` с новым `GameState` или `Error` с объяснением; `newGame`, `resetProfile`, `deleteProfile` сразу возвращают `GameState` (формулы — [ECONOMY.md](ECONOMY.md)). В `game` денежные и временные действия идут
 через [`domain/town/Town.kt`](../app/src/main/java/ru/finny/pet/domain/town/Town.kt) поверх `Economy` (новый `GameState` — в `TownOutcome.state`, отказ — `TownResult.Refused`). Исключение —
 переключатели раздела для взрослого: `demo`, `animations`, `sounds`, `music` `GameViewModel`
 меняет напрямую (`state.copy`).
@@ -54,10 +54,10 @@
 | `Pet` | `name`, `speciesId`, `colorId`: String; `hunger`, `clean`, `mood`: Int = 70; `growth`: Int = 0 | Показатели 0–100; при создании — `rules.startStat`, после недели не ниже `rules.statFloor`. `growth` — очки роста, стадия вычисляется (см. ниже) |
 | `BudgetPlan` | `mandatory`, `optional`, `savings`: Int = 0; `confirmed`: Boolean = false | `total` — сумма трёх частей (вычисляется) |
 | `Purchase` | `itemId`, `title`: String; `category`: `Category`; `need`: `Need`; `price`: Int; `shop`: String? = null; `source`: `Source`? = null | Копия товара на момент покупки; `price` — цена лавки; `shop` и `source` (из какой банки) пишет «Городок» |
-| `Goal` | `id`, `title`, `emoji`: String; `price`: Int | Копия `GoalTemplate` или своя цель: `id = custom_<hashCode названия>_<цена>`, `emoji = ⭐` |
+| `Goal` | `id`, `title`, `emoji`: String; `price`: Int | Копия `GoalTemplate` (`classic`) или `TownGoal` из `town.goals` (`game`); своя цель — `id = custom_<hashCode названия>_<цена>`, `emoji = ⭐`; вещь, сделанная мечтой (`Town.makeGoal`), — `id = item:<id товара>` по базовой цене; демо-событие — `id = demo_goal` («Мечта для показа») |
 | `LedgerEntry` | `text`: String; `amount`: Int | Источник и сумма (расход — отрицательный, достижение цели — 0) |
 | `TaskResult` | `taskId`: String; `correct`: Boolean; `reward`: Int; `period`: Int | Общий для заданий и вопросов питомца |
-| `PeriodSummary` | `period`: Int; `plan`: `BudgetPlan`; `factMandatory`, `factOptional`, `factSavings`: Int; `mandatoryCovered`, `planKept`, `saved`: Boolean; `score`, `growthBefore`, `growthAfter`, `stageBefore`, `stageAfter`: Int; `messages`: List<String>; `miniGameEarned`: Int = 0; `parentBonus`: Int = 0; `shiftEarned`: Int = 0 | Итог недели: три проверки, `score` = число выполненных (0–3), рост и тексты «что случилось и почему». `miniGameEarned`, `parentBonus` — монеты вне плана; остальные поля обязательны |
+| `PeriodSummary` | `period`: Int; `plan`: `BudgetPlan`; `factMandatory`, `factOptional`, `factSavings`: Int; `mandatoryCovered`, `planKept`, `saved`: Boolean; `score`, `growthBefore`, `growthAfter`, `stageBefore`, `stageAfter`: Int; `messages`: List<String>; `miniGameEarned`: Int = 0; `parentBonus`: Int = 0; `shiftEarned`: Int = 0 | Итог недели: три проверки, `score` = число выполненных (0–3), рост и тексты «что случилось и почему». `miniGameEarned`, `parentBonus`, `shiftEarned` (заработок смен «Городка») — монеты вне плана, по умолчанию 0; остальные поля обязательны |
 
 Перечисления пишутся в JSON по имени: `Category` — `MANDATORY`, `OPTIONAL`, `UNPLANNED` (непредвиденное «Городка»: не входит в
 `factMandatory` и `factOptional`); `Need` — `FOOD`, `CARE`, `FUN`, `UNPLANNED` (еда и уход проверяются в конце недели);
