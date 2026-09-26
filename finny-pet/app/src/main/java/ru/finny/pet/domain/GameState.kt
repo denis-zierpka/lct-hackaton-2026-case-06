@@ -55,6 +55,9 @@ data class GameState(
     val planDraft: BudgetPlan? = null,
     val freeFunDay: Int = 0,
     val diary: List<DiaryLine> = emptyList(),
+    // town shifts (TOWN-S1b §0)
+    val riddles: List<TaskResult> = emptyList(),
+    val riddleAsked: Boolean = false,
 ) {
     val hasProfile: Boolean get() = pet != null
     val factMandatory: Int get() = purchases.filter { it.category == Category.MANDATORY }.sumOf { it.price }

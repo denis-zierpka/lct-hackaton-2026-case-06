@@ -215,15 +215,17 @@
 | `placed` | Map<String, String> = {} | Место → вещь на шести местах `town.spots`; стартовые вещи сюда не пишутся |
 | `broken` | List<String> = [] | Сломанные стартовые вещи (срез 2) |
 | `houseColor` | String? = null | Цвет дома (срез 2) |
-| `shiftsThisPeriod` | Int = 0 | Оплачиваемые смены недели (S1b); обнуляется в конце недели |
-| `jobShifts`, `records` | Map<String, Int> = {} | Смены и рекорд по работам (S1b) |
+| `shiftsThisPeriod` | Int = 0 | Оплачиваемые смены недели, не больше `town.rules.shiftsPerWeek`; обнуляется в конце недели |
+| `jobShifts`, `records` | Map<String, Int> = {} | Оплачиваемые смены (уровень мастерства) и лучший счёт по работам |
 | `events` | List<`EventState`> = [] | События: `id`, `status` (ACTIVE / DONE), `verdict`, `outcome` (индекс исхода, −1 — умолчание), `period` и `day` прихода (S1c) |
 | `stickers`, `visited` | List<String> = [] | Наклейки (S1c) и посещённые места |
 | `seenPrices` | Map<String, `SeenPrice`> = {} | Холодильник: товар → (лавка, цена, неделя) — самая низкая цена недели |
 | `notes` | List<String> = [] | Заметки на холодильнике (S1c) |
 | `planDraft` | `BudgetPlan`? = null | Не используется: заготовка — сам неподтверждённый `plan` новой недели |
 | `freeFunDay` | Int = 0 | Качели раз в день (срез 2) |
-| `diary` | List<`DiaryLine`> = [] | Дневник: `period`, `day`, `text` («Купили у реки: каша», «Мечта сбылась: …») |
+| `diary` | List<`DiaryLine`> = [] | Дневник: `period`, `day`, `text` («Купили у реки: каша», «Заработали 9: «Булочки в ряд»», «Мечта сбылась: …») |
+| `riddles` | List<`TaskResult`> = [] | Ответы на «Загадку Бори» (`town.quiz`), отдельно от `quizResults` викторины 1.3.0 |
+| `riddleAsked` | Boolean = false | Загадка в этом заказе пекарни уже была; сбрасывает конец смены пекарни |
 
 Вычисляемое свойство `reserve` = `balance − jarNeed − jarWant` — запас (до плана — «Не разложено»).
 

@@ -6,10 +6,13 @@ import ru.finny.pet.domain.Content
 import ru.finny.pet.domain.Economy
 import ru.finny.pet.domain.GameState
 import ru.finny.pet.domain.Goal
+import ru.finny.pet.domain.LedgerEntry
 import ru.finny.pet.domain.Need
 import ru.finny.pet.domain.Outcome
 import ru.finny.pet.domain.PeriodSummary
+import ru.finny.pet.domain.QuizQuestion
 import ru.finny.pet.domain.ShopItem
+import ru.finny.pet.domain.TaskResult
 
 enum class PayKind { PAY, CHEAPER, WAIT, MAKE_GOAL }
 
@@ -23,6 +26,12 @@ data class PayOption(
 data class Quote(
     val itemId: String, val shopId: String?, val price: Int, val line: String,
     val note: String = "", val options: List<PayOption> = emptyList(),
+)
+
+/** Открыта ли работа и сколько платит до самой смены (TOWN-S1b §1). */
+data class ShiftQuote(
+    val jobId: String, val open: Boolean, val paid: Boolean, val canPlay: Boolean,
+    val level: Int, val base: Int, val levelBombs: Int, val shiftsLeft: Int, val line: String,
 )
 
 /** Кошелёк, касса, неделя и дом «Городка» (TOWN-S1a §3–§6). Чистый Kotlin. */
@@ -510,6 +519,164 @@ class Town(private val content: Content) {
         return TownOutcome(s.copy(visited = visited, seenPrices = seen))
     }
 
+    // ---------- §1–§4. Смены, «Загадка Бори», бонус взрослого (TOWN-S1b) ----------
+
+    /** Открыта ли работа jobId и что она обещает до самой смены (§1). */
+    fun shiftQuote(s: GameState, jobId: String): ShiftQuote {
+        val shiftsLeft = maxOf(0, town.rules.shiftsPerWeek - s.shiftsThisPeriod)
+        val job = town.jobs.firstOrNull { it.id == jobId }
+            ?: return ShiftQuote(jobId, false, false, false, 0, 0, 0, shiftsLeft, CLOSED)
+        val place = town.places.firstOrNull { it.id == job.place }
+        val open = opensByOk(job.opensBy, s) && (place == null || opensByOk(place.opensBy, s))
+        val paid = open && shiftsLeft > 0
+        val canPlay = open && !s.asleep && (paid || (s.plan.confirmed && job.game != JobGame.TAPS))
+        val shifts = s.jobShifts[jobId] ?: 0
+        val level = town.rules.jobLevelShifts.indexOfLast { it <= shifts }
+        val base = job.baseByLevel.getOrElse(level) { 0 }
+        val levelBombs = if (job.game == JobGame.MATCH3) town.rules.jobLevelBombs.getOrElse(level) { 0 } else 0
+        val line = when {
+            !open -> CLOSED
+            s.asleep -> NIGHT
+            paid -> if (job.game == JobGame.TAPS) {
+                "База $base за три поручения"
+            } else {
+                "База $base + до ${town.rules.shiftBonusMax} за результат"
+            }
+            canPlay -> "Смены на неделе закончились — можно играть ради рекорда"
+            job.game == JobGame.TAPS -> "Смены на неделе закончились — новые с новым конвертом"
+            else -> "Смены на неделе закончились. Ради рекорда — после раскладки"
+        }
+        return ShiftQuote(jobId, open, paid, canPlay, level, base, levelBombs, shiftsLeft, line)
+    }
+
+    /** Когда открывается место или работа (§1): неделя (демо — сразу) или сбывшаяся мечта. */
+    private fun opensByOk(o: OpensBy, s: GameState): Boolean = when {
+        o.week != null -> s.demo || s.period >= o.week
+        o.goal != null -> s.achievedGoals.any { it.id == o.goal }
+        else -> true
+    }
+
+    /** Конец смены: оплачиваемой или ради рекорда (§2). */
+    fun finishShift(s: GameState, jobId: String, score: Int, bombsUsed: Int): TownResult {
+        val quote = shiftQuote(s, jobId)
+        val job = town.jobs.firstOrNull { it.id == jobId }
+        refusal(
+            (s.pet == null) to NO_PET,
+            s.asleep to NIGHT,
+            !quote.open to CLOSED,
+            !quote.canPlay to quote.line,
+            (score < 0 || bombsUsed < 0) to BAD_SHIFT,
+            (job?.game != JobGame.MATCH3 && bombsUsed > 0) to BAD_SHIFT,
+            (bombsUsed > quote.levelBombs + s.bombs) to BAD_SHIFT,
+            (job?.game == JobGame.TAPS && score > job.tasks.size) to BAD_SHIFT,
+        )?.let { return it }
+        job!!
+        val hasScore = job.game != JobGame.TAPS
+        val bonus = when (job.game) {
+            JobGame.MATCH3 -> minOf(town.rules.shiftBonusMax, score / town.rules.shiftScorePerBonus)
+            JobGame.TAPS -> 0
+            JobGame.CHANGE -> minOf(town.rules.shiftBonusMax, score)
+        }
+        val prevRecord = s.records[jobId] ?: 0
+        val isNew = hasScore && score > prevRecord
+        val bombSpent = maxOf(0, bombsUsed - quote.levelBombs)
+        var st = s.copy(bombs = s.bombs - bombSpent)
+        if (job.game == JobGame.MATCH3) st = st.copy(riddleAsked = false)
+        if (hasScore) st = st.copy(records = st.records + (jobId to maxOf(prevRecord, score)))
+
+        if (!quote.paid) {
+            val line = "Счёт $score. Это игра ради рекорда." + (if (isNew) " Новый рекорд!" else "")
+            return done(st, line)
+        }
+        val total = quote.base + bonus
+        st = st.copy(
+            envelope = st.envelope + LedgerEntry("Смена: ${job.title}", total),
+            shiftsThisPeriod = st.shiftsThisPeriod + 1,
+            jobShifts = st.jobShifts + (jobId to ((st.jobShifts[jobId] ?: 0) + 1)),
+            diary = st.diary + DiaryLine(s.period, s.day, "Заработали $total: «${job.title}»"),
+        )
+        val line = when (job.game) {
+            JobGame.TAPS -> "База ${quote.base} за три поручения. ✉ +$total — придёт с новым конвертом"
+            else -> if (bonus > 0) {
+                val what = if (job.game == JobGame.MATCH3) "булочки" else "сдачу"
+                "База ${quote.base} + $bonus за $what. ✉ +$total — придёт с новым конвертом"
+            } else {
+                "База ${quote.base}. ✉ +$total — придёт с новым конвертом"
+            }
+        }
+        val newShifts = st.jobShifts[jobId] ?: 0
+        val levelBefore = quote.level
+        val levelAfter = town.rules.jobLevelShifts.indexOfLast { it <= newShifts }
+        val name = town.residents.first { it.id == job.resident }.name
+        val why = mutableListOf<String>()
+        why += when {
+            levelAfter > levelBefore -> "$name: новый уровень ${levelAfter + 1}! База теперь ${job.baseByLevel.getOrElse(levelAfter) { 0 }}"
+            levelAfter + 1 < town.rules.jobLevelShifts.size ->
+                "$name: $newShifts из ${town.rules.jobLevelShifts[levelAfter + 1]} смен до уровня ${levelAfter + 2}"
+            else -> "$name: высший уровень мастерства"
+        }
+        why += "Карманные приходят каждую неделю, зарплата — когда поработаешь"
+        if (isNew) why += "Новый рекорд!"
+        return done(st, line, why)
+    }
+
+    /** Доступные загадки, отсортированные по спеке (§3). */
+    private fun availableQuestions(s: GameState): List<QuizQuestion> {
+        val solved = s.riddles.filter { it.correct }.map { it.taskId }.toSet()
+        val available = town.quiz.filter { it.id !in solved }
+        val (never, asked) = available.partition { q -> s.riddles.none { it.taskId == q.id } }
+        val ordered = asked.sortedBy { q -> s.riddles.indexOfLast { it.taskId == q.id } }
+        return never + ordered
+    }
+
+    /** Следующая «Загадка Бори» или null, если её сейчас нет (§3). */
+    fun nextQuestion(s: GameState): QuizQuestion? = if (s.riddleAsked) null else availableQuestions(s).firstOrNull()
+
+    /** Ответ на «Загадку Бори»: бомбочка за верный, без монет и показателей (§3). */
+    fun answerQuestion(s: GameState, questionId: String, optionIndex: Int): TownResult {
+        val q = town.quiz.firstOrNull { it.id == questionId }
+        val alreadyCorrect = s.riddles.any { it.taskId == questionId && it.correct }
+        refusal(
+            (s.pet == null) to NO_PET,
+            s.riddleAsked to "Следующая загадка — после смены",
+            (q == null || alreadyCorrect) to "Этот вопрос уже разобран",
+            (optionIndex !in q?.options.orEmpty().indices) to "Выбери ответ",
+        )?.let { return it }
+        q!!
+        val correct = optionIndex == q.correct
+        val st = s.copy(
+            riddles = s.riddles + TaskResult(questionId, correct, 0, s.period),
+            riddleAsked = true,
+            bombs = if (correct) s.bombs + content.rules.quizBombReward else s.bombs,
+        )
+        val line = if (correct) "Верно! ${q.explanation}" else q.explanation
+        val why = if (correct) {
+            val m = town.jobs.first { it.game == JobGame.MATCH3 }.title
+            listOf("Бомбочка +${content.rules.quizBombReward} — для поля «$m»")
+        } else {
+            listOf("Вопрос вернётся позже")
+        }
+        return done(st, line, why)
+    }
+
+    /** Бонус взрослого в конверт следующей недели (§4). Ночью разрешён. */
+    fun parentBonus(s: GameState, reasonIndex: Int): TownResult {
+        refusal(
+            (s.pet == null) to NO_PET,
+            (reasonIndex !in town.parentBonusReasons.indices) to "Выберите причину бонуса",
+            (s.parentBonusesThisPeriod >= content.rules.parentBonusPerPeriod) to
+                "На этой неделе все бонусы уже начислены — новые будут со следующей недели",
+        )?.let { return it }
+        val reason = town.parentBonusReasons[reasonIndex]
+        val st = s.copy(
+            envelope = s.envelope + LedgerEntry("Бонус от взрослого: $reason", content.rules.parentBonusAmount),
+            parentBonusesThisPeriod = s.parentBonusesThisPeriod + 1,
+        )
+        val left = content.rules.parentBonusPerPeriod - st.parentBonusesThisPeriod
+        val why = if (left > 0) listOf("На этой неделе можно начислить ещё $left") else listOf("Лимит бонусов на эту неделю исчерпан")
+        return done(st, "Придёт в новом конверте ребёнка", why)
+    }
+
     // ---------- общее ----------
 
     private fun planKept(x: GameState): Boolean =
@@ -551,6 +718,8 @@ class Town(private val content: Content) {
         const val NO_PET = "Сначала создай питомца"
         const val NIGHT = "Сейчас ночь — сначала проснёмся"
         const val NOT_HERE = "Этого товара здесь нет"
+        const val CLOSED = "Эта работа пока закрыта"
+        const val BAD_SHIFT = "Так закончить смену нельзя"
         const val CANT_PAY = "Так оплатить нельзя"
         const val ABOVE_ZERO = "Выбери сумму больше нуля"
         const val NO_PLAN_SLEEP = "Сначала разложим монеты — потом спать"
