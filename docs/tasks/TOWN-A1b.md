@@ -25,7 +25,8 @@ room.py/uiprops.py/props.py импортируются, to_webp.py, tools/sheets
 
 ## CONTRACT
 0. Общие части — в lib.py (направление импорта: room.py, place.py, facade.py → lib; place.py не
-   импортирует room.py, room.py — place.py): оболочка интерьера (пол из досок, стены, плинтус), навес,
+   импортирует room.py, room.py — place.py; facade.py может импортировать place.py — цвета и декор места
+   одни на фон и фасад, уточнение 2026-09-26 по группе 3): оболочка интерьера (пол из досок, стены, плинтус), навес,
    табличка с текстом. room.py переводится на эти части БЕЗ изменения своего кадра (п. 6 приёмки).
    Шрифт вывесок — Montserrat из finny-pet/app/src/main/res/font (bpy.data.fonts.load; лицензия уже в
    LICENSES.md), кириллица должна читаться (п. 5).
@@ -35,7 +36,8 @@ room.py/uiprops.py/props.py импортируются, to_webp.py, tools/sheets
    item_food_basic, item_fun_balloon, item_fun_ball; «У Фомы»: item_care_shampoo, item_fun_book;
    пекарня: без пропов-товаров); запрещены item_care_vitamins, item_fun_bow и все tile_*.
    Композиция (портрет 1080 × 1920, камера комнаты room.py (0, −10,5, 3,1) → (0, 2, 2,0), lens 36, свет
-   дня как light_room):
+   дня как light_room; у outdoors тот же набор, но ключ и заливка слабее — без стен свет комнаты выжигает
+   пол и навес: уточнение 2026-09-26 по панели судей, критерий — пересвет в п. 4):
    - 0–31 % высоты (под HUD и вкладками): светлый малодетальный фон (стена или небо), яркость —
      чтобы G.ink #1C1D22 давал ≥ 4,5 : 1 под текстом HUD-2 и заголовков; узнаваемость места — крупными
      цветовыми массами (навес, цвет стен) у верхнего края и по бокам в центральных 78 % ширины;
@@ -114,10 +116,12 @@ app/, content.json, docs/, props.py (декор — импортом билде�
      --samples 8 -> 9 файлов res_<id> ровно по id town.residents (сверка скриптом), у каждого bbox ≥ 2 px от
      краёв (`art_check.py bbox`); на лист — osya (зайка+кепка), foma (кот+кепка), asya (очки), tosha (без
      аксессуара); `python tools/art_check.py palette` -> PALETTE OK; --only-resident nobody -> exit ≠ 0, файла нет
-  4. контраст: `python tools/art_check.py bg $TW/bg_market_port.png $T/comp` -> CONTRAST OK: под
+  4. контраст и пересвет: `python tools/art_check.py bg $TW/bg_market_port.png $T/comp` -> CONTRAST OK:
+     доля пикселей с R и G ≥ 250 в полосах 0–31 % и 80–100 % ≤ 5 % (у room_port_day 0,000 и 0,003); под
      прямоугольниками текста HUD-2 и заголовка и в полосе 0–5 % (статус-бар) средняя относительная яркость
      фона даёт с G.ink ≥ 4,5 : 1, 10-й перцентиль ≥ 3 : 1 (формула WCAG), на 360 × 640 и в пересчёте на S23
-     (фон ×1,219, срез 118 px с боков); композиты п. 5 а — $T/comp/comp_*.png
+     (фон ×1,219, срез 118 px с боков); композиты п. 5 а — $T/comp/comp_*.png (фон под подложкой поля
+     Match3 α 0,18 зонд тоже заменяет; тени плиток несут цвет старого фона — это UI)
   5. листы finny-pet/screenshots/town/a1b_style_*.jpg (tools/sheets.py; квадраты не растянуты):
      а) композиты «как увидит ребёнок»: маска |снимок − room_port_day.webp| < 12 переносит UI с
         emu_demo05a_market.png (до плана), emu_demo06b_order.png (после плана), emu_demo06c_order.png

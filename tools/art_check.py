@@ -5,7 +5,8 @@
                                                       stage 0, 2) генераторами из SRC_DIR -> OUT_DIR/*.json
   python tools/art_check.py diff A_DIR B_DIR          сравнить дампы; exit 1, если есть разница или нет файла
   python tools/art_check.py bg BG.png OUT_DIR         композиты UI со снимков на фон места + контраст G.ink под текстом;
-                                                      exit 1, если среднее < 4,5 : 1 или 10-й перцентиль < 3 : 1
+                                                      exit 1, если среднее < 4,5 : 1, 10-й перцентиль < 3 : 1 или
+                                                      пересвет (R и G ≥ 250) в полосах 0–31 % / 80–100 % > 5 %
   python tools/art_check.py bbox PNG [PNG …] [--ref x0,y0,x1,y1] [--tol 3] [--margin 2]
   python tools/art_check.py palette                   RESIDENT_COLORS из pet.py против town.residents и палитры питомца
 
@@ -21,7 +22,8 @@ INK = (0x1C, 0x1D, 0x22)  # G.ink
 TEXT = [("emu_demo05a_market.png", "HUD-2 «Не разложено»", 20, 318, 500, 372),
         ("emu_demo06b_order.png", "HUD-2 отделения", 25, 290, 525, 402),
         ("emu_s1d3_job13.png", "заголовок «Пекарня» (1,3)", 20, 452, 385, 530)]
-SNAPS = ["emu_demo05a_market.png", "emu_demo06b_order.png", "emu_demo06c_order.png", "emu_s1d3_job13.png"]
+SNAPS = ["emu_demo05a_market.png", "emu_demo06b_order.png", "emu_demo06c_order.png", "emu_s1d3_job13.png", "emu_s1d3_round10.png"]
+VEIL = 0.18  # подложка поля Match3: White α 0,18 (MiniGameScreen.kt), фон под ней = фон·0,82 + белый·0,18
 S23 = (1.219, 118)  # S23 360 × 780 dp: фон ×1,219 (Crop по высоте), по бокам срезается по 118 px
 
 
@@ -120,10 +122,16 @@ def bg(path, out):
     room = np.asarray(Image.open(os.path.join(FP, "app/src/game/res/drawable-nodpi/room_port_day.webp")).convert("RGB")).astype(int)
     for s in SNAPS:
         S = np.asarray(Image.open(os.path.join(FP, "screenshots", s)).convert("RGB")).astype(int)
-        m = np.abs(S - room).max(axis=2) < 12
-        # белое в карточке совпадает с белым окном комнаты: тонкие совпадения убрать, замкнутые UI дыры залить
-        m = ~ndimage.binary_fill_holes(~ndimage.binary_opening(m, iterations=2))
-        Image.fromarray(np.where(m[..., None], B, S).astype("uint8")).save(os.path.join(out, "comp_" + s))
+        m1 = np.abs(S - room).max(axis=2) < 12
+        m2 = np.abs(S - (room * (1 - VEIL) + 255 * VEIL)).max(axis=2) < 12  # фон под подложкой поля Match3
+        # белое в карточке совпадает с белым окном комнаты: тонкие совпадения убрать, малые замкнутые дыры UI залить
+        # (большие — это фон в рамке, например поле Match3 целиком)
+        m = ndimage.binary_opening(m1 | m2, iterations=2)
+        holes, n = ndimage.label(ndimage.binary_fill_holes(~m) & m)
+        small = np.isin(holes, 1 + np.flatnonzero(ndimage.sum(np.ones_like(holes), holes, range(1, n + 1)) < 60000))
+        m &= ~small
+        C = np.where((m & ~m1)[..., None], B * (1 - VEIL) + 255 * VEIL, np.where(m[..., None], B, S))
+        Image.fromarray(C.astype("uint8")).save(os.path.join(out, "comp_" + s))
     Lk = float(lum(INK))
     Lb = lum(B)
     fails = 0
@@ -137,6 +145,10 @@ def bg(path, out):
             mean = (L.mean() + 0.05) / (Lk + 0.05); p10 = (np.percentile(L, 10) + 0.05) / (Lk + 0.05)
             ok = mean >= 4.5 and p10 >= 3.0; fails += not ok
             print(f"{cap:34} {scr:8} {mean:8.2f} {p10:6.2f}  {'OK' if ok else 'FAIL'}")
+    for a, b in ((0, 31), (80, 100)):  # пересвет: доля пикселей с R и G ≥ 250 (у room_port_day 0,00)
+        band = B[1920 * a // 100:1920 * b // 100]
+        clip = float(((band[..., 0] >= 250) & (band[..., 1] >= 250)).mean()); ok = clip <= 0.05; fails += not ok
+        print(f"пересвет R,G ≥ 250 на {a}–{b} %: {clip:.3f} (≤ 0,05)  {'OK' if ok else 'FAIL'}")
     print("CONTRAST OK" if not fails else f"CONTRAST FAIL: {fails}")
     return 1 if fails else 0
 
