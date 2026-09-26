@@ -1580,7 +1580,7 @@
           {
             "fact": "BUY:FOOD:SAVINGS",
             "verdict": "OK",
-            "line": "Других монет не было — копилка выручила."
+            "line": "Копилка выручила — корм куплен."
           },
           {
             "fact": "BUY:FOOD",
@@ -1617,6 +1617,7 @@
           "week": 2,
           "day": 2
         },
+        "triggers": ["ENTER:foma"],
         "requires": [
           "afterPlan",
           "notOwned:fun_robot"
@@ -1763,6 +1764,7 @@
         "arrives": {
           "week": 2
         },
+        "triggers": ["ENTER:foma"],
         "requires": [
           "afterPlan",
           "hasGoal",
@@ -2233,6 +2235,7 @@
         "sticker": "st_job_courier"
       }
     ],
+    "eventsOff": ["p2_party", "c2_lamp", "c4_paw", "pk2_change", "pk4_everyone_has", "windfall_granny", "job_kassa_help", "job_courier_help"],
     "stickers": [
       {
         "id": "st_place_home",
