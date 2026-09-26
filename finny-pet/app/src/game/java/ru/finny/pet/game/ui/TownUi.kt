@@ -172,7 +172,9 @@ fun Hud1(vm: GameViewModel, inPlace: Boolean, onHome: () -> Unit = vm::home) {
             }
             if (sheet) Popup(alignment = Alignment.TopStart, offset = androidx.compose.ui.unit.IntOffset(0, with(LocalDensity.current) { 52.dp.roundToPx() }), onDismissRequest = { sheet = false }) {
                 Panel(Modifier.widthIn(max = 320.dp).clickable { sheet = false }, padding = 12.dp) {
-                    TText(if (s.plan.confirmed) "Нужное ${s.jarNeed} · Хочу ${s.jarWant} · Запас ${s.reserve}" else "Не разложено ${s.reserve}")
+                    // before the plan: balance − plan.total (UNALLOC, §D.1/§E.2), not reserve — reserve == balance until
+                    // confirmPlan sets jarNeed/jarWant, so «Не разложено» used to show the wrong number here (R10)
+                    TText(if (s.plan.confirmed) "Нужное ${s.jarNeed} · Хочу ${s.jarWant} · Запас ${s.reserve}" else "Не разложено ${s.balance - s.plan.total}")
                     val mail = s.envelope.sumOf { it.amount }
                     if (s.envelope.isNotEmpty()) TText("✉ +$mail")
                 }

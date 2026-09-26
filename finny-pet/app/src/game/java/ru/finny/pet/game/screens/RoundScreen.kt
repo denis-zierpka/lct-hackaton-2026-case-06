@@ -1,5 +1,6 @@
 package ru.finny.pet.game.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -8,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -53,8 +55,12 @@ fun RoundScreen(vm: GameViewModel, jobId: String) {
                 vm.taps.forEachIndexed { i, done ->
                     GameButton((if (done) "✓ " else "") + job?.tasks?.getOrNull(i).orEmpty(), Modifier.fillMaxWidth(), if (done) ButtonStyle.GREEN else ButtonStyle.PAPER, minHeight = 48.dp) { vm.tapTask(i) }
                 }
-                Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).testTag("job_row"), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Column(Modifier.weight(1f)) { ShiftTokens(vm, label = false, color = G.gold) }
+                // paper card, dark tokens and text — same as the MATCH3 job_row (правка №12 / R9, ТЗ 3.6)
+                Row(
+                    Modifier.fillMaxWidth().heightIn(min = 56.dp).testTag("job_row").background(G.paperTint, RoundedCornerShape(16.dp)).padding(horizontal = 8.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Column(Modifier.weight(1f)) { ShiftTokens(vm, label = false, color = G.ink) }
                     GameButton("Закончить", minHeight = 48.dp) { vm.finishRound() }
                 }
             }
