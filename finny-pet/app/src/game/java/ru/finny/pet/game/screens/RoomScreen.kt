@@ -1,12 +1,11 @@
 package ru.finny.pet.game.screens
 
-import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
-import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -14,23 +13,20 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -38,319 +34,293 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.painter.Painter
-import androidx.compose.ui.layout.layout
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.lifecycle.repeatOnLifecycle
-import kotlinx.coroutines.delay
+import androidx.compose.ui.unit.sp
 import ru.finny.pet.R
-import ru.finny.pet.domain.Need
-import ru.finny.pet.domain.Case
-import ru.finny.pet.domain.Economy
+import ru.finny.pet.domain.town.petLine
 import ru.finny.pet.game.GameViewModel
 import ru.finny.pet.game.LocalAnimate
-import ru.finny.pet.game.LocalLayout
-import ru.finny.pet.game.orNone
-import ru.finny.pet.game.ui.LocalParticles
 import ru.finny.pet.game.LocalPetAction
 import ru.finny.pet.game.Screen
-import ru.finny.pet.game.ui.ButtonStyle
 import ru.finny.pet.game.ui.G
-import ru.finny.pet.game.ui.GameBar
 import ru.finny.pet.game.ui.GameButton
-import ru.finny.pet.game.ui.HudChip
+import ru.finny.pet.game.ui.Hud1
+import ru.finny.pet.game.ui.Hud2
+import ru.finny.pet.game.ui.LocalParticles
 import ru.finny.pet.game.ui.PetSprite
-import ru.finny.pet.game.ui.PropButton
-import ru.finny.pet.game.ui.SpeechBubble
-import ru.finny.pet.game.ui.TypewriterText
+import ru.finny.pet.game.ui.Pic
+import ru.finny.pet.game.ui.ResidentPic
+import ru.finny.pet.game.ui.STATS
+import ru.finny.pet.game.ui.StatChip
+import ru.finny.pet.game.ui.TText
+import ru.finny.pet.game.ui.Target
+import ru.finny.pet.game.ui.bigFont
+import ru.finny.pet.game.ui.chip
+import ru.finny.pet.game.ui.itemRes
 import ru.finny.pet.game.ui.particleTarget
+import ru.finny.pet.game.ui.stats
 
-/**
- * The room: pet in the middle, HUD on top, prop buttons at the bottom.
- * Everything the ТЗ wants on the main screen is here at once (2.5.3): pet, coins, savings, goal, needs, next step.
- * Landscape: needs left, goal and «Сейчас» right. Portrait: one column top to bottom, nothing overlaps at 360 dp.
- */
+/** HOME (§C, macket MockHome): HUD-1 56, HUD-2 48, «В городке» 56, the room takes the rest, bottom row 72. */
 @Composable
 fun RoomScreen(vm: GameViewModel) {
     val s = vm.state
-    val pet = s.pet ?: return
-    val e = vm.economy
-    val layout = LocalLayout.current
-    val portrait = !layout.landscape
-    val particles = LocalParticles.current
-    val petAction = LocalPetAction.current
-    var confirmEnd by rememberSaveable { mutableStateOf(false) }
-    val lifecycleOwner = LocalLifecycleOwner.current
+    s.pet ?: return
+    var panel by rememberSaveable { mutableStateOf<String?>(null) }
+    val bed = {
+        when {
+            !s.plan.confirmed -> vm.navigate(Screen.Jars)
+            s.day < vm.tc.rules.daysPerWeek -> vm.sleep()
+            else -> panel = "bed"
+        }
+    }
+    Box(Modifier.fillMaxSize()) {
+        Column(Modifier.fillMaxSize()) {
+            Hud1(vm, inPlace = false)
+            Hud2 { val v = vm.stats(); STATS.forEachIndexed { i, st -> StatChip(st, v[i]) } }
+            TownCard(vm)
+            Room(vm, Modifier.weight(1f), onPanel = { panel = it }, onBed = bed)
+            BottomRow(vm)
+        }
+        val close = { panel = null }
+        when (panel) {
+            "mail" -> EnvelopePanel(vm, close)
+            "fridge" -> Ask("Список нужного", vm.needList.map(vm::seenLine) + s.notes, listOf("Понятно" to close), close)
+            "bed" -> BedAsk(vm, close)
+        }
+    }
+}
 
-    // The pet talks on its own: the next step first, then idle lines and questions. Only while on screen (MVP-T12).
-    LaunchedEffect(pet.name, s.period, s.plan.confirmed, s.purchases.size, s.goal?.id) {
-        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-            delay(900)
-            vm.say(vm.nextStep().first, ttlMs = 9000)
-            while (true) {
-                delay(14_000)
-                if (vm.bubble == null) {
-                    if (e.availableQuiz(s).isNotEmpty() && (System.currentTimeMillis() / 14_000) % 3 == 0L) vm.askQuestion()
-                    else vm.say(vm.nextLine(pet.name), ttlMs = 8000)
+/** «В городке» (§B.7): the first active event or order, else the calm line; a tap goes where the event lives. */
+@Composable
+private fun TownCard(vm: GameViewModel) {
+    val card = vm.town.card(vm.state)
+    val place = card.place?.let { p -> vm.tc.places.firstOrNull { it.id == p }?.title }
+    val text = if (card.eventId != null && place != null) "${card.title} · $place" else card.title
+    Row(
+        Modifier.fillMaxWidth().height(56.dp).testTag("town_card").padding(horizontal = 8.dp, vertical = 2.dp).chip()
+            .clickable(role = Role.Button) { card.eventId?.let { vm.goEvent(it) } ?: vm.navigate(Screen.Board) }
+            .clearAndSetSemantics { contentDescription = "В городке: $text" }.padding(horizontal = 8.dp),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        if (card.eventId != null) Box(Modifier.size(28.dp).background(G.magenta, CircleShape), contentAlignment = Alignment.Center) {
+            TText("!", style = MaterialTheme.typography.titleMedium, color = Color.White, maxLines = 1)
+        }
+        TText(text, style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 18.sp), modifier = Modifier.weight(1f), maxLines = 2)
+        TText("→", style = MaterialTheme.typography.titleMedium, color = G.purpleDeep, maxLines = 1)
+    }
+}
+
+/** The room as a scheme: wall and floor, flat objects over them, the pet above the bed. */
+@Composable
+private fun Room(vm: GameViewModel, modifier: Modifier, onPanel: (String) -> Unit, onBed: () -> Unit) {
+    val s = vm.state
+    val pet = s.pet ?: return
+    val label = MaterialTheme.typography.labelSmall
+    val particles = LocalParticles.current
+    val resident = vm.tc.residents.lastOrNull { r -> r.arrivesWeek.let { it != null && it <= s.period } }
+    val streetEvent = vm.town.activeEvents(s).any { it.place != null && it.place != "home" }
+    val mail = s.envelope.sumOf { it.amount }
+    Box(modifier.fillMaxWidth().testTag("room")) {
+        Column(Modifier.fillMaxSize()) {
+            Box(Modifier.fillMaxWidth().weight(0.6f).background(G.lavenderLight))
+            Box(Modifier.fillMaxWidth().weight(0.4f).background(G.lavender))
+        }
+        Column(Modifier.fillMaxSize().padding(horizontal = 8.dp)) {
+            Row(Modifier.fillMaxWidth().height(88.dp).padding(top = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                Target("Окно: улица" + if (streetEvent) ", есть событие" else "", 112.dp, 80.dp, color = G.sky, onClick = { vm.navigate(Screen.Street) }) {
+                    if (resident != null) ResidentPic(resident, 40.dp, Modifier.align(Alignment.CenterStart).padding(start = 4.dp))
+                    if (streetEvent) TText("!", style = MaterialTheme.typography.titleMedium, modifier = Modifier.align(Alignment.TopEnd).padding(end = 6.dp), color = G.magenta, maxLines = 1)
                 }
+                Shelf(vm)
+                Target("Копилка ${s.savings}", 64.dp, 64.dp, onClick = { vm.navigate(Screen.Savings) }) {
+                    Image(painterResource(R.drawable.ui_piggy), null, Modifier.size(52.dp))
+                }
+            }
+            Box(Modifier.fillMaxWidth().weight(1f).padding(top = 4.dp, bottom = 4.dp)) {
+                Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Column(Modifier.fillMaxHeight(), verticalArrangement = Arrangement.SpaceBetween) {
+                        Target("Холодильник: список нужного и цены", 64.dp, 96.dp, color = Color.White, onClick = { onPanel("fridge") }) {
+                            Box(Modifier.align(Alignment.TopCenter).padding(top = 32.dp).fillMaxWidth().height(2.dp).background(G.lavender))
+                            TText("Список", style = label, modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 6.dp).wrapContentWidth(unbounded = true), maxLines = 1)
+                        }
+                        SpotThing(vm, "spot_3", Modifier.align(Alignment.CenterHorizontally))
+                        Target("Сундук: обустроить комнату", 64.dp, 48.dp, onClick = { vm.navigate(Screen.Arrange) }) { TText("🧳", style = MaterialTheme.typography.titleLarge, maxLines = 1) }
+                        Target("Словарик", 48.dp, 48.dp, onClick = { vm.navigate(Screen.Glossary) }) { Image(painterResource(R.drawable.ui_book), null, Modifier.size(36.dp)) }
+                    }
+                    BoxWithConstraints(Modifier.weight(1f).fillMaxHeight()) {
+                        val petSize = minOf(120.dp, maxHeight - 64.dp - 36.dp).coerceAtLeast(64.dp)
+                        SpotThing(vm, "spot_2", Modifier.align(Alignment.TopCenter))
+                        SpotThing(vm, "spot_1", Modifier.align(Alignment.BottomStart).padding(bottom = 68.dp))
+                        SpotThing(vm, "spot_6", Modifier.align(Alignment.BottomEnd).padding(bottom = 68.dp))
+                        PetSprite(
+                            speciesId = pet.speciesId, colorId = pet.colorId, stage = vm.economy.stageIndex(pet.growth), face = vm.face, animate = LocalAnimate.current,
+                            size = petSize, bounceKey = vm.bounce, action = LocalPetAction.current.action, actionKey = LocalPetAction.current.key, seen = LocalPetAction.current,
+                            description = "${pet.name}. ${vm.economy.stageTitle(pet.growth)}. Нажми — что на уме",
+                            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 64.dp).particleTarget(particles, "pet"),
+                            onTap = vm::petTapped,
+                        )
+                        Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(64.dp)) {
+                            SpotThing(vm, "spot_4", Modifier.align(Alignment.CenterStart))
+                            Target("Кровать: сон", 128.dp, 64.dp, Modifier.align(Alignment.Center), onClick = onBed) {
+                                Row(verticalAlignment = Alignment.CenterVertically) { TText("🛏", style = MaterialTheme.typography.titleLarge, maxLines = 1); Spacer(Modifier.width(6.dp)); TText("Сон", style = label, maxLines = 1) }
+                            }
+                            SpotThing(vm, "spot_5", Modifier.align(Alignment.CenterEnd))
+                        }
+                    }
+                    Column(Modifier.fillMaxHeight(), horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.SpaceBetween) {
+                        Target("Дверь: на улицу", 64.dp, 136.dp, color = G.goldDark, onClick = { vm.navigate(Screen.Street) }) {
+                            Box(Modifier.align(Alignment.CenterEnd).padding(end = 8.dp).size(8.dp).background(G.purpleDeep, CircleShape))
+                            TText("Улица", style = label, modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 6.dp), maxLines = 1)
+                        }
+                        Mailbox(mail, Modifier.particleTarget(particles, "mail")) { onPanel("mail") }
+                    }
+                }
+                PetBubble(vm)
             }
         }
     }
-    val bubble = vm.bubble
-    LaunchedEffect(bubble) { if (bubble != null && bubble.questionId == null) { delay(bubble.ttlMs); if (vm.bubble === bubble) vm.clearBubble() } }
-    // system Back closes an open question bubble instead of leaving the room (MVP-T12)
-    BackHandler(enabled = bubble?.options?.isNotEmpty() == true) { vm.clearBubble() }
+}
 
-    val openTasks = e.availableTasks(s).size
-    val stage = e.stageIndex(pet.growth)
-    val step = vm.nextStep()
-    val gameLock = e.miniGameLock(s)
-    val stageLine = "${e.stageTitle(pet.growth)} · неделя ${s.period}" + if (s.demo) " · демо" else ""
-    val panelBg = G.purpleDeep.copy(alpha = 0.55f)
-
-    val hud: @Composable () -> Unit = {
-        Row(Modifier.fillMaxWidth().padding(horizontal = if (portrait) 8.dp else 12.dp, vertical = if (portrait) 2.dp else 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(if (portrait) 4.dp else 8.dp)) {
-            HudChip(painterResource(R.drawable.ui_coin), s.balance, "Монеты", Modifier.particleTarget(particles, "coins"), compact = portrait)
-            HudChip(painterResource(R.drawable.ui_piggy), s.savings, "Копилка", Modifier.particleTarget(particles, "piggy"), compact = portrait)
-            Spacer(Modifier.weight(1f))
-            PropButton("Прогресс", painterResource(R.drawable.ui_trophy), size = 48.dp, showLabel = false, tight = portrait, onClick = { vm.navigate(Screen.Progress) })
-            PropButton("Подсказка", painterResource(R.drawable.ui_bubble_q), size = 48.dp, showLabel = false, tight = portrait, onClick = { vm.navigate(Screen.Intro) })
-            PropButton("Взрослым", painterResource(R.drawable.ui_lock), size = 48.dp, showLabel = false, tight = portrait, onClick = { vm.navigate(Screen.Parent) })
+/** Shelf with the jars: empty before the plan, the numbers after it (→ Jars). */
+@Composable
+private fun Shelf(vm: GameViewModel) {
+    val s = vm.state
+    val planned = s.plan.confirmed
+    val nums = listOf(s.jarNeed, s.jarWant, s.reserve)
+    val desc = if (planned) "Банки: Нужное ${nums[0]}, Хочу ${nums[1]}, Запас ${nums[2]}" else "Банки: разложи монеты"
+    Target(desc, 152.dp, 72.dp, onClick = { vm.navigate(Screen.Jars) }) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Row(horizontalArrangement = Arrangement.SpaceEvenly, modifier = Modifier.fillMaxWidth()) {
+                listOf(R.drawable.ui_lid_mandatory, R.drawable.ui_lid_optional, R.drawable.ui_lid_savings).forEachIndexed { i, lid ->
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Box(Modifier.size(36.dp)) {
+                            Image(painterResource(R.drawable.ui_jar), null, Modifier.align(Alignment.BottomCenter).size(32.dp))
+                            Image(painterResource(lid), null, Modifier.align(Alignment.TopCenter).size(22.dp))
+                        }
+                        if (planned) TText("${nums[i]}", style = MaterialTheme.typography.titleSmall, maxLines = 1)
+                    }
+                }
+            }
+            if (!planned) TText("Разложи", style = MaterialTheme.typography.titleSmall, maxLines = 1)
         }
     }
-    val petSprite: @Composable (Modifier, Dp) -> Unit = { mod, size ->
-        PetSprite(
-            speciesId = pet.speciesId, colorId = pet.colorId, stage = stage, face = e.face(pet), animate = LocalAnimate.current,
-            size = size, bounceKey = vm.bounce, action = petAction.action, actionKey = petAction.key,
-            description = "${pet.name}, ${e.stageTitle(pet.growth)}. ${e.faceReason(pet)}",
-            modifier = mod.particleTarget(particles, "pet"), seen = petAction,
-            onTap = vm::petTapped,
+}
+
+/** A thing on a room spot: a starter or a placed item, ≈ 36 dp, no touch; an empty spot is not drawn. */
+@Composable
+private fun SpotThing(vm: GameViewModel, spotId: String, modifier: Modifier) {
+    val starter = vm.tc.homeItems.firstOrNull { it.spot == spotId }
+    val placed = vm.state.placed[spotId]?.let(vm::item)
+    when {
+        starter != null -> Pic(null, starter.emoji, 36.dp, modifier)
+        placed != null -> Pic(itemRes(placed.id), placed.emoji, 36.dp, modifier.clearAndSetSemantics {})
+    }
+}
+
+/** Mailbox «✉ +N»: only the envelope pulses, and only while it has coins and animations are on (§9.2 №17). */
+@Composable
+private fun Mailbox(mail: Int, modifier: Modifier, onClick: () -> Unit) {
+    val pulse = mail > 0 && LocalAnimate.current
+    val scale = if (pulse) rememberInfiniteTransition(label = "mail").animateFloat(1f, 1.15f, infiniteRepeatable(tween(700), RepeatMode.Reverse), label = "pulse").value else 1f
+    Target("Почтовый ящик: плюс $mail придёт с новым конвертом", 48.dp, 48.dp, modifier, onClick = onClick) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Canvas(Modifier.size(22.dp, 14.dp).graphicsLayer { scaleX = scale; scaleY = scale }) { // envelope: an emoji line is taller than 24 dp at 1.3
+                val st = Stroke(2.dp.toPx())
+                drawRect(G.purpleDeep, style = st)
+                drawPath(Path().apply { moveTo(0f, 0f); lineTo(size.width / 2, size.height * 0.6f); lineTo(size.width, 0f) }, G.purpleDeep, style = st)
+            }
+            TText("+$mail", style = MaterialTheme.typography.labelSmall, maxLines = 1)
+        }
+    }
+}
+
+/** What is on the pet's mind (§A): the line over its head and, for a need, the way to the shop or the street. */
+@Composable
+private fun androidx.compose.foundation.layout.BoxScope.PetBubble(vm: GameViewModel) {
+    val line = vm.petLine ?: return
+    val shop = line.shop?.let { id -> vm.tc.shops.firstOrNull { it.id == id } }
+    Column(Modifier.align(Alignment.BottomCenter).padding(bottom = 176.dp).fillMaxWidth()) {
+        Row(
+            Modifier.fillMaxWidth().shadow(8.dp, RoundedCornerShape(20.dp)).background(Color.White, RoundedCornerShape(20.dp)).clickable(onClickLabel = "Закрыть") { vm.closePetLine() }.padding(8.dp),
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            TText(line.text, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f).padding(start = 4.dp), maxLines = 3)
+            when {
+                shop != null -> GameButton(shop.title, minHeight = 48.dp) { vm.openPlace(shop.place) }
+                line.need != null -> GameButton("На улицу", minHeight = 48.dp) { vm.navigate(Screen.Street) }
+            }
+        }
+        Row(Modifier.fillMaxWidth()) {
+            Spacer(Modifier.width(72.dp))
+            Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                Canvas(Modifier.size(22.dp, 12.dp)) { drawPath(Path().apply { moveTo(0f, 0f); lineTo(size.width, 0f); lineTo(size.width / 2, size.height); close() }, Color.White) }
+            }
+            Spacer(Modifier.width(72.dp))
+        }
+    }
+}
+
+/** Bottom row 5 × 72 dp: Банки, Лавки, Копилка, События, Дневник; above 1.15 font only icons. */
+@Composable
+private fun BottomRow(vm: GameViewModel) {
+    val big = bigFont()
+    Row(Modifier.fillMaxWidth().height(72.dp).testTag("bottom_row")) {
+        listOf<Triple<Int, String, () -> Unit>>(
+            Triple(R.drawable.ui_jar, "Банки") { vm.navigate(Screen.Jars) },
+            Triple(R.drawable.ui_bag, "Лавки") { vm.openPlace(vm.lastShop) },
+            Triple(R.drawable.ui_piggy, "Копилка") { vm.navigate(Screen.Savings) },
+            Triple(R.drawable.ui_book, "События") { vm.navigate(Screen.Board) },
+            Triple(R.drawable.ui_trophy, "Дневник") { vm.navigate(Screen.Progress) },
+        ).forEach { (icon, word, go) ->
+            Column(
+                Modifier.weight(1f).fillMaxHeight().clickable(role = Role.Button, onClick = go).semantics { if (big) contentDescription = word },
+                horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
+            ) {
+                Image(painterResource(icon), null, Modifier.size(if (big) 44.dp else 36.dp))
+                // 14 sp: UX_ACCESSIBILITY.md «Исключения: 14 sp», нижний ряд (16 sp не влезает в 72 dp)
+                if (!big) TText(word, style = MaterialTheme.typography.labelSmall, color = Color.White, maxLines = 1)
+            }
+        }
+    }
+}
+
+/** Envelope panel (§D.3): what comes with the next envelope and why the salary waits. */
+@Composable
+private fun androidx.compose.foundation.layout.BoxScope.EnvelopePanel(vm: GameViewModel, close: () -> Unit) {
+    val env = vm.state.envelope
+    var why by remember { mutableStateOf(false) }
+    val lines = env.map { "${it.text} +${it.amount}" } + if (why) listOf("Зарплату приносит почтальон вместе с карманными — сначала работа, потом зарплата") else emptyList()
+    Ask(
+        "Придёт с новым конвертом: +${env.sumOf { it.amount }}", lines,
+        if (why) listOf("Понятно" to close) else listOf("Почему?" to { why = true }, "Понятно" to close), close, primary = if (why) 0 else 1,
+    )
+}
+
+/** Last day of the week: the bed asks first (§D.6). */
+@Composable
+private fun androidx.compose.foundation.layout.BoxScope.BedAsk(vm: GameViewModel, close: () -> Unit) {
+    val preview = vm.weekEndPreview()
+    val buttons: List<Pair<String, () -> Unit>> = if (preview.isEmpty()) {
+        listOf("Спать" to { close(); vm.endWeek() }, "Отмена" to close)
+    } else {
+        val shopId = vm.town.petLine(vm.state, 0).shop
+        val shop = vm.tc.shops.firstOrNull { it.id == shopId }
+        listOf(
+            (shop?.title ?: "На улицу") to { close(); if (shop != null) vm.openPlace(shop.place) else vm.navigate(Screen.Street) },
+            "Всё равно спать" to { close(); vm.endWeek() },
         )
     }
-    // the active task stays on screen (2.5.3); the week end asks first, like the moon button
-    val now: @Composable (Modifier) -> Unit = { mod ->
-        // landscape panel is narrow: «Сейчас» goes above the button, so the step is never cut (MVP-T11)
-        if (!portrait) Text("Сейчас", style = MaterialTheme.typography.labelMedium, color = G.pink)
-        GameButton(if (portrait) "Сейчас: ${step.second}" else step.second, mod.fillMaxWidth(), style = ButtonStyle.GOLD, minHeight = 48.dp) {
-            if (step.third == Screen.WeekEnd) confirmEnd = true else vm.navigate(step.third)
-        }
-    }
-    val actions: @Composable (Modifier) -> Unit = { mod ->
-        Row(
-            mod.fillMaxWidth().padding(horizontal = if (portrait) 0.dp else 4.dp, vertical = if (portrait) 2.dp else 6.dp),
-            horizontalArrangement = Arrangement.spacedBy(if (portrait) 0.dp else 6.dp, Alignment.CenterHorizontally), verticalAlignment = Alignment.Bottom,
-        ) {
-            // portrait: long labels get more width, so «Копилка» fits at 14 sp even with six buttons
-            fun m(label: String) = if (portrait) Modifier.weight(if (label.length > 5) 7f else 5f) else Modifier
-            val bs = if (portrait) 48.dp else 64.dp
-            PropButton("План", painterResource(R.drawable.ui_jar), m("План"), size = bs, tight = portrait, onClick = { vm.navigate(Screen.Plan) })
-            PropButton("Магазин", painterResource(R.drawable.ui_bag), m("Магазин"), size = bs, tight = portrait, onClick = { vm.navigate(Screen.Shop) })
-            PropButton("Копилка", painterResource(R.drawable.ui_piggy), m("Копилка"), size = bs, tight = portrait, onClick = { vm.navigate(Screen.Savings) })
-            PropButton("Задания", painterResource(R.drawable.ui_book), m("Задания"), size = bs, badge = openTasks, tight = portrait, onClick = { vm.navigate(Screen.Tasks) })
-            // closed until the plan: still tappable, the reason matters more than the lock (2.8)
-            PropButton(
-                "Игра", painterResource(R.drawable.ui_gamepad), m("Игра").alpha(if (gameLock != null) 0.5f else 1f), size = bs, badge = s.bombs, tight = portrait,
-                description = if (gameLock != null) "Игра, закрыто до плана" else "Игра", onClick = { vm.startMiniGame() },
-            )
-            if (e.canEndPeriod(s)) {
-                if (!portrait) Spacer(Modifier.width(8.dp))
-                val end = if (portrait) "Спать" else "Завершить неделю"
-                PropButton(end, painterResource(R.drawable.ui_moon), m(end), size = bs, tight = portrait, onClick = { confirmEnd = true })
-            }
-        }
-    }
-    val goal = s.goal
-
-    BoxWithConstraints(Modifier.fillMaxSize()) {
-        val sceneHeight = maxHeight
-        if (!portrait) {
-            hud()
-            val petSize = 230.dp
-            petSprite(Modifier.align(Alignment.BottomCenter).padding(bottom = 60.dp), petSize)
-            // side panels grow with the font until the longest word fits, then phrases wrap (ТЗ 3.6)
-            val sidePanelWidth = Modifier.widthIn(min = if (layout.compact) 170.dp else 200.dp, max = 240.dp).width(IntrinsicSize.Min)
-            Column(
-                Modifier.align(Alignment.CenterStart).padding(start = 12.dp, end = 12.dp, top = 60.dp)
-                    .then(sidePanelWidth).background(panelBg, RoundedCornerShape(20.dp)).padding(12.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Text(pet.name, style = MaterialTheme.typography.titleLarge, color = Color.White)
-                Text(stageLine, style = MaterialTheme.typography.bodySmall, color = G.pink)
-                GameBar("Сытость", pet.hunger, G.gold, dark = true, icon = painterResource(R.drawable.item_food_basic))
-                GameBar("Чистота", pet.clean, G.sky, dark = true, icon = painterResource(R.drawable.item_care_shampoo))
-                GameBar("Настроение", pet.mood, G.green, dark = true, icon = painterResource(R.drawable.item_fun_ball))
-            }
-            Column(
-                Modifier.align(Alignment.CenterEnd).padding(start = 12.dp, end = 12.dp, top = 60.dp, bottom = 12.dp)
-                    .then(sidePanelWidth).background(panelBg, RoundedCornerShape(20.dp)).padding(12.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                Text("Цель", style = MaterialTheme.typography.labelMedium, color = G.pink)
-                if (goal != null) {
-                    Column(
-                        Modifier.clearAndSetSemantics { contentDescription = "Цель: ${goal.title}, накоплено ${s.savings} из ${Economy.coins(goal.price, Case.GEN)}" },
-                        verticalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Image(painterResource(goalRes(goal.id)), null, Modifier.size(44.dp))
-                            Text(goal.title, style = MaterialTheme.typography.titleSmall, color = Color.White)
-                        }
-                        Text("${s.savings} из ${Economy.coins(goal.price, Case.GEN)}", style = MaterialTheme.typography.bodySmall, color = Color.White)
-                        GameBar("", s.savings, G.magenta, max = goal.price, dark = true)
-                    }
-                } else {
-                    Text("Пока не выбрана", style = MaterialTheme.typography.bodyMedium, color = Color.White)
-                    GameButton("Выбрать", style = ButtonStyle.MAGENTA, minHeight = 48.dp) { vm.navigate(Screen.Savings) }
-                }
-                now(Modifier)
-            }
-            // pinned strictly between the HUD row and the actions row, never under either (a scrolling bubble eats their taps):
-            // a short bubble sits over the pet's head like before, a tall one grows up but stops at the HUD.
-            val actionsRowHeight = 104.dp // PropButton: icon 64dp + column padding 8dp + label row ~20dp + actions Row vertical padding 2×6dp
-            val zoneTop = 64.dp // HUD row: PropButton icon 48dp + Row vertical padding 2×8dp
-            val zoneBottom = sceneHeight - actionsRowHeight
-            // a tiny landscape window (Samsung pop-up/freeform) can push zoneBottom below zoneTop: never measure with negative height
-            val bubbleMaxHeight = minOf(sceneHeight / 2, zoneBottom - zoneTop).coerceAtLeast(0.dp)
-            val bubbleAnchor = sceneHeight - 60.dp - petSize * 0.65f
-            BubbleHost(
-                vm, bubble,
-                Modifier.layout { measurable, constraints ->
-                    val placeable = measurable.measure(
-                        constraints.copy(minWidth = 0, maxWidth = minOf(constraints.maxWidth, 420.dp.roundToPx()), minHeight = 0, maxHeight = bubbleMaxHeight.roundToPx()),
-                    )
-                    val x = (constraints.maxWidth - placeable.width) / 2
-                    val zoneTopPx = zoneTop.roundToPx()
-                    val zoneBottomPx = zoneBottom.roundToPx()
-                    val y = (bubbleAnchor.roundToPx() - placeable.height).coerceIn(zoneTopPx, (zoneBottomPx - placeable.height).coerceAtLeast(zoneTopPx))
-                    layout(constraints.maxWidth, constraints.maxHeight) { placeable.placeRelative(x, y) }
-                },
-            )
-            actions(Modifier.align(Alignment.BottomCenter))
-        } else {
-            Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                hud()
-                Column(
-                    Modifier.padding(horizontal = 12.dp).fillMaxWidth().background(panelBg, RoundedCornerShape(20.dp)).padding(horizontal = 12.dp, vertical = 6.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(pet.name, style = MaterialTheme.typography.titleMedium, color = Color.White)
-                        Text(stageLine, style = MaterialTheme.typography.bodySmall, color = G.pink)
-                    }
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        NeedPill("Сытость", pet.hunger, G.gold, painterResource(R.drawable.item_food_basic), Modifier.weight(1f))
-                        NeedPill("Чистота", pet.clean, G.sky, painterResource(R.drawable.item_care_shampoo), Modifier.weight(1f))
-                        NeedPill("Настроение", pet.mood, G.green, painterResource(R.drawable.item_fun_ball), Modifier.weight(1f))
-                    }
-                }
-                BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
-                    // the pet shrinks on a small phone; a long bubble may cover only the sprite's empty top margin
-                    petSprite(Modifier.align(Alignment.BottomCenter), (maxHeight - 72.dp).coerceIn(120.dp, 260.dp))
-                    BubbleHost(vm, bubble, Modifier.align(Alignment.TopCenter).widthIn(max = 420.dp))
-                }
-                now(Modifier.padding(horizontal = 12.dp))
-                Row(
-                    Modifier.padding(horizontal = 12.dp).fillMaxWidth().background(panelBg, RoundedCornerShape(20.dp))
-                        .clickable { vm.navigate(Screen.Savings) }.padding(10.dp),
-                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    if (goal != null) {
-                        Image(painterResource(goalRes(goal.id)), null, Modifier.size(44.dp))
-                        Column(
-                            Modifier.weight(1f).clearAndSetSemantics { contentDescription = "Цель: ${goal.title}, накоплено ${s.savings} из ${Economy.coins(goal.price, Case.GEN)}" },
-                            verticalArrangement = Arrangement.spacedBy(4.dp),
-                        ) {
-                            Text("Цель: ${goal.title} · ${s.savings} из ${goal.price}", style = MaterialTheme.typography.bodySmall, color = Color.White)
-                            GameBar("", s.savings, G.magenta, max = goal.price, dark = true)
-                        }
-                    } else {
-                        Text("Цель пока не выбрана", style = MaterialTheme.typography.bodyMedium, color = Color.White, modifier = Modifier.weight(1f))
-                        GameButton("Выбрать", style = ButtonStyle.MAGENTA, minHeight = 48.dp) { vm.navigate(Screen.Savings) }
-                    }
-                }
-                actions(Modifier)
-            }
-        }
-
-        if (confirmEnd) {
-            val food = s.purchases.any { it.need == Need.FOOD }
-            val care = s.purchases.any { it.need == Need.CARE }
-            ConfirmPanel(
-                title = "Завершить неделю ${s.period}?",
-                lines = listOfNotNull(
-                    "${pet.name} получит итог недели, а ты — карманные деньги: +${Economy.coins(vm.content.rules.allowance)}.",
-                    if (!food) "Еда на этой неделе ещё не куплена — ${pet.name} проголодается." else null,
-                    if (!care) "Уход на этой неделе ещё не куплен — ${pet.name} запачкается." else null,
-                    if (s.factSavings <= 0) "Копилка на этой неделе не выросла." else null,
-                ),
-                confirmText = "Спать!",
-                onConfirm = { confirmEnd = false; vm.endPeriod() },
-                onDismiss = { confirmEnd = false },
-            )
-        }
-    }
+    Ask("Закончить неделю?", preview, buttons, close)
 }
 
-/** One need in the portrait strip: icon, bar and number; TalkBack hears the name, colour is not the only signal (ТЗ 3.6). */
-@Composable
-private fun NeedPill(label: String, value: Int, color: Color, icon: Painter, modifier: Modifier = Modifier) {
-    Row(modifier.clearAndSetSemantics { contentDescription = "$label $value из 100" }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        Image(icon, null, Modifier.size(24.dp))
-        GameBar("", value, color, Modifier.weight(1f), dark = true)
-        Text("$value", style = MaterialTheme.typography.labelLarge, color = Color.White)
-    }
-}
-
-@Composable
-private fun BubbleHost(vm: GameViewModel, bubble: ru.finny.pet.game.Bubble?, modifier: Modifier) {
-    Box(modifier, contentAlignment = Alignment.BottomCenter) {
-        AnimatedVisibility(visible = bubble != null, enter = (fadeIn(tween(200)) + scaleIn(tween(260), initialScale = 0.7f)).orNone(), exit = (fadeOut(tween(150)) + scaleOut(tween(150))).orNone()) {
-            val b = bubble ?: return@AnimatedVisibility
-            SpeechBubble(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                // not enough height for the reason text + answer buttons: scroll inside the bubble instead of clipping (ТЗ 3.6)
-                val scroll = rememberScrollState()
-                Box {
-                    Column(Modifier.verticalScroll(scroll), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        TypewriterText(b.text, animate = LocalAnimate.current)
-                        if (b.options.isNotEmpty()) {
-                            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                b.options.forEachIndexed { i, o -> GameButton(o, style = ButtonStyle.PAPER, minHeight = 48.dp) { vm.answerBubble(i) } }
-                            }
-                        }
-                    }
-                    // a child would not guess there is more to scroll: show it; TalkBack scrolls the container itself
-                    if (scroll.canScrollForward) Text("▼", Modifier.align(Alignment.BottomCenter).clearAndSetSemantics {}.background(Color.White, RoundedCornerShape(8.dp)).padding(horizontal = 6.dp), style = MaterialTheme.typography.titleSmall, color = G.purpleDeep)
-                }
-            }
-        }
-    }
-}
-
-fun goalRes(id: String): Int = when (id) {
-    "goal_scooter" -> R.drawable.goal_scooter
-    "goal_paints" -> R.drawable.goal_paints
-    "goal_lego" -> R.drawable.goal_lego
-    "goal_zoo" -> R.drawable.goal_zoo
-    else -> R.drawable.goal_custom
-}
-
-fun itemRes(id: String): Int = when (id) {
-    "food_basic" -> R.drawable.item_food_basic
-    "food_lunch" -> R.drawable.item_food_lunch
-    "care_shampoo" -> R.drawable.item_care_shampoo
-    "care_brush" -> R.drawable.item_care_brush
-    "care_vitamins" -> R.drawable.item_care_vitamins
-    "fun_ball" -> R.drawable.item_fun_ball
-    "fun_bow" -> R.drawable.item_fun_bow
-    "fun_balloon" -> R.drawable.item_fun_balloon
-    "fun_book" -> R.drawable.item_fun_book
-    else -> R.drawable.item_fun_tent
-}

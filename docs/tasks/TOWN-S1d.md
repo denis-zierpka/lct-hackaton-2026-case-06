@@ -240,7 +240,8 @@ ContentValidationTest (дописать): town.chatter — в каждом сп�
   2. assembleClassicDebug assembleGameDebug assembleGameRelease -> exit 0; lint 0 ошибок, ≤ 5 / 6
   3. git diff --name-only BASE -> только allow; app/src/test, gradle, main-манифест — пусто
   4. grep -rnE 'economy\.(confirmPlan|buy|deposit|withdraw|endPeriod|answerQuiz|parentBonus|finishMiniGame|answerChoice|answerNumber|availableTasks|miniGameLock|faceReason|withdrawPreview|goalProgressMessage)\(' app/src/game -> пусто
-  5. grep -rnE 'nextStep|askQuestion|answerBubble|repeatOnLifecycle|currentTimeMillis|понедельник|воскресенье|помощник!' app/src/game -> пусто;
+  5. grep -rnE 'nextStep|askQuestion|answerBubble|repeatOnLifecycle|currentTimeMillis|понедельник|воскресенье|помощник!' app/src/game --exclude-dir=mock -> пусто
+     (mock/ — debug-запись одобренного макета S0c, защищена, в игре не участвует);
      grep -c 'nanoTime' app/src/game -> только сиды (VM)
   6. grep 'screenOrientation="portrait"' app/src/game/AndroidManifest.xml -> 1; aapt2 dump badging game-debug: orientation portrait, classic — нет
   7. ЖИВАЯ ПРОВЕРКА оркестратора (эмулятор 360 × 640 dp, шрифт 1,0 и 1,3; S23 360 × 780; tools/ui_measure.py,

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- game: portrait only (TOWN-S1d §B.8); classic keeps its orientation from the main manifest -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <application>
+        <activity
+            android:name=".MainActivity"
+            android:screenOrientation="portrait"
+            tools:node="merge" />
+    </application>
+
+</manifest>

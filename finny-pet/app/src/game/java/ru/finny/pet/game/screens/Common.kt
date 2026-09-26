@@ -15,6 +15,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -42,6 +45,7 @@ import ru.finny.pet.game.ui.CloseButton
 import ru.finny.pet.game.ui.G
 import ru.finny.pet.game.ui.GameButton
 import ru.finny.pet.game.ui.Panel
+import ru.finny.pet.game.ui.TText
 
 /**
  * A screen shown as a big panel floating over the room: title on top, close button at the top-left,
@@ -78,22 +82,30 @@ fun Adaptive(left: @Composable ColumnScope.() -> Unit, right: @Composable Column
 }
 
 @Composable
-fun BoxScope.ConfirmPanel(title: String, lines: List<String>, confirmText: String, onConfirm: () -> Unit, onDismiss: () -> Unit, danger: Boolean = false) {
+fun BoxScope.ConfirmPanel(title: String, lines: List<String>, confirmText: String, onConfirm: () -> Unit, onDismiss: () -> Unit, danger: Boolean = false) =
+    Ask(title, lines, listOf("Отмена" to onDismiss, confirmText to onConfirm), onDismiss, primary = 1, danger = danger)
+
+/**
+ * A question over the screen: title, lines, buttons of one size in one row (or a column, if more than two).
+ * [primary] is the index of the main button; back and a tap outside do [onDismiss].
+ */
+@Composable
+fun BoxScope.Ask(title: String, lines: List<String>, buttons: List<Pair<String, () -> Unit>>, onDismiss: () -> Unit, primary: Int = 0, danger: Boolean = false) {
     BackHandler(onBack = onDismiss)
     Box(Modifier.fillMaxSize().background(G.scrim).pointerInput(Unit) {}) {}
     AnimatedVisibility(visible = true, enter = (fadeIn(tween(200)) + scaleIn(tween(260), initialScale = 0.85f)).orNone(), exit = fadeOut().orNone()) {
         Box(Modifier.fillMaxSize().padding(16.dp), contentAlignment = Alignment.Center) {
-            Panel(Modifier.widthIn(max = 520.dp).heightIn(max = 380.dp).semantics { paneTitle = title }) {
-                Text(title, style = MaterialTheme.typography.headlineSmall, color = G.purpleDeep, modifier = Modifier.semantics { heading() })
+            Panel(Modifier.widthIn(max = 520.dp).semantics { paneTitle = title }) {
+                TText(title, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.semantics { heading() }, color = G.purpleDeep)
                 Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     lines.forEach { m ->
-                        Row { Text("•", style = MaterialTheme.typography.bodyLarge, color = G.magenta); Spacer(Modifier.size(8.dp)); Text(m, style = MaterialTheme.typography.bodyLarge, color = G.ink) }
+                        Row { Text("•", style = MaterialTheme.typography.bodyLarge, color = G.magenta); Spacer(Modifier.size(8.dp)); TText(m) }
                     }
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    GameButton("Отмена", Modifier.weight(1f), style = ButtonStyle.PAPER, onClick = onDismiss)
-                    GameButton(confirmText, Modifier.weight(1f), style = if (danger) ButtonStyle.MAGENTA else ButtonStyle.PRIMARY, onClick = onConfirm)
-                }
+                val style = { i: Int -> if (i != primary) ButtonStyle.PAPER else if (danger) ButtonStyle.MAGENTA else ButtonStyle.PRIMARY }
+                if (buttons.size <= 2) Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    buttons.forEachIndexed { i, (t, f) -> GameButton(t, Modifier.weight(1f).fillMaxHeight(), style = style(i), minHeight = 48.dp, onClick = f) }
+                } else buttons.forEachIndexed { i, (t, f) -> GameButton(t, Modifier.fillMaxWidth(), style = style(i), minHeight = 48.dp, onClick = f) }
             }
         }
     }

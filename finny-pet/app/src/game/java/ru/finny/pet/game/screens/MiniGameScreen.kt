@@ -80,7 +80,6 @@ import ru.finny.pet.game.ui.G
 import ru.finny.pet.game.ui.GameButton
 import ru.finny.pet.game.ui.LocalParticles
 import ru.finny.pet.game.ui.Panel
-import ru.finny.pet.game.ui.SpeechBubble
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
@@ -111,8 +110,7 @@ private class Popup(val text: String, val cell: Cell, val key: Long)
  */
 @Composable
 fun MiniGameScreen(vm: GameViewModel) {
-    val m = vm.match ?: run { vm.navigate(ru.finny.pet.game.Screen.Room); return }
-    val s = vm.state
+    val m = vm.match ?: return
     val layout = LocalLayout.current
     val particles = LocalParticles.current
     val scope = rememberCoroutineScope()
@@ -125,12 +123,13 @@ fun MiniGameScreen(vm: GameViewModel) {
     // after a mid-round process death, since a new game resets it in startMiniGame (MVP-T12)
     var over by vm::matchOver
     val popups = remember { mutableStateListOf<Popup>() }
+    var popupKey by remember { mutableStateOf(0L) }
     var boardOrigin by remember { mutableStateOf(Offset.Zero) }
     var cellPx by remember { mutableStateOf(1f) }
     val animate = LocalAnimate.current
     val swapSpec: AnimationSpec<Float> = if (animate) spring(stiffness = Spring.StiffnessMediumLow) else snap()
-    // system back = «Закончить»: first the round-over panel, then the result is taken; there is no exit that skips it
-    BackHandler { if (vm.bubble != null) vm.clearBubble() else if (over) vm.finishMiniGame() else { over = true; bombMode = false } }
+    // system back = «Закончить»: first the round-over panel, then the shift result; there is no exit that skips it
+    BackHandler { if (over) vm.finishRound() else { over = true; bombMode = false } }
 
     // initial board
     LaunchedEffect(Unit) {
@@ -164,7 +163,7 @@ fun MiniGameScreen(vm: GameViewModel) {
                     val victims = step.cells.mapNotNull { at(it) }
                     val centre = step.cells.map { centerOf(it) }.let { list -> Offset(list.map { it.x }.average().toFloat(), list.map { it.y }.average().toFloat()) }
                     particles.sparkles(centre)
-                    popups += Popup("+${step.points}", step.cells.first(), System.nanoTime())
+                    popups += Popup("+${step.points}", step.cells.first(), popupKey++)
                     if (animate) coroutineScope { victims.map { v -> async { v.scale.animateTo(0f, tween(220)) } }.awaitAll() }
                     tiles.removeAll(victims.toSet())
                 }
@@ -188,7 +187,6 @@ fun MiniGameScreen(vm: GameViewModel) {
         if (mismatch) {
             tiles.clear()
             for (row in 0 until st.height) for (col in 0 until st.width) st[Cell(col, row)]?.let { tiles += VTile(nextId++, it, col, row) }
-            vm.say("Ходов не осталось — я перемешал поле!", 4000)
         }
     }
 
@@ -232,7 +230,6 @@ fun MiniGameScreen(vm: GameViewModel) {
         if (ru.finny.pet.domain.Match3.adjacent(sel, c)) { selected = null; trySwap(sel, c) } else { selected = c; vm.sfx(Sound.TAP) }
     }
 
-    val bubble = vm.bubble
     val cur = vm.match ?: m
 
     Box(Modifier.fillMaxSize().background(G.purpleDeep.copy(alpha = 0.6f))) {
@@ -243,9 +240,7 @@ fun MiniGameScreen(vm: GameViewModel) {
                     Stat("Очки", "${cur.score}")
                     Stat("Ходы", "${cur.movesLeft}")
                 }
-                Text("Монет за игру: до ${vm.economy.miniGameCoinsLeft(s)}. Очков на монету: ${vm.content.rules.miniGameScorePerCoin}.", style = MaterialTheme.typography.bodySmall, color = G.pink, textAlign = TextAlign.Center)
                 GameButton(if (bombMode) "Куда бомбочку?" else "Бомбочка ×${cur.bombs}", Modifier.fillMaxWidth(), style = if (bombMode) ButtonStyle.MAGENTA else ButtonStyle.GOLD, enabled = cur.bombs > 0 && !busy, icon = painterResource(R.drawable.tile_bomb), iconSize = 30.dp) { bombMode = !bombMode; selected = null }
-                GameButton("Вопрос → бомбочка", Modifier.fillMaxWidth(), style = ButtonStyle.PAPER, minHeight = 48.dp, enabled = bubble == null && vm.economy.availableQuiz(s).isNotEmpty()) { vm.askQuestion() }
                 GameButton("Закончить", Modifier.fillMaxWidth(), style = ButtonStyle.GHOST, minHeight = 48.dp, enabled = !busy) { over = true }
             }
         }
@@ -316,29 +311,13 @@ fun MiniGameScreen(vm: GameViewModel) {
         }
         CloseButton({ over = true }, label = "Закончить")
 
-        // the pet asks a question → a bomb
-        val pet = s.pet
-        AnimatedVisibility(bubble != null, enter = (fadeIn() + scaleIn(initialScale = 0.85f)).orNone(), exit = fadeOut().orNone()) {
-            val b = bubble ?: return@AnimatedVisibility
-            Box(Modifier.fillMaxSize().background(G.scrim).pointerInput(Unit) {}.semantics { paneTitle = "Вопрос" }, contentAlignment = Alignment.Center) {
-                Row(Modifier.padding(16.dp).widthIn(max = 640.dp), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (pet != null) Image(painterResource(ru.finny.pet.PetSprites.id(pet.speciesId, pet.colorId, vm.economy.stageIndex(pet.growth), "happy")), null, Modifier.size(if (layout.compact) 96.dp else 130.dp))
-                    SpeechBubble(Modifier.weight(1f).padding(bottom = 20.dp)) {
-                        Text(b.text, style = MaterialTheme.typography.bodyLarge, color = G.ink)
-                        if (b.options.isNotEmpty()) b.options.forEachIndexed { i, o -> GameButton(o, Modifier.fillMaxWidth(), style = ButtonStyle.PAPER, minHeight = 48.dp) { vm.answerBubble(i) } }
-                        else GameButton("Понятно", Modifier.fillMaxWidth(), style = ButtonStyle.PRIMARY, minHeight = 48.dp) { vm.clearBubble() }
-                    }
-                }
-            }
-        }
-
         // round over
         AnimatedVisibility(over, enter = (fadeIn() + scaleIn(initialScale = 0.8f)).orNone(), exit = fadeOut().orNone()) {
             Box(Modifier.fillMaxSize().background(G.scrim).pointerInput(Unit) {}.semantics { paneTitle = "Игра окончена" }, contentAlignment = Alignment.Center) {
                 Panel(Modifier.widthIn(max = 420.dp)) {
                     Text("Игра окончена!", style = MaterialTheme.typography.headlineSmall, color = G.purpleDeep)
-                    Text("Очки: ${cur.score}. Монеты: +${(cur.score / vm.content.rules.miniGameScorePerCoin).coerceAtMost(vm.economy.miniGameCoinsLeft(s))}", style = MaterialTheme.typography.bodyLarge, color = G.ink)
-                    GameButton("Забрать монеты", Modifier.fillMaxWidth(), style = ButtonStyle.GOLD, icon = painterResource(R.drawable.ui_coin), iconSize = 26.dp) { vm.finishMiniGame() }
+                    Text("Очки: ${cur.score}", style = MaterialTheme.typography.bodyLarge, color = G.ink)
+                    GameButton("Закончить", Modifier.fillMaxWidth(), style = ButtonStyle.GOLD) { vm.finishRound() }
                 }
             }
         }

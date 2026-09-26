@@ -15,6 +15,15 @@ data class TownContent(
     val spots: List<Spot>,
     /** id событий, которые в этой сборке не приходят и не начинаются (TOWN-S1c §0). */
     val eventsOff: List<String> = emptyList(),
+    /** Реплики питомца по тапу (TOWN-S1d §A). */
+    val chatter: TownChatter = TownChatter(),
+)
+
+/** Реплики питомца: нужда недели, грусть, спокойствие (TOWN-S1d §A). */
+@Serializable
+data class TownChatter(
+    val needFood: List<String> = emptyList(), val needCare: List<String> = emptyList(),
+    val sad: List<String> = emptyList(), val calm: List<String> = emptyList(),
 )
 
 /** Место для вещи в доме и его тип: floor, wall, table (§5.3). */

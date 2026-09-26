@@ -1,6 +1,5 @@
 package ru.finny.pet.game.screens
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -9,153 +8,114 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import ru.finny.pet.R
-import ru.finny.pet.domain.Economy
 import ru.finny.pet.domain.Goal
-import ru.finny.pet.domain.Case
+import ru.finny.pet.domain.town.Source
 import ru.finny.pet.game.GameViewModel
-import ru.finny.pet.game.LocalLayout
 import ru.finny.pet.game.ui.ButtonStyle
+import ru.finny.pet.game.ui.CheckBadge
 import ru.finny.pet.game.ui.G
 import ru.finny.pet.game.ui.GameBar
 import ru.finny.pet.game.ui.GameButton
-import ru.finny.pet.game.ui.HudChip
-import ru.finny.pet.game.ui.LocalParticles
-import ru.finny.pet.game.ui.particleTarget
+import ru.finny.pet.game.ui.GoalPic
+import ru.finny.pet.game.ui.TText
 
+/** «Копилка» (§D.2): the dream, deposits and withdrawals through Town, the showcase and own dream, dreams come true. */
 @Composable
 fun SavingsScreen(vm: GameViewModel) {
     val s = vm.state
-    val e = vm.economy
     val goal = s.goal
-    val particles = LocalParticles.current
-    val amounts = e.rules.savingsAmounts
-    var amount by rememberSaveable { mutableIntStateOf(amounts.firstOrNull() ?: e.rules.planStep) }
-    var confirmWithdraw by rememberSaveable { mutableStateOf(false) }
-    var confirmAchieve by rememberSaveable { mutableStateOf(false) }
-    var pickGoal by rememberSaveable { mutableStateOf(goal == null) }
-
-    Box {
-        PanelScreen(vm, "Копилка") {
-            Adaptive(leftWeight = 0.9f, rightWeight = 1.1f, left = {
-                Row(Modifier.fillMaxWidth().background(G.pink, RoundedCornerShape(20.dp)).padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Image(painterResource(R.drawable.ui_piggy), null, Modifier.size(84.dp).particleTarget(particles, "piggy"))
-                    Column(Modifier.weight(1f)) {
-                        Text("${s.savings}", style = MaterialTheme.typography.displaySmall, color = G.purpleDeep)
-                        Text("в копилке", style = MaterialTheme.typography.bodySmall, color = G.purpleDeep)
-                    }
-                    HudChip(painterResource(R.drawable.ui_coin), s.balance, "На балансе", Modifier.particleTarget(particles, "coins"))
+    val n = vm.content.rules.planStep
+    var pending by remember { mutableStateOf<Pending?>(null) }
+    HomePage(vm, "Копилка", "savings", overlay = { PendingAsk(pending) { pending = null } }) {
+        if (goal != null) {
+            val left = maxOf(goal.price - s.savings, 0)
+            val eta = vm.economy.goalEta(s)?.takeIf { it > 0 }
+            Row(
+                Modifier.fillMaxWidth().background(G.pink, RoundedCornerShape(20.dp)).padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                GoalPic(goal, 72.dp)
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    TText(goal.title, style = MaterialTheme.typography.titleLarge)
+                    TText("${s.savings} / ${goal.price}, ещё $left" + (eta?.let { ", ≈ $it ✉" } ?: ""))
+                    GameBar("", s.savings, G.magenta, max = goal.price)
                 }
-                Label("Отложить или забрать")
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    amounts.forEach { a -> GameButton("$a", Modifier.width(64.dp), selected = amount == a, minHeight = 48.dp) { amount = a } }
-                }
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    GameButton("Отложить $amount", Modifier.weight(1f), style = ButtonStyle.GREEN, enabled = s.plan.confirmed && amount <= s.balance) { vm.deposit(amount) }
-                    GameButton("Забрать $amount", Modifier.weight(1f), style = ButtonStyle.PAPER, enabled = amount <= s.savings) { confirmWithdraw = true }
-                }
-                if (!s.plan.confirmed) Text("Откладывать можно после того, как составишь план.", style = MaterialTheme.typography.bodySmall, color = G.inkSoft)
-            }, right = {
-                if (goal != null && !pickGoal) {
-                    Column(Modifier.fillMaxWidth().background(G.paperTint, RoundedCornerShape(20.dp)).padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Image(painterResource(goalRes(goal.id)), null, Modifier.size(72.dp))
-                            Column {
-                                Label("Моя цель")
-                                Text(goal.title, style = MaterialTheme.typography.titleLarge, color = G.ink)
-                                Text("Стоит ${Economy.coins(goal.price, Case.ACC)}", style = MaterialTheme.typography.bodyMedium, color = G.inkSoft)
-                            }
-                        }
-                        GameBar("Накоплено", s.savings, G.magenta, max = goal.price)
-                        val eta = e.goalEta(s)
-                        Text(
-                            when {
-                                e.remaining(s) <= 0 -> "Накоплено! Можно забрать цель."
-                                eta == null -> "Откладывай каждую неделю — и я посчитаю, сколько недель осталось."
-                                else -> "Осталось ${e.remaining(s)}. Ты откладываешь в среднем ${"%.0f".format(e.averageDeposit(s))} в неделю — это ещё ${Economy.weeks(eta)}."
-                            },
-                            style = MaterialTheme.typography.bodyMedium, color = G.ink,
-                        )
-                        if (e.remaining(s) <= 0) GameButton("Забрать цель!", Modifier.fillMaxWidth(), style = ButtonStyle.GOLD) { confirmAchieve = true }
-                        GameButton("Сменить цель", Modifier.fillMaxWidth(), style = ButtonStyle.PAPER, minHeight = 48.dp) { pickGoal = true }
-                    }
-                } else {
-                    GoalPicker(vm) { pickGoal = false }
-                }
-                if (s.achievedGoals.isNotEmpty()) {
-                    Label("Достигнутые цели")
-                    FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp), maxItemsInEachRow = 2) {
-                        s.achievedGoals.forEach { g ->
-                            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
-                                Image(painterResource(goalRes(g.id)), null, Modifier.size(56.dp))
-                                Text(g.title, style = MaterialTheme.typography.labelSmall, color = G.ink, textAlign = TextAlign.Center, maxLines = 2)
-                            }
-                        }
-                    }
-                }
-            })
+            }
+            if (s.savings >= goal.price) GameButton("Получить мечту", Modifier.fillMaxWidth(), ButtonStyle.GOLD) {
+                pending = Pending("Получить мечту «${goal.title}»?", emptyList()) { vm.achieveGoal() }
+            }
+        } else {
+            TText("Выбери мечту")
         }
-        if (confirmWithdraw) {
-            ConfirmPanel("Забрать $amount из копилки?", e.withdrawPreview(s, amount), "Забрать", onConfirm = { confirmWithdraw = false; vm.withdraw(amount) }, onDismiss = { confirmWithdraw = false })
+        if (s.plan.confirmed) {
+            listOf(Triple(Source.RESERVE, "В копилку $n из запаса", s.reserve), Triple(Source.WANT, "В копилку $n из «Хочу»", s.jarWant)).forEach { (src, label, have) ->
+                if (have >= n) GameButton(label, Modifier.fillMaxWidth(), ButtonStyle.GREEN, minHeight = 48.dp) {
+                    pending = Pending(label, vm.depositPreview(src, n)) { vm.deposit(src, n) }
+                }
+            }
+        } else if (s.savings >= n) {
+            val label = "Взять $n из копилки"
+            GameButton(label, Modifier.fillMaxWidth(), ButtonStyle.PAPER, minHeight = 48.dp) { pending = Pending(label, vm.withdrawPreview(n)) { vm.withdraw(n) } }
         }
-        if (confirmAchieve && goal != null) {
-            ConfirmPanel("Забрать «${goal.title}»?", listOf("Из копилки уйдёт ${Economy.coins(goal.price)}, останется ${s.savings - goal.price}.", "Питомец очень обрадуется!"), "Забрать", onConfirm = { confirmAchieve = false; vm.achieveGoal() }, onDismiss = { confirmAchieve = false })
+        Label("Мечты")
+        vm.tc.goals.forEach { g ->
+            val mine = goal?.id == g.id
+            Box {
+                Row(
+                    Modifier.fillMaxWidth().heightIn(min = 64.dp).background(if (mine) G.pink else G.paperTint, RoundedCornerShape(16.dp))
+                        .clickable(role = Role.Button) { vm.chooseGoal(g.id) }.clearAndSetSemantics { contentDescription = "${g.title} — ${g.price}" + if (mine) ", копим" else "" }.padding(8.dp),
+                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    GoalPic(Goal(g.id, g.title, g.emoji, g.price), 48.dp)
+                    TText("${g.title} — ${g.price}", modifier = Modifier.weight(1f))
+                }
+                if (mine) CheckBadge()
+            }
+        }
+        OwnDream(vm)
+        if (s.achievedGoals.isNotEmpty()) {
+            Label("Мечты сбылись")
+            FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                s.achievedGoals.forEach { g ->
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        GoalPic(g, 56.dp)
+                        TText(g.title, style = MaterialTheme.typography.bodyMedium, maxLines = 2, align = TextAlign.Center)
+                    }
+                }
+            }
         }
     }
 }
 
 @Composable
-private fun GoalPicker(vm: GameViewModel, onDone: () -> Unit) {
-    val c = vm.content
-    val layout = LocalLayout.current
-    var customTitle by rememberSaveable { mutableStateOf(c.customGoal.titles.first()) }
-    var customPrice by rememberSaveable { mutableIntStateOf(c.customGoal.prices.first()) }
-    Label("Выбери цель")
-    // two cards per row: at 360 dp a card is 152 dp, 140 dp inside; «Конструктор» is 99 dp (132 at 130 %)
-    FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp), maxItemsInEachRow = 2) {
-        c.goals.forEach { g ->
-            Column(
-                Modifier.weight(1f).shadow(3.dp, RoundedCornerShape(18.dp)).background(Color.White, RoundedCornerShape(18.dp))
-                    .clickable(role = Role.Button) { vm.chooseGoal(Goal(g.id, g.title, g.emoji, g.price)); onDone() }
-                    .semantics(mergeDescendants = true) { contentDescription = "${g.title}, ${Economy.coins(g.price)}" }
-                    .padding(6.dp),
-                horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp),
-            ) {
-                Image(painterResource(goalRes(g.id)), null, Modifier.size(56.dp))
-                Text(g.title, style = MaterialTheme.typography.labelSmall, color = G.ink, textAlign = TextAlign.Center, maxLines = 2, minLines = 2)
-                Text("${g.price}", style = MaterialTheme.typography.labelLarge, color = G.purpleDeep)
-            }
-        }
-    }
-    Label("Или своя цель")
+private fun OwnDream(vm: GameViewModel) {
+    val c = vm.content.customGoal
+    var title by rememberSaveable { mutableStateOf(c.titles.first()) }
+    var price by rememberSaveable { mutableIntStateOf(c.prices.first()) }
+    Label("Своя мечта")
     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        c.customGoal.titles.forEach { t -> GameButton(t, selected = customTitle == t, minHeight = 48.dp) { customTitle = t } }
+        c.titles.forEach { t -> GameButton(t, selected = title == t, minHeight = 48.dp) { title = t } }
     }
     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        c.customGoal.prices.forEach { p -> GameButton("$p", selected = customPrice == p, minHeight = 48.dp) { customPrice = p } }
+        c.prices.forEach { p -> GameButton("$p", selected = price == p, minHeight = 48.dp) { price = p } }
     }
-    GameButton("Копить на «$customTitle» за $customPrice", Modifier.fillMaxWidth(), style = ButtonStyle.GOLD) { vm.chooseGoal(vm.economy.customGoal(customTitle, customPrice)); onDone() }
-    if (vm.state.goal != null) GameButton("Оставить текущую цель", Modifier.fillMaxWidth(), style = ButtonStyle.PAPER, minHeight = 48.dp) { onDone() }
+    GameButton("Копить на «$title» — $price", Modifier.fillMaxWidth(), ButtonStyle.GOLD, minHeight = 48.dp) { vm.chooseGoal(vm.economy.customGoal(title, price)) }
 }

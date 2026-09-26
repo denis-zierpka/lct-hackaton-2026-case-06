@@ -35,7 +35,7 @@ data class ShiftQuote(
 )
 
 /** Кошелёк, касса, неделя и дом «Городка» (TOWN-S1a §3–§6). Чистый Kotlin. */
-class Town(private val content: Content) {
+class Town(internal val content: Content) {
     private val town = content.town ?: error("content.json: нет ключа town")
     private val economy = Economy(content)
     private val prices = Prices(content)
