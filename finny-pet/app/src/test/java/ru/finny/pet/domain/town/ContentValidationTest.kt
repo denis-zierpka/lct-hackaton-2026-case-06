@@ -714,4 +714,13 @@ class ContentValidationTest {
         "jobLevelBombs ${town.rules.jobLevelBombs} против jobLevelShifts ${town.rules.jobLevelShifts}",
         town.rules.jobLevelShifts.size, town.rules.jobLevelBombs.size,
     )
+
+    // ---------- 25. Выключенные события (TOWN-S1c §0, ORACLE) ----------
+
+    @Test
+    fun `каждый выключенный id есть среди событий`() {
+        val ids = town.events.map { it.id }.toSet()
+        assertTrue("town.eventsOff пуст — решение эпика выключает восемь событий среза", town.eventsOff.isNotEmpty())
+        town.eventsOff.forEach { ref("town.eventsOff «$it»", it, ids) }
+    }
 }
