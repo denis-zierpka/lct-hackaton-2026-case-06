@@ -22,7 +22,8 @@ INK = (0x1C, 0x1D, 0x22)  # G.ink
 TEXT = [("emu_demo05a_market.png", "HUD-2 «Не разложено»", 20, 318, 500, 372),
         ("emu_demo06b_order.png", "HUD-2 отделения", 25, 290, 525, 402),
         ("emu_s1d3_job13.png", "заголовок «Пекарня» (1,3)", 20, 452, 385, 530)]
-SNAPS = ["emu_demo05a_market.png", "emu_demo06b_order.png", "emu_demo06c_order.png", "emu_s1d3_job13.png", "emu_s1d3_round10.png"]
+SNAPS = ["emu_demo05a_market.png", "emu_demo05b_foma.png", "emu_demo06b_order.png", "emu_demo06c_order.png",
+         "emu_s1d3_job13.png", "emu_s1d3_round10.png"]
 VEIL = 0.18  # подложка поля Match3: White α 0,18 (MiniGameScreen.kt), фон под ней = фон·0,82 + белый·0,18
 S23 = (1.219, 118)  # S23 360 × 780 dp: фон ×1,219 (Crop по высоте), по бокам срезается по 118 px
 
