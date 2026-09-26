@@ -1,4 +1,4 @@
-"""Shared Blender helpers for Finny's toy-style renders (pets, props, room).
+"""Shared Blender helpers for Finny's toy-style renders (pets, props, room, places).
 
 Style contract (keep every asset consistent):
   * primitives + subdivision, no hard edges: `smooth()` on meshes, `cone()` gets a bevel
@@ -10,10 +10,11 @@ Style contract (keep every asset consistent):
 Import from a script run inside Blender:
     import sys, os; sys.path.insert(0, os.path.dirname(os.path.abspath(__file__))); from lib import *
 """
-import bpy, math
+import bpy, math, os
 from mathutils import Vector
 
 MATS = {}
+FONT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "app", "src", "main", "res", "font", "montserrat.ttf")
 
 
 def hexc(h, a=1.0):
@@ -174,6 +175,34 @@ def shell_walls(m_wall, m_side, m_skirt, k=1.0, wall_y=3.0, half=5.2, height=14.
         box("skirt_s", ((half - 0.15) * k * sx, wall_y - depth / 2, 0.11), (0.06, depth, 0.24), m_skirt, bevel=0.01)
     if back:
         box("skirt", (0, wall_y - 0.03, 0.11), ((2 * half - 0.2) * k, 0.07, 0.24), m_skirt, bevel=0.01)
+
+
+def awning(mats, x0, x1, y, z, depth=2.4, slope=30, n=9, drop=0.4):
+    """Striped canopy (places, facades): n stripes across x0..x1, back edge at (y, z), sloping down towards the camera
+    by `slope` degrees over `depth`, a valance of height `drop` with round scallops at the front edge. Stripe colours
+    cycle through `mats`. Returns (y, z) of the valance centre (where a sign is mounted)."""
+    w, a = (x1 - x0) / n, math.radians(slope)
+    yf, zf = y - depth * math.cos(a), z - depth * math.sin(a)
+    for i in range(n):
+        x, m = x0 + (i + 0.5) * w, mats[i % len(mats)]
+        box("awning", (x, (y + yf) / 2, (z + zf) / 2), (w, depth, 0.08), m, rot=(a, 0, 0), bevel=0.03)
+        box("valance", (x, yf, zf - drop / 2), (w, 0.08, drop), m, bevel=0.03)
+        sphere("scallop", (x, yf, zf - drop), w / 2, (1, 0.16, 1), m)
+    return yf, zf - drop / 2
+
+
+def sign(loc, w, h, m_board, text="", m_text=None, m_rim=None):
+    """Board facing -Y centred at `loc`, optional rim, optional text in Montserrat (the app font, Cyrillic) fitted
+    to 80 % of the board width. The variable font loads at its default (regular) weight; a rounded
+    bevel makes the letters puffy (thicker bevel or `offset` loop the overlapping glyph contours, e.g. in «Р»)."""
+    box("sign", loc, (w, 0.14, h), m_board, bevel=min(w, h) * 0.12)
+    if m_rim: box("sign_rim", (loc[0], loc[1] + 0.03, loc[2]), (w + 0.12, 0.12, h + 0.12), m_rim, bevel=min(w, h) * 0.14)
+    if not text: return None
+    t = text3d("sign_text", text, (loc[0], loc[1] - 0.09, loc[2]), h * 0.62, m_text, extrude=0.02)
+    t.data.font = bpy.data.fonts.load(FONT, check_existing=True); t.data.align_y = "CENTER"; t.data.bevel_depth = h * 0.022
+    bpy.context.view_layer.update()
+    if t.dimensions.x > w * 0.8: t.scale = [w * 0.8 / t.dimensions.x] * 3
+    return t
 
 
 def _track(o, target):
