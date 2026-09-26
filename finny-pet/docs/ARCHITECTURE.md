@@ -213,4 +213,4 @@ JVM-тесты (JUnit 4) в [app/src/test/java/ru/finny/pet/domain/](../app/src/
 
 Пошаговая инструкция — [BUILD_AND_DEMO.md](BUILD_AND_DEMO.md).
 
-Актуально на ветку `feat/town`: код TOWN-S1d на 12a4394 (2026-09-26), после правки по живой проверке, ревью ещё не было; `versionName` 1.3.0 (`versionCode 4`) не менялся
+Актуально на ветку `feat/town`: код TOWN-S1d на a262f13 (2026-09-26), после правки по живой проверке и ревью (PASS); `versionName` 1.3.0 (`versionCode 4`) не менялся
