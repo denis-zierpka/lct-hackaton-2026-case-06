@@ -88,12 +88,8 @@ private fun Room(modifier: Modifier) {
         }
         Column(Modifier.fillMaxSize().padding(horizontal = 8.dp)) {
             Row(Modifier.fillMaxWidth().height(88.dp).padding(top = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                Target("Окно: улица. Машет житель, калитка мечты 60 из 150, есть событие", 112.dp, 80.dp, color = G.sky) {
+                Target("Окно: улица. Машет житель, есть событие", 112.dp, 80.dp, color = G.sky) {
                     Image(painterResource(R.drawable.pet_bunny_blue_0_happy), null, Modifier.align(Alignment.CenterStart).padding(start = 4.dp).size(40.dp))
-                    Column(Modifier.align(Alignment.BottomEnd).padding(4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Image(painterResource(R.drawable.ui_lock), null, Modifier.size(20.dp))
-                        MockText("60/150", label)
-                    }
                     MockText("!", MaterialTheme.typography.titleMedium, Modifier.align(Alignment.TopEnd).padding(end = 6.dp), color = G.magenta)
                 }
                 Target("Банки: Нужное ${d.banks[0]}, Хочу ${d.banks[1]}, Запас ${d.banks[2]}", 152.dp, 72.dp) {
@@ -118,7 +114,7 @@ private fun Room(modifier: Modifier) {
                     Column(Modifier.fillMaxHeight(), verticalArrangement = Arrangement.SpaceBetween) {
                         Target("Холодильник: список нужного и цены", 64.dp, 96.dp, color = Color.White) {
                             Box(Modifier.align(Alignment.TopCenter).padding(top = 32.dp).fillMaxWidth().height(2.dp).background(G.lavender))
-                            MockText("Цены", label, Modifier.align(Alignment.BottomCenter).padding(bottom = 6.dp))
+                            MockText("Список", label, Modifier.align(Alignment.BottomCenter).padding(bottom = 6.dp).wrapContentWidth(unbounded = true))
                         }
                         // start decor: visible, no touch, not a target
                         MockText("🪴", decor, Modifier.align(Alignment.CenterHorizontally).clearAndSetSemantics {})
@@ -136,18 +132,9 @@ private fun Room(modifier: Modifier) {
                         }
                     }
                     Column(Modifier.fillMaxHeight(), horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.SpaceBetween) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Target("Косяк с отметками роста", 48.dp, 112.dp, color = Color.Transparent) {
-                                Box(Modifier.width(14.dp).fillMaxHeight().background(G.goldDark))
-                                Column(Modifier.align(Alignment.TopCenter).padding(top = 12.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                                    repeat(3) { Box(Modifier.width(26.dp).height(3.dp).background(G.purpleDeep)) }
-                                }
-                                MockText("Рост", label, Modifier.align(Alignment.BottomCenter).wrapContentWidth(unbounded = true).background(Color.White.copy(alpha = 0.85f)).padding(horizontal = 2.dp))
-                            }
-                            Target("Дверь: на улицу", 64.dp, 136.dp, color = G.goldDark, onClick = { m.go(MockScreen.SHOP) }) {
-                                Box(Modifier.align(Alignment.CenterEnd).padding(end = 8.dp).size(8.dp).background(G.purpleDeep, CircleShape))
-                                MockText("Улица", label, Modifier.align(Alignment.BottomCenter).padding(bottom = 6.dp))
-                            }
+                        Target("Дверь: на улицу", 64.dp, 136.dp, color = G.goldDark, onClick = { m.go(MockScreen.SHOP) }) {
+                            Box(Modifier.align(Alignment.CenterEnd).padding(end = 8.dp).size(8.dp).background(G.purpleDeep, CircleShape))
+                            MockText("Улица", label, Modifier.align(Alignment.BottomCenter).padding(bottom = 6.dp))
                         }
                         MockText("🛋", decor, Modifier.align(Alignment.CenterHorizontally).clearAndSetSemantics {})
                         Target("Почтовый ящик: плюс ${d.mail} придёт с новым конвертом", 48.dp, 48.dp) {
@@ -176,7 +163,7 @@ private fun Room(modifier: Modifier) {
                         Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
                             Canvas(Modifier.size(22.dp, 12.dp)) { drawPath(Path().apply { moveTo(0f, 0f); lineTo(size.width, 0f); lineTo(size.width / 2, size.height); close() }, Color.White) }
                         }
-                        Spacer(Modifier.width(124.dp))
+                        Spacer(Modifier.width(72.dp))
                     }
                 }
             }
