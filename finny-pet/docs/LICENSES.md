@@ -33,6 +33,7 @@
 | Шрифт | Лицензия | Где |
 |---|---|---|
 | Montserrat (variable, wght 100–900; Julieta Ulanovsky и соавторы) | SIL Open Font License 1.1 — разрешает встраивание и распространение в составе приложения | `app/src/main/res/font/montserrat.ttf`, единственный встроенный шрифт; шрифт шаблона презентации ЛЦТ-2026 |
+| Montserrat ExtraBold — статический экземпляр того же шрифта (wght 800), производная по SIL OFL 1.1 | SIL Open Font License 1.1 | `tools/art/montserrat_extrabold.ttf` — только буквы вывесок в рендерах Blender (у Blender нет осей вариативного шрифта), в APK не входит. Пересборка: `python -c "from fontTools.ttLib import TTFont; from fontTools.varLib import instancer; instancer.instantiateVariableFont(TTFont('finny-pet/app/src/main/res/font/montserrat.ttf'), {'wght': 800}).save('finny-pet/tools/art/montserrat_extrabold.ttf')"` (fontTools 4.62, только у оркестратора) |
 
 Эмодзи (в `classic` — иконки категорий и разделов) отображаются системным шрифтом
 (Noto Color Emoji, SIL OFL 1.1) и в APK не входят.

@@ -113,6 +113,7 @@ def lum(rgb):
 def bg(path, out):
     import numpy as np
     from PIL import Image
+    from scipy import ndimage
     os.makedirs(out, exist_ok=True)
     B = np.asarray(Image.open(path).convert("RGB")).astype(int)
     if B.shape[:2] != (1920, 1080): print("фон не 1080 × 1920:", B.shape); return 1
@@ -120,6 +121,8 @@ def bg(path, out):
     for s in SNAPS:
         S = np.asarray(Image.open(os.path.join(FP, "screenshots", s)).convert("RGB")).astype(int)
         m = np.abs(S - room).max(axis=2) < 12
+        # белое в карточке совпадает с белым окном комнаты: тонкие совпадения убрать, замкнутые UI дыры залить
+        m = ~ndimage.binary_fill_holes(~ndimage.binary_opening(m, iterations=2))
         Image.fromarray(np.where(m[..., None], B, S).astype("uint8")).save(os.path.join(out, "comp_" + s))
     Lk = float(lum(INK))
     Lb = lum(B)
