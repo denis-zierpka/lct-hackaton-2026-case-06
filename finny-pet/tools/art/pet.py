@@ -19,8 +19,8 @@ SPECIES = ["cat", "bunny", "puppy"]
 COLORS = {"orange": "#F4A261", "blue": "#6FB1E0", "green": "#7BC47F"}
 # Residents get their own body colours so they never look like the child's pet (owner's decision 33 a):
 # a hue from the look.color family, dE76 >= 20 to every pet colour and between residents of one species.
-RESIDENT_COLORS = {"marta": "#EE8266", "foma": "#5A7FC4", "borya": "#B7C46A", "osya": "#9098AE",
-                   "tosha": "#B0733C", "stepan": "#3A86A0", "kesha": "#7FCBB0", "liza": "#F7C996",
+RESIDENT_COLORS = {"marta": "#EE8266", "foma": "#5A7FC4", "borya": "#B7C46A", "osya": "#A9A6CC",
+                   "tosha": "#8C5A34", "stepan": "#56B4B8", "kesha": "#7FCBB0", "liza": "#F7C996",
                    "asya": "#B7AEEA"}
 # What a resident's job looks like, on top of the content accessory (owner's decision 35); content.json stays as it is.
 ROLE_PROPS = {"osya": "bag", "asya": "doctor", "borya": "toque", "liza": "beret"}

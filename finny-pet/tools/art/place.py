@@ -20,25 +20,24 @@ K, WALL_Y = 0.68, 3.0  # the room's portrait squeeze and back wall, so the plank
 FORBIDDEN = ("item_care_vitamins", "item_fun_bow")  # and every tile_*: never decor in a place
 PLACES = {  # decor: (props.py builder, location, scale, rotation deg)
     "market": dict(kind="SHOP", outdoors=True, sign="РЫНОК",
-                   colors=dict(sky="#94D2FA", water="#5FB8E8", hills=("#9ADB8E", "#7CC47F"), floor=("#E9B983", "#D9A36C"),
+                   colors=dict(sky="#94D2FA", water="#7CCBF3", hills=("#9ADB8E", "#7CC47F"), floor=("#E9B983", "#D9A36C"),
                                awning=("#FF6F91", "#FFD6E4"), board="#FFC94D", letters="#520978", counter="#7FD6C2",
                                post="#8A83D1"),  # lavender posts: not read as bridges of the white cards, ≥ 3 : 1 under HUD-2
                    # decor under the card columns (bg x 2–31 %, 33–62 %, 64–93 %; on S23 the gaps shift to 34–36 %, 60–62 %,
-                   # 85–91 %). No balloons: above 31 % they were the loudest spot under the tabs, on the counter they
-                   # peeked red through the gap between the card rows (comp 05a/06b)
-                   decor=[("item_food_basic", (-1.45, -1.45, 1.21), 0.45, (0, 0, 0)),
-                          ("item_fun_ball", (1.1, -1.5, 1.21), 0.42, (0, 0, 0))]),
+                   # 85–91 %). No balloons and no ball: red round things read as the joy icon of the HUD, and they
+                   # peeked through the gaps between the card rows (comp 05a/06b/06c)
+                   decor=[("item_food_basic", (-1.45, -1.45, 1.21), 0.45, (0, 0, 0))]),
     "foma": dict(kind="SHOP", outdoors=False, sign="ЛАВКА",
-                 colors=dict(wall="#D6ECFF", side="#C4E0FA", floor=("#D2B590", "#C7A67A"), awning=("#6F9FE6", "#FFFFFF"),
+                 colors=dict(wall="#FFEFE0", side="#FBE3CE", floor=("#D2B590", "#C7A67A"), awning=("#6F9FE6", "#FFFFFF"),
                              board="#FFFFFF", letters="#2F5BA8", counter="#FFD37A", cabinet="#FFF6E6"),
-                 # light shampoo and one book lying flat (pages to the camera), all under the card columns (shelf x ±2.6
-                 # spans bg 15–85 %; the gaps 30–37 % and 59–65 % are x −1.47…−0.96 and 0.70…1.10 at the shelf depth)
-                 decor=[("item_care_shampoo", (-2.0, WALL_Y - 0.4, 1.56), 0.55, (0, 0, 20)),
+                 # warm walls in tone with the room, the blue awning tells the shop. Decor only where the cards of the tab
+                 # cover it (emu_demo05b_foma: columns bg 2–31 %, 33–62 %, 64–93 %, rows 31–52 % and 59–80 %): shelf z 2.9
+                 # in all three columns, shelf z 1.5 in the middle one only (its row gap is 58–59 %, the side ones 52–59 %)
+                 decor=[("item_care_shampoo", (-2.0, WALL_Y - 0.4, 2.96), 0.55, (0, 0, 30)),
+                        ("item_fun_book", (-0.15, WALL_Y - 0.4, 2.96), 0.55, (0, 0, -10)),
+                        ("item_care_shampoo", (1.95, WALL_Y - 0.4, 2.96), 0.55, (0, 0, -35)),
                         ("item_fun_book", (-0.55, WALL_Y - 0.45, 1.74), 0.55, (-102, 0, -90)),
-                        ("item_care_shampoo", (1.85, WALL_Y - 0.4, 1.56), 0.55, (0, 0, -20)),
-                        ("item_care_shampoo", (-1.95, WALL_Y - 0.4, 2.96), 0.55, (0, 0, 10)),
-                        ("item_care_shampoo", (-0.1, WALL_Y - 0.4, 2.96), 0.55, (0, 0, 0)),
-                        ("item_care_shampoo", (1.8, WALL_Y - 0.4, 2.96), 0.55, (0, 0, -10))]),
+                        ("item_care_shampoo", (0.3, WALL_Y - 0.4, 1.56), 0.55, (0, 0, -5))]),
     "bakery": dict(kind="JOB", outdoors=False, sign="ХЛЕБ",
                    colors=dict(wall="#FFEBD2", side="#F8DDBE", floor=("#E9B983", "#D9A36C"), awning=("#F4A261", "#FFF6E6"),
                                board="#FFF3D6", letters="#8D5A3B", counter="#F4A261"),
@@ -68,17 +67,18 @@ def cloud(x, y, z, s):
 
 
 def riverside(c):
-    """Outdoors instead of the back wall: sky, clouds, the far green bank with round trees, the river."""
+    """Outdoors instead of the back wall: sky, the far green bank with round trees, the river. No clouds: under the
+    tabs (21–31 %) one haloed the tab, higher it peeked between the HUD pills (and on S23 slid under the tabs again)."""
     box("sky", (0, 62, 15), (140, 0.1, 60), M(c["sky"], rough=1, sss=0, coat=0, emit=0.6), bevel=0).visible_shadow = False
-    cloud(-9, 55, 12.5, 3.0)  # one cloud: the right one lay behind the white tab «У Фомы» (white on white)
-    g1, g2 = (M(h, rough=0.6, sss=0.2, coat=0.0) for h in c["hills"])
+    g1, g2 = (M(h, rough=0.6, sss=0.2, coat=0.0, emit=0.2) for h in c["hills"])  # emit: the weak outdoor light
+    # made the bank the darkest mass of the frame
     for x, y, s, m in ((-14, 34, 7, g2), (-5, 36, 6, g1), (5, 34, 7.5, g2), (15, 36, 6, g1)):  # staggered: no seams
         sphere("hill", (x, y, -1.6), s, (1.6, 0.6, 0.45), m)
     trunk = M("#B9743F", rough=0.6)
     for x, r in ((-6.2, 1.1), (6.5, 1.2), (-1.5, 0.8)):  # no shadows: they fell on the water apart from the trees
         cylinder("trunk", (x, 31.5, 0.9), 0.14, 1.2, trunk).visible_shadow = False
         sphere("crown", (x, 31.5, 1.5 + r), r, (1, 1, 1.1), g2 if r > 1 else g1).visible_shadow = False
-    box("river", (0, 30, -0.35), (120, 60, 0.1), M(c["water"], rough=0.6, sss=0, coat=0.0), bevel=0)
+    box("river", (0, 30, -0.35), (120, 60, 0.1), M(c["water"], rough=0.6, sss=0, coat=0.0, emit=0.2), bevel=0)
 
 
 def build(p, c):

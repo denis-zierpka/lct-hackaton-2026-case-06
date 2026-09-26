@@ -21,7 +21,7 @@ EAVE = 2.8  # top of the walls; roof and board above it fill the top ≈ 30 % of
 HOME = dict(wall="#EAE2F6", side="#DCD2EE", roof="#8A83D1", door="#520978", curtain="#FFD6E4", board="#FFFBF6")  # room.py
 GATES = {"gate_park": dict(fence="#FFFBF6", post="#7BC47F", board="#FFF3D6", tree="round"),
          "gate_forest": dict(fence="#D8A66F", post="#8D5A3B", board="#FFF3D6", tree="fir"),
-         "gate_zoo": dict(fence="#3A3F55", post="#F4A261", board="#FFC94D", tree="palm")}
+         "gate_zoo": dict(fence="#8A83D1", post="#F4A261", board="#FFC94D", tree="palm")}  # pastel bars: dark read as a cage
 
 
 def soft(h):
@@ -87,10 +87,11 @@ def home():
 
 def market():
     """The stall of bg_market_port seen from the street: striped awning with scallops, yellow sign, lavender posts,
-    mint counter with the bowl and the ball, balloons; through the stall — sky, the far bank and the river."""
+    mint counter with the bowl and the ball, balloons; through the stall — sky, the far bank and the river. The sky
+    panel is lit, not glowing, and matches G.sky #6FB1E0 of the street row: no «picture in a frame» on the card."""
     c = place.PLACES["market"]["colors"]
     ground(c["floor"][0])
-    box("sky", (0, 0.9, 2.2), (3.7, 0.1, 2.4), M(c["sky"], rough=1, sss=0, coat=0, emit=0.4), bevel=0)
+    box("sky", (0, 0.9, 2.2), (3.7, 0.1, 2.4), M("#6FB1E0", rough=1, sss=0, coat=0), bevel=0)
     place.cloud(1.0, 0.8, 2.45, 0.28)
     for x, s, h in ((-1.15, 0.55, c["hills"][1]), (0.1, 0.65, c["hills"][0]), (1.2, 0.55, c["hills"][1])):
         sphere("hill", (x, 0.85, 1.35), s, (1.2, 0.2, 0.55), M(h, rough=0.6, sss=0.2, coat=0.1))
@@ -151,11 +152,20 @@ def gate(g):
             cylinder("trunk", (x, 0.8, 0.5), 0.1, 1.0, trunk)
             for i, (z, r) in enumerate(((1.2, 0.62), (1.75, 0.5), (2.25, 0.36))):
                 cone("fir", (x, 0.8, z), r, 0.75, (0, 0, 0), dark if i % 2 == 0 else green)
-        else:
-            cylinder("trunk", (x, 0.8, 1.1), 0.09, 2.2, trunk, rot=(0, R(-8 * sx), 0))
-            for a in range(0, 360, 72):
-                sphere("leaf", (x - 0.15 * sx + 0.35 * math.cos(R(a)), 0.8, 2.25 + 0.12 * math.sin(R(a))), 0.4, (1, 0.16, 0.3), green,
-                       rot=(0, R(-a + 20 * math.cos(R(a))), 0))
+        else:  # palm: a thick trunk leaning in, ringed into segments, a round crown of drooping leaves, coconuts
+            t, ring = R(-8 * sx), soft("#8D5A3B")
+            ax = (math.sin(t), 0, math.cos(t))
+            cylinder("trunk", (x + ax[0], 0.8, ax[2]), 0.13, 2.0, trunk, rot=(0, t, 0), bevel=0.04)
+            for i in range(7):
+                d = 0.2 + 0.27 * i
+                torus("trunk_ring", (x + ax[0] * d, 0.8, ax[2] * d), 0.13, 0.035, ring, rot=(0, t, 0))
+            cx = x + ax[0] * 2.0
+            sphere("crown", (cx, 0.8, 2.08), 0.22, mat=dark)
+            for i, a in enumerate(range(0, 360, 60)):
+                sphere("leaf", (cx + 0.38 * math.cos(R(a)), 0.8 + 0.38 * math.sin(R(a)), 1.95), 0.42, (1, 0.42, 0.2),
+                       dark if i % 2 else green, rot=(0, R(25), R(a)))
+            for d in (-0.1, 0.1):
+                sphere("coconut", (cx + d, 0.62, 1.9), 0.09, mat=soft("#8D5A3B"))
     xs = [s * (0.95 + 0.27 * i) for s in (-1, 1) for i in range(4)] + [s * (0.12 + 0.2 * i) for s in (-1, 1) for i in range(3)]
     for x in xs:  # pickets (bars at the zoo): the fence at the sides, the wicket leaves between the posts
         leaf = abs(x) < 0.6
@@ -174,6 +184,11 @@ def gate(g):
         sphere("finial", (0.68 * sx, 0.05, 2.95), 0.17, mat=post)
     box("beam", (0, 0.05, 2.55), (1.6, 0.24, 0.18), post, bevel=0.05)
     board(3.35, g["board"], post, w=2.0, h=0.6, y=-0.02)
+    if g["tree"] == "palm":  # a paw print on the zoo board: a pad and four toes (a picture, not text)
+        paw = soft("#8D5A3B")
+        sphere("paw_pad", (0, -0.1, 3.27), 0.13, (1.2, 0.3, 0.95), paw)
+        for dx, dz in ((-0.19, 3.43), (-0.07, 3.5), (0.07, 3.5), (0.19, 3.43)):
+            sphere("paw_toe", (dx, -0.1, dz), 0.06, (1, 0.3, 1.15), paw)
 
 
 FACADES = {"home": home, "market": market, "foma": foma, "bakery": bakery}

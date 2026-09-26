@@ -199,7 +199,8 @@ def sign(loc, w, h, m_board, text="", m_text=None, m_rim=None):
     if m_rim: box("sign_rim", (loc[0], loc[1] + 0.03, loc[2]), (w + 0.12, 0.12, h + 0.12), m_rim, bevel=min(w, h) * 0.14)
     if not text: return None
     t = text3d("sign_text", text, (loc[0], loc[1] - 0.09, loc[2]), h * 0.62, m_text, extrude=0.02)
-    t.data.font = bpy.data.fonts.load(FONT, check_existing=True); t.data.align_y = "CENTER"; t.data.bevel_depth = h * 0.022
+    t.data.font = bpy.data.fonts.load(FONT, check_existing=True); t.data.align_y = "CENTER"
+    t.data.space_character = 1.25; t.data.bevel_depth = h * 0.012  # tracking + a thin bevel: letters ≥ 2 px apart at 1:1
     me = bpy.data.meshes.new_from_object(t.evaluated_get(bpy.context.evaluated_depsgraph_get()))
     me.materials.clear(); me.materials.append(m_text)
     at = t.location.copy(), t.rotation_euler.copy()
