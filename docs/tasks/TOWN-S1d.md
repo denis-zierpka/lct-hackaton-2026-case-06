@@ -35,7 +35,7 @@ MockHome), улица, две лавки с кассой (MockShop), работ�
   порядку: pet == null → PetLine(""); план подтверждён и нет покупки FOOD недели → need = FOOD,
   text = needFood[tap % size] + HINT(FOOD); иначе план подтверждён и нет CARE → need = CARE,
   needCare[…] + HINT(CARE); иначе Economy.face(pet) == SAD → sad[tap % size], need = null; иначе
-  calm[tap % size]. {pet} → имя. HINT(n) = « {T} {shop.at} — {цена}» по самой низкой seenPrices недели
+  calm[tap % size] (tap ≥ 0 — счётчик тапов VM). {pet} → имя. PetLine.shop — id лавки (shop_market), не места. HINT(n) = « {T} {shop.at} — {цена}» по самой низкой seenPrices недели
   (period == s.period) среди товаров need n (равенство — первый по town.items/items), shop = id этой
   лавки; ничего не видели → HINT = «» и shop = null. Питомец не ведёт на план, копилку, события, итог.
 

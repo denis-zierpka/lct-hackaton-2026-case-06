@@ -723,4 +723,42 @@ class ContentValidationTest {
         assertTrue("town.eventsOff пуст — решение эпика выключает восемь событий среза", town.eventsOff.isNotEmpty())
         town.eventsOff.forEach { ref("town.eventsOff «$it»", it, ids) }
     }
+
+    // ---------- 26. Реплики питомца (TOWN-S1d §A, ORACLE) ----------
+
+    /** town.chatter сырым JSON: список реплик -> его строки. Типизированную сторону проверяет PetTalkTest. */
+    private val rawChatter: Map<String, List<String>> by lazy {
+        val obj = rawTown["chatter"]?.jsonObject ?: error("content.json: нет ключа town.chatter")
+        listOf("needFood", "needCare", "sad", "calm").associateWith { key ->
+            val arr = obj[key] as? JsonArray ?: error("content.json: нет списка town.chatter.$key")
+            arr.map { (it as JsonPrimitive).content }
+        }
+    }
+
+    @Test
+    fun `в каждом списке реплик питомца не меньше двух строк`() = rawChatter.forEach { (key, lines) ->
+        assertTrue("town.chatter.$key: строк ${lines.size} ($lines), нужно ≥ 2", lines.size >= 2)
+    }
+
+    @Test
+    fun `каждая реплика питомца кончается точкой восклицательным или вопросительным знаком`() =
+        rawChatter.forEach { (key, lines) ->
+            lines.forEach {
+                assertTrue("town.chatter.$key: реплика «$it» кончается не на «.», «!» или «?»", it.lastOrNull() in listOf('.', '!', '?'))
+            }
+        }
+
+    @Test
+    fun `в репликах питомца нет подстановок кроме имени`() = rawChatter.forEach { (key, lines) ->
+        lines.forEach { line ->
+            Regex("\\{[^}]*\\}").findAll(line).forEach {
+                assertEquals("town.chatter.$key: подстановка ${it.value} в реплике «$line»", "{pet}", it.value)
+            }
+        }
+    }
+
+    @Test
+    fun `в репликах питомца нет слов «пока не»`() = rawChatter.forEach { (key, lines) ->
+        assertNoSubstring(lines.map { "town.chatter.$key" to it }, listOf("пока не"), "правило 3 (без срочности)")
+    }
 }
