@@ -13,6 +13,8 @@ data class TownContent(
     val residents: List<Resident>, val events: List<EventDef>, val stickers: List<StickerDef>,
     val quiz: List<QuizQuestion>, val parentBonusReasons: List<String>,
     val spots: List<Spot>,
+    /** id событий, которые в этой сборке не приходят и не начинаются (TOWN-S1c §0). */
+    val eventsOff: List<String> = emptyList(),
 )
 
 /** Место для вещи в доме и его тип: floor, wall, table (§5.3). */

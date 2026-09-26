@@ -217,10 +217,10 @@
 | `houseColor` | String? = null | Цвет дома (срез 2) |
 | `shiftsThisPeriod` | Int = 0 | Оплачиваемые смены недели, не больше `town.rules.shiftsPerWeek`; обнуляется в конце недели |
 | `jobShifts`, `records` | Map<String, Int> = {} | Оплачиваемые смены (уровень мастерства) и лучший счёт по работам |
-| `events` | List<`EventState`> = [] | События: `id`, `status` (ACTIVE / DONE), `verdict`, `outcome` (индекс исхода, −1 — умолчание), `period` и `day` прихода (S1c) |
-| `stickers`, `visited` | List<String> = [] | Наклейки (S1c) и посещённые места |
+| `events` | List<`EventState`> = [] | События: `id`, `status` (ACTIVE / DONE), `verdict`, `outcome` (индекс сработавшего исхода, −1 — закрыто без исхода), `period` и `day` прихода |
+| `stickers`, `visited` | List<String> = [] | Наклейки (события — за любой исход, места — при первом входе, заказ — за оплачиваемую смену) и посещённые места |
 | `seenPrices` | Map<String, `SeenPrice`> = {} | Холодильник: товар → (лавка, цена, неделя) — самая низкая цена недели |
-| `notes` | List<String> = [] | Заметки на холодильнике (S1c) |
+| `notes` | List<String> = [] | Заметки на холодильнике (эффект `NOTE` исхода события) |
 | `planDraft` | `BudgetPlan`? = null | Не используется: заготовка — сам неподтверждённый `plan` новой недели |
 | `freeFunDay` | Int = 0 | Качели раз в день (срез 2) |
 | `diary` | List<`DiaryLine`> = [] | Дневник: `period`, `day`, `text` («Купили у реки: каша», «Заработали 9: «Булочки в ряд»», «Мечта сбылась: …») |
@@ -234,7 +234,8 @@
 Все разделы обязательны: `rules` (`TownRules`, 10 чисел без умолчаний), `places`, `shops`
 (`id`, `place`, `title`, `at` — «у реки», `sells` — товар и цена лавки), `items`, `homeItems`,
 `spots` (6 мест: `id`, `slot` — `floor`, `wall`, `table`), `goals`, `jobs`, `residents`, `events`,
-`stickers`, `quiz`, `parentBonusReasons`. Проверяет `ContentValidationTest`. `Content.item(id)`
+`stickers`, `quiz`, `parentBonusReasons`; `eventsOff` (по умолчанию пусто) — id событий, которые в этой
+сборке не приходят (сцены среза 2). Проверяет `ContentValidationTest`. `Content.item(id)`
 ищет товар и в `items`, и в `town.items`.
 
 ## Прогресс и стадии

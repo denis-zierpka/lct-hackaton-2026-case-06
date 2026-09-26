@@ -800,14 +800,15 @@ JSON не допускает комментариев (`ContentRepository` па�
 
 **Контракт до оракула.** Движок — чистый Kotlin в `domain/`. В срезе 0 пишутся сигнатуры `Town`,
 `Events`, `Prices`, `Migration`, `sealed interface Fact` и `EventEffect`, тип результата
-`TownOutcome(state, line, why, effects, eventResults)`. Строковый формат фактов живёт только в
+`TownOutcome(state, line, why, effects, eventResults, arrived)`. Строковый формат фактов живёт только в
 JSON, в коде — парсер в типы, покрытый `ContentValidationTest`. События — методы `Town` (TOWN-S1c):
 `tick` (плановый приход), `activeEvents`, `orders`, `card`, `pass` («Пройти мимо»), `demoBoard` и
 `startEvent` (демо); факты наблюдают сами действия `Town` (покупка, план, взнос, конец недели).
 
 Факты пишут новые функции-обёртки `Town.*`: `buyAt`, `deposit` (из запаса или «Хочу»), `transfer`,
 `confirmPlan`, `finishShift`, `sleep`/`endWeek`; `repair` — со срезом 2 (мастерская). `Town`, `Prices`,
-`Migration`, `Events` — классы (TOWN-S1a: у каждого одна реализация). Ещё две обёртки фактов не пишут, но заменяют функции
+`Migration` — классы (TOWN-S1a: у каждого одна реализация); события — методы `Town` и внутренний класс
+`TownEvents` (TOWN-S1c). Ещё две обёртки фактов не пишут, но заменяют функции
 `Economy`, которые в `game` нарушили бы решения 1, 10 и 21: `Town.parentBonus(s, reasonIndex)` —
 сумма в `envelope`, лимит по `parentBonusesThisPeriod`, причины из `town.parentBonusReasons`;
 `Town.answerQuestion` — пишет только `bombs`, `riddles` и `riddleAsked` (§5.2; `quizResults` 1.3.0 загадки не снимают). `Economy` меняется только добавлением одного параметра с

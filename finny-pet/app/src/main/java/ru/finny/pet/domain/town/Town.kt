@@ -39,6 +39,7 @@ class Town(private val content: Content) {
     private val town = content.town ?: error("content.json: нет ключа town")
     private val economy = Economy(content)
     private val prices = Prices(content)
+    private val events = TownEvents(content, prices)
 
     // ---------- §3. Касса ----------
 
@@ -176,7 +177,7 @@ class Town(private val content: Content) {
             c == Category.MANDATORY -> listOf(need, reserve, want, "Еда и уход нужны каждую неделю. Запас — для сюрпризов")
             else -> listOf(reserve, want)
         }.filterNotNull().take(3)
-        return TownResult.Done(TownOutcome(a, line, why))
+        return TownResult.Done(events.observe(TownOutcome(a, line, why), Seen.Bought(item, source, shopId, p)))
     }
 
     private fun checkoutRefusal(s: GameState, itemId: String, shopId: String?): String? {
@@ -266,7 +267,8 @@ class Town(private val content: Content) {
         } else {
             "План готов! Запас на всякий случай: ${st.reserve}"
         }
-        return done(st, line, listOf("Сначала откладываем, потом тратим — так мечта ближе", "Запас — на нужное и на всякий случай, не на «хочу»"))
+        val o = TownOutcome(st, line, listOf("Сначала откладываем, потом тратим — так мечта ближе", "Запас — на нужное и на всякий случай, не на «хочу»"))
+        return TownResult.Done(events.arrive(events.observe(o, Seen.Planned), Trigger.PlanConfirmed))
     }
 
     fun deposit(s: GameState, from: Source, amount: Int): TownResult {
@@ -274,7 +276,7 @@ class Town(private val content: Content) {
         var st = economy.deposit(s, amount).state()
         if (from == Source.WANT) st = st.copy(jarWant = st.jarWant - amount)
         val why = listOf(from(s, from, amount), "Копилка: ${s.savings} → ${st.savings}") + eta(s, st)
-        return done(st, "Копилка +$amount", why)
+        return done(st, "Копилка +$amount", why).seen(Fact.Deposit)
     }
 
     fun depositPreview(s: GameState, from: Source, amount: Int): List<String> {
@@ -285,7 +287,7 @@ class Town(private val content: Content) {
 
     fun withdraw(s: GameState, amount: Int): TownResult {
         withdrawRefusal(s, amount)?.let { return it }
-        return done(economy.withdraw(s, amount).state(), "Из копилки $amount — в «Не разложено»", save(s, amount))
+        return done(economy.withdraw(s, amount).state(), "Из копилки $amount — в «Не разложено»", save(s, amount)).seen(Fact.Withdraw)
     }
 
     fun withdrawPreview(s: GameState, amount: Int): List<String> {
@@ -344,13 +346,14 @@ class Town(private val content: Content) {
     fun sleep(s: GameState): TownResult {
         refusal((s.pet == null) to NO_PET, !s.plan.confirmed to NO_PLAN_SLEEP, s.asleep to "Уже ночь")?.let { return it }
         if (s.day == town.rules.daysPerWeek) return endWeek(s)
+        val ev = events.defaults(TownOutcome(s), setOf(Until.DAY_END))
         val lines = s.diary.filter { it.period == s.period && it.day == s.day }.map { it.text }
         val line = when (lines.size) {
             0 -> "Спокойный день дома"
             1 -> lines[0]
             else -> "${lines[0]}. ${lines[1]}"
         }
-        return done(s.copy(asleep = true), line)
+        return TownResult.Done(ev.copy(state = ev.state.copy(asleep = true), line = line))
     }
 
     fun wake(s: GameState): TownResult {
@@ -364,15 +367,22 @@ class Town(private val content: Content) {
         } else {
             "Доброе утро!"
         }
-        return done(st, line)
+        return TownResult.Done(events.arrive(TownOutcome(st, line), null))
     }
 
-    fun endWeek(s: GameState): TownResult {
+    fun endWeek(s0: GameState): TownResult {
         refusal(
-            (s.pet == null) to NO_PET,
-            !s.plan.confirmed to NO_PLAN_SLEEP,
-            (!s.demo && s.day < town.rules.daysPerWeek) to "Неделя ещё идёт",
+            (s0.pet == null) to NO_PET,
+            !s0.plan.confirmed to NO_PLAN_SLEEP,
+            (!s0.demo && s0.day < town.rules.daysPerWeek) to "Неделя ещё идёт",
         )?.let { return it }
+        // TOWN-S1c §5: WeekEndNo до Economy.endPeriod, потом умолчания, потом тихое закрытие
+        var ev = TownOutcome(s0)
+        for (n in listOf(Need.FOOD, Need.CARE)) {
+            if (s0.purchases.none { it.need == n }) ev = events.observe(ev, Seen.Plain(Fact.WeekEndNo(n)), rewrite = false)
+        }
+        ev = events.closeAll(events.defaults(ev, setOf(Until.DAY_END, Until.WEEK_END)))
+        val s = ev.state
         val ended = economy.endPeriod(s).state()
         fun sum(prefix: String) = s.envelope.filter { it.text.startsWith(prefix) }.sumOf { it.amount }
         val summary = ended.history.last().copy(shiftEarned = sum("Смена: "), parentBonus = sum("Бонус от взрослого: "))
@@ -410,7 +420,7 @@ class Town(private val content: Content) {
             "«Хочу»: план ${plan.optional}, потрачено ${summary.factOptional}",
             "Копилка: план ${plan.savings}, отложено ${maxOf(fs, 0)}",
         )
-        return done(st, line, why)
+        return TownResult.Done(ev.copy(state = st, line = line, why = why))
     }
 
     fun weekEndPreview(s: GameState): List<String> {
@@ -486,7 +496,7 @@ class Town(private val content: Content) {
         val base = prices.basePrice(itemId)
         if (!item.keep || base == null || base < min) return TownResult.Refused("Мечтой можно сделать вещь от $min")
         val st = economy.chooseGoal(s, Goal("item:$itemId", item.title, item.emoji, base)).state()
-        return done(st, "Мечта: ${lower(item.title)} — $base")
+        return done(st, "Мечта: ${lower(item.title)} — $base").seen(Fact.MakeGoal(itemId))
     }
 
     fun achieveGoal(s: GameState): TownResult {
@@ -505,18 +515,72 @@ class Town(private val content: Content) {
         return done(st, "Мечта сбылась: ${goal.title}!")
     }
 
-    fun visit(s: GameState, placeId: String): TownOutcome {
-        if (town.places.none { it.id == placeId }) return TownOutcome(s)
-        val visited = if (placeId in s.visited) s.visited else s.visited + placeId
-        val shop = town.shops.firstOrNull { it.place == placeId } ?: return TownOutcome(s.copy(visited = visited))
+    /** Вход в место: visited → приход (Enter и плановая проверка) → цены полки → наклейка места (TOWN-S1c §7). */
+    fun visit(s0: GameState, placeId: String): TownOutcome {
+        val place = town.places.firstOrNull { it.id == placeId } ?: return TownOutcome(s0)
+        val o = events.arrive(TownOutcome(s0.copy(visited = s0.visited.plusNew(placeId))), Trigger.Enter(placeId))
+        val s = o.state
         val seen = s.seenPrices.toMutableMap()
-        prices.shelf(s, shop.id).forEach { si ->
-            val old = seen[si.item.id]
-            if (old == null || old.period < s.period || si.price < old.price || old.shop == shop.id) {
-                seen[si.item.id] = SeenPrice(shop.id, si.price, s.period)
+        town.shops.firstOrNull { it.place == placeId }?.let { shop ->
+            prices.shelf(s, shop.id).forEach { si ->
+                val old = seen[si.item.id]
+                if (old == null || old.period < s.period || si.price < old.price || old.shop == shop.id) {
+                    seen[si.item.id] = SeenPrice(shop.id, si.price, s.period)
+                }
             }
         }
-        return TownOutcome(s.copy(visited = visited, seenPrices = seen))
+        return o.copy(state = s.copy(seenPrices = seen, stickers = s.stickers.plusNew(place.sticker)))
+    }
+
+    // ---------- TOWN-S1c. События: приход, доска, карточка, «Пройти мимо», демо ----------
+
+    /** Плановая проверка прихода; VM зовёт после создания профиля, загрузки и миграции (§2). */
+    fun tick(s: GameState): TownOutcome = events.arrive(TownOutcome(s), null)
+
+    /** ACTIVE живые события не-JOB в порядке s.events (§6). */
+    fun activeEvents(s: GameState): List<EventDef> = events.active(s)
+
+    /** Заказы JOB: смена оплачивается, requires без демо-ослаблений, место открыто (§6). */
+    fun orders(s: GameState): List<EventDef> = events.live.filter { e ->
+        e.kind == EventKind.JOB && e.params.job?.let { shiftQuote(s, it).paid } == true &&
+            e.requires.all { events.holds(s, it, false) } && !events.closed(s, e)
+    }
+
+    /** Карточка «В городке» — никогда не пустая (§6). */
+    fun card(s: GameState): Card =
+        (activeEvents(s) + orders(s)).firstOrNull()?.let { Card(it.title, it.id, it.place) }
+            ?: Card("В городке спокойно — загляни на доску")
+
+    /** «Пройти мимо»: факт Skip только для этого события (§6). */
+    fun pass(s: GameState, eventId: String): TownResult {
+        refusal(
+            (s.pet == null) to NO_PET,
+            s.asleep to NIGHT,
+            (events.liveEvent(eventId) == null || !events.isActive(s, eventId)) to "Такого события сейчас нет",
+        )?.let { return it }
+        val o = events.observe(TownOutcome(s), Seen.Plain(Fact.Skip), only = eventId)
+        return if (o.eventResults.isEmpty()) TownResult.Refused("Здесь решают делом") else TownResult.Done(o)
+    }
+
+    /** Демо-доска: все живые не-JOB события в открытых местах (§6). */
+    fun demoBoard(s: GameState): List<EventDef> =
+        if (!s.demo) emptyList() else events.live.filter { it.kind != EventKind.JOB && !events.closed(s, it) }
+
+    /** Демо-запуск события; при невыполненных requires — demo.setup и повторная проверка (§6). */
+    fun startEvent(s: GameState, eventId: String): TownResult {
+        val e = events.liveEvent(eventId)
+        refusal(
+            (s.pet == null) to NO_PET,
+            s.asleep to NIGHT,
+            !s.demo to "Событие придёт само",
+            (e == null) to "Такого события нет",
+            (e != null && events.closed(s, e)) to "Место откроет мечта",
+            events.isActive(s, eventId) to "Событие уже идёт",
+        )?.let { return it }
+        e!!
+        val st = if (events.unmet(s, e) == null) s else events.demoSetup(s, e)
+        events.unmet(st, e)?.let { return TownResult.Refused(events.notReady(st, it)) }
+        return TownResult.Done(events.start(TownOutcome(st), e).copy(line = e.intro))
     }
 
     // ---------- §1–§4. Смены, «Загадка Бори», бонус взрослого (TOWN-S1b) ----------
@@ -594,6 +658,7 @@ class Town(private val content: Content) {
             shiftsThisPeriod = st.shiftsThisPeriod + 1,
             jobShifts = st.jobShifts + (jobId to ((st.jobShifts[jobId] ?: 0) + 1)),
             diary = st.diary + DiaryLine(s.period, s.day, "Заработали $total: «${job.title}»"),
+            stickers = st.stickers.plusNew(events.live.firstOrNull { it.kind == EventKind.JOB && it.params.job == jobId }?.sticker),
         )
         val line = when (job.game) {
             JobGame.TAPS -> "База ${quote.base} за три поручения. ✉ +$total — придёт с новым конвертом"
@@ -710,6 +775,10 @@ class Town(private val content: Content) {
 
     private fun done(s: GameState, line: String = "", why: List<String> = emptyList()): TownResult =
         TownResult.Done(TownOutcome(s, line, why))
+
+    /** Наблюдение простого факта после действия (TOWN-S1c §3). */
+    private fun TownResult.seen(f: Fact): TownResult =
+        if (this is TownResult.Done) TownResult.Done(events.observe(outcome, Seen.Plain(f))) else this
 
     private fun Outcome.state(): GameState = (this as? Outcome.Ok)?.state ?: error("Economy отказала: $this")
 

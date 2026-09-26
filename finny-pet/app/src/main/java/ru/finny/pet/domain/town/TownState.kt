@@ -15,8 +15,8 @@ data class SeenPrice(val shop: String, val price: Int, val period: Int)
 @Serializable
 data class DiaryLine(val period: Int, val day: Int, val text: String)
 
-/** Итог действия: состояние, одна строка ребёнку, «Почему?» до 3 строк, эффекты для анимаций, исходы событий (§7.3, §8). */
-data class TownOutcome(val state: GameState, val line: String = "", val why: List<String> = emptyList(), val effects: List<EventEffect> = emptyList(), val eventResults: List<EventResult> = emptyList())
+/** Итог действия: состояние, одна строка ребёнку, «Почему?» до 3 строк, эффекты для анимаций, исходы событий, пришедшие события (§7.3, §8; TOWN-S1c §0). */
+data class TownOutcome(val state: GameState, val line: String = "", val why: List<String> = emptyList(), val effects: List<EventEffect> = emptyList(), val eventResults: List<EventResult> = emptyList(), val arrived: List<String> = emptyList())
 
 /** Итог одного сработавшего события внутри действия движка. */
 data class EventResult(val eventId: String, val verdict: Verdict, val line: String, val sticker: String? = null, val recovery: List<Recovery> = emptyList())
@@ -27,14 +27,5 @@ sealed interface TownResult {
     data class Refused(val line: String) : TownResult
 }
 
-/** События «Городка»: приход, запуск и засчитывание фактов (§7.3, §7.4); реализация — срез 1. */
-interface Events {
-    /** События, которые можно начать сейчас; в демо — все (§7.4). */
-    fun available(s: GameState): List<EventDef>
-    /** Запуск события: применяет setup, в демо — demo.setup (§7.4). */
-    fun start(s: GameState, id: String): TownResult
-    /** Вход в место: ENTER-триггеры, RETURN_LATER, visited (§7.3, §7.5 Пк2). */
-    fun enter(s: GameState, placeId: String): TownOutcome
-    /** place — где совершено действие; SKIP, CHECK_CHANGE, MAKE_GOAL, MAKE_CARD, ATTEND, DEPOSIT, WITHDRAW приходят сюда без обёртки Town (§7.3). */
-    fun observe(s: GameState, fact: Fact, place: String? = null): TownOutcome
-}
+/** Карточка «В городке»: активное событие, заказ или «спокойно» (TOWN-S1c §6). */
+data class Card(val title: String, val eventId: String? = null, val place: String? = null)
