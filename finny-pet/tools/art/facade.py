@@ -86,7 +86,7 @@ def home():
 
 
 def market():
-    """The stall of bg_market_port seen from the street: striped awning with scallops, yellow sign, white posts,
+    """The stall of bg_market_port seen from the street: striped awning with scallops, yellow sign, lavender posts,
     mint counter with the bowl and the ball, balloons; through the stall — sky, the far bank and the river."""
     c = place.PLACES["market"]["colors"]
     ground(c["floor"][0])
@@ -96,7 +96,7 @@ def market():
         sphere("hill", (x, 0.85, 1.35), s, (1.2, 0.2, 0.55), M(h, rough=0.6, sss=0.2, coat=0.1))
     box("river", (0, 0.7, 1.3), (3.7, 0.1, 0.3), M(c["water"], rough=0.6, sss=0, coat=0.0), bevel=0)
     for sx in (-1, 1):
-        cylinder("post", (1.85 * sx, -0.2, 1.65), 0.09, 3.3, white(), bevel=0.03)
+        cylinder("post", (1.85 * sx, -0.2, 1.65), 0.09, 3.3, M(c["post"], rough=0.5, sss=0.2, coat=0.3), bevel=0.03)
     yf, zv = awning([M(h, rough=0.6, sss=0.2, coat=0.15) for h in c["awning"]], -2.05, 2.05, 0.5, 3.95, depth=1.0, slope=25, n=7, drop=0.3)
     board(zv, c["board"], y=yf - 0.12, w=2.4, h=0.55)
     box("counter", (0, -0.35, 0.55), (3.4, 0.6, 1.1), M(c["counter"], rough=0.5, sss=0.2, coat=0.3), bevel=0.06)

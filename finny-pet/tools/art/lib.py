@@ -14,7 +14,7 @@ import bpy, math, os
 from mathutils import Vector
 
 MATS = {}
-FONT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "app", "src", "main", "res", "font", "montserrat.ttf")
+FONT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "montserrat_extrabold.ttf")  # static cut of the app font
 
 
 def hexc(h, a=1.0):
@@ -187,22 +187,29 @@ def awning(mats, x0, x1, y, z, depth=2.4, slope=30, n=9, drop=0.4):
         x, m = x0 + (i + 0.5) * w, mats[i % len(mats)]
         box("awning", (x, (y + yf) / 2, (z + zf) / 2), (w, depth, 0.08), m, rot=(a, 0, 0), bevel=0.03)
         box("valance", (x, yf, zf - drop / 2), (w, 0.08, drop), m, bevel=0.03)
-        sphere("scallop", (x, yf, zf - drop), w / 2, (1, 0.16, 1), m)
+        sphere("scallop", (x, yf, zf - drop), w / 2, (1, 0.07 / w, 1), m)  # y radius 0.035: inside the 0.08 valance
     return yf, zf - drop / 2
 
 
 def sign(loc, w, h, m_board, text="", m_text=None, m_rim=None):
-    """Board facing -Y centred at `loc`, optional rim, optional text in Montserrat (the app font, Cyrillic) fitted
-    to 80 % of the board width. The variable font loads at its default (regular) weight; a rounded
-    bevel makes the letters puffy (thicker bevel or `offset` loop the overlapping glyph contours, e.g. in «Р»)."""
+    """Board facing -Y centred at `loc`, optional rim, optional text in Montserrat ExtraBold (FONT: static cut of the
+    app font, Cyrillic) fitted to 80 % of the board width. The rounded-bevel text is turned into a mesh and
+    voxel-remeshed (voxel = 0.007 × letter height): the overlapping glyph contours merge, no loops or seams."""
     box("sign", loc, (w, 0.14, h), m_board, bevel=min(w, h) * 0.12)
     if m_rim: box("sign_rim", (loc[0], loc[1] + 0.03, loc[2]), (w + 0.12, 0.12, h + 0.12), m_rim, bevel=min(w, h) * 0.14)
     if not text: return None
     t = text3d("sign_text", text, (loc[0], loc[1] - 0.09, loc[2]), h * 0.62, m_text, extrude=0.02)
     t.data.font = bpy.data.fonts.load(FONT, check_existing=True); t.data.align_y = "CENTER"; t.data.bevel_depth = h * 0.022
-    bpy.context.view_layer.update()
-    if t.dimensions.x > w * 0.8: t.scale = [w * 0.8 / t.dimensions.x] * 3
-    return t
+    me = bpy.data.meshes.new_from_object(t.evaluated_get(bpy.context.evaluated_depsgraph_get()))
+    me.materials.clear(); me.materials.append(m_text)
+    at = t.location.copy(), t.rotation_euler.copy()
+    bpy.data.objects.remove(t)
+    o = bpy.data.objects.new("sign_text", me); bpy.context.collection.objects.link(o)
+    o.location, o.rotation_euler = at
+    xs, ys = [v.co.x for v in me.vertices], [v.co.y for v in me.vertices]  # glyphs lie in local XY
+    r = o.modifiers.new("remesh", "REMESH"); r.mode = "VOXEL"; r.voxel_size = 0.007 * (max(ys) - min(ys)); r.use_smooth_shade = True
+    if max(xs) - min(xs) > w * 0.8: o.scale = [w * 0.8 / (max(xs) - min(xs))] * 3
+    return o
 
 
 def _track(o, target):

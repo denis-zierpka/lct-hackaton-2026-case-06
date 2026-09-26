@@ -21,21 +21,24 @@ FORBIDDEN = ("item_care_vitamins", "item_fun_bow")  # and every tile_*: never de
 PLACES = {  # decor: (props.py builder, location, scale, rotation deg)
     "market": dict(kind="SHOP", outdoors=True, sign="РЫНОК",
                    colors=dict(sky="#94D2FA", water="#5FB8E8", hills=("#9ADB8E", "#7CC47F"), floor=("#E9B983", "#D9A36C"),
-                               awning=("#FF6F91", "#FFF6E6"), board="#FFC94D", letters="#520978", counter="#7FD6C2"),
-                   decor=[("item_food_basic", (-1.05, -1.45, 1.21), 0.5, (0, 0, 0)),
-                          ("item_fun_ball", (1.1, -1.5, 1.21), 0.42, (0, 0, 0)),
-                          ("item_fun_balloon", (1.74, -2.1, 3.3), 0.72, (0, -12, 0)),
-                          ("item_fun_balloon", (1.8, -2.1, 3.3), 0.62, (0, 18, 0))]),
+                               awning=("#FF6F91", "#FFD6E4"), board="#FFC94D", letters="#520978", counter="#7FD6C2",
+                               post="#8A83D1"),  # lavender posts: not read as bridges of the white cards, ≥ 3 : 1 under HUD-2
+                   # decor under the card columns (bg x 2–31 %, 33–62 %, 64–93 %; on S23 the gaps shift to 34–36 %, 60–62 %,
+                   # 85–91 %). No balloons: above 31 % they were the loudest spot under the tabs, on the counter they
+                   # peeked red through the gap between the card rows (comp 05a/06b)
+                   decor=[("item_food_basic", (-1.45, -1.45, 1.21), 0.45, (0, 0, 0)),
+                          ("item_fun_ball", (1.1, -1.5, 1.21), 0.42, (0, 0, 0))]),
     "foma": dict(kind="SHOP", outdoors=False, sign="ЛАВКА",
-                 colors=dict(wall="#D6ECFF", side="#C4E0FA", floor=("#E9C9A0", "#DDB888"), awning=("#6F9FE6", "#FFFFFF"),
+                 colors=dict(wall="#D6ECFF", side="#C4E0FA", floor=("#D2B590", "#C7A67A"), awning=("#6F9FE6", "#FFFFFF"),
                              board="#FFFFFF", letters="#2F5BA8", counter="#FFD37A", cabinet="#FFF6E6"),
-                 decor=[("item_care_shampoo", (-1.75, WALL_Y - 0.4, 1.56), 0.55, (0, 0, 20)),
-                        ("item_care_shampoo", (-1.05, WALL_Y - 0.4, 1.56), 0.55, (0, 0, 20)),
-                        ("item_fun_book", (1.05, WALL_Y - 0.4, 1.56), 0.6, (0, 0, -10)),
-                        ("item_fun_book", (1.8, WALL_Y - 0.4, 1.56), 0.6, (0, 0, -10)),
-                        ("item_fun_book", (-1.6, WALL_Y - 0.4, 2.96), 0.6, (0, 0, 10)),
-                        ("item_care_shampoo", (0.2, WALL_Y - 0.4, 2.96), 0.55, (0, 0, 0)),
-                        ("item_care_shampoo", (1.6, WALL_Y - 0.4, 2.96), 0.55, (0, 0, -20))]),
+                 # light shampoo and one book lying flat (pages to the camera), all under the card columns (shelf x ±2.6
+                 # spans bg 15–85 %; the gaps 30–37 % and 59–65 % are x −1.47…−0.96 and 0.70…1.10 at the shelf depth)
+                 decor=[("item_care_shampoo", (-2.0, WALL_Y - 0.4, 1.56), 0.55, (0, 0, 20)),
+                        ("item_fun_book", (-0.55, WALL_Y - 0.45, 1.74), 0.55, (-102, 0, -90)),
+                        ("item_care_shampoo", (1.85, WALL_Y - 0.4, 1.56), 0.55, (0, 0, -20)),
+                        ("item_care_shampoo", (-1.95, WALL_Y - 0.4, 2.96), 0.55, (0, 0, 10)),
+                        ("item_care_shampoo", (-0.1, WALL_Y - 0.4, 2.96), 0.55, (0, 0, 0)),
+                        ("item_care_shampoo", (1.8, WALL_Y - 0.4, 2.96), 0.55, (0, 0, -10))]),
     "bakery": dict(kind="JOB", outdoors=False, sign="ХЛЕБ",
                    colors=dict(wall="#FFEBD2", side="#F8DDBE", floor=("#E9B983", "#D9A36C"), awning=("#F4A261", "#FFF6E6"),
                                board="#FFF3D6", letters="#8D5A3B", counter="#F4A261"),
@@ -59,7 +62,7 @@ def put(name, loc, s, rot):
 
 
 def cloud(x, y, z, s):
-    m = material("cloud", (1, 1, 1, 1), emit=0.85, sss=0, coat=0)
+    m = material("cloud", (1, 1, 1, 1), emit=0.75, sss=0, coat=0)
     for dx, dz, r in ((0, 0, 1.0), (-1.1, -0.15, 0.75), (1.1, -0.1, 0.8), (0.5, 0.45, 0.7)):
         sphere("cloud", (x + dx * s, y, z + dz * s), r * s, mat=m, levels=1).visible_shadow = False
 
@@ -67,15 +70,14 @@ def cloud(x, y, z, s):
 def riverside(c):
     """Outdoors instead of the back wall: sky, clouds, the far green bank with round trees, the river."""
     box("sky", (0, 62, 15), (140, 0.1, 60), M(c["sky"], rough=1, sss=0, coat=0, emit=0.6), bevel=0).visible_shadow = False
-    for x, z, s in ((-9, 12.5, 3.0), (8, 16, 3.4)):
-        cloud(x, 55, z, s)
-    g1, g2 = (M(h, rough=0.6, sss=0.2, coat=0.1) for h in c["hills"])
-    for x, s, m in ((-14, 7, g2), (-5, 6, g1), (5, 7.5, g2), (15, 6, g1)):
-        sphere("hill", (x, 34, -1.6), s, (1.6, 0.6, 0.45), m)
+    cloud(-9, 55, 12.5, 3.0)  # one cloud: the right one lay behind the white tab «У Фомы» (white on white)
+    g1, g2 = (M(h, rough=0.6, sss=0.2, coat=0.0) for h in c["hills"])
+    for x, y, s, m in ((-14, 34, 7, g2), (-5, 36, 6, g1), (5, 34, 7.5, g2), (15, 36, 6, g1)):  # staggered: no seams
+        sphere("hill", (x, y, -1.6), s, (1.6, 0.6, 0.45), m)
     trunk = M("#B9743F", rough=0.6)
-    for x, r in ((-6.2, 1.1), (6.5, 1.2), (-1.5, 0.8)):
-        cylinder("trunk", (x, 31.5, 0.9), 0.14, 1.2, trunk)
-        sphere("crown", (x, 31.5, 1.5 + r), r, (1, 1, 1.1), g2 if r > 1 else g1)
+    for x, r in ((-6.2, 1.1), (6.5, 1.2), (-1.5, 0.8)):  # no shadows: they fell on the water apart from the trees
+        cylinder("trunk", (x, 31.5, 0.9), 0.14, 1.2, trunk).visible_shadow = False
+        sphere("crown", (x, 31.5, 1.5 + r), r, (1, 1, 1.1), g2 if r > 1 else g1).visible_shadow = False
     box("river", (0, 30, -0.35), (120, 60, 0.1), M(c["water"], rough=0.6, sss=0, coat=0.0), bevel=0)
 
 
@@ -83,13 +85,13 @@ def build(p, c):
     wood = [material("plank%d" % i, mix(hexc(c["floor"][0]), hexc(c["floor"][1]), i / 3), rough=0.55, sss=0.1, coat=0.25) for i in range(4)]
     white = M("#FFFBF6", rough=0.4, sss=0.1, coat=0.3)
     plank_floor(wood, K, n=6, pitch=1.2)  # wider than the room's: fewer lines, fewer WebP bytes
-    stripes = [M(h, rough=0.6, sss=0.2, coat=0.15) for h in c["awning"]]
+    stripes = [M(h, rough=0.6, sss=0.2, coat=0.0) for h in c["awning"]]  # no coat: the sun glared white on it
     if p["outdoors"]:  # a stall on the pier: posts hold the awning over the counter, the river behind
         riverside(c)
         box("pier_edge", (0, 5.0, -0.12), (14, 0.3, 0.3), wood[3], bevel=0.03)
-        for sx in (-1, 1):
-            cylinder("post", (1.8 * sx, -1.95, 3.2), 0.1, 6.4, white, bevel=0.03)
         yb, zb = awning(stripes, -2.7, 2.7, 0.2, 7.3, n=7)
+        for sx in (-1, 1):  # up to the bottom of the valance (its centre zb − drop / 2), not through the canopy
+            cylinder("post", (1.8 * sx, -1.95, (zb - 0.2) / 2), 0.1, zb - 0.2, M(c["post"], rough=0.5, sss=0.2, coat=0.3), bevel=0.03)
     else:  # a room: the awning hangs on the back wall above the shelves
         shell_walls(M(c["wall"], rough=0.7, sss=0.0, coat=0.1), M(c["side"], rough=0.7, sss=0.0, coat=0.1), white, K, WALL_Y)
         yb, zb = awning(stripes, -3.55, 3.55, WALL_Y - 0.1, 7.9, depth=1.6, n=11)
@@ -107,24 +109,26 @@ def build(p, c):
                 box("shelf", (0, WALL_Y - 0.4, z), (5.36, 0.8, 0.12), wood[1], bevel=0.03)
         box("counter", (0, -1.4, 0.575), (3.5, 0.8, 1.15), front, bevel=0.06)
         box("counter_top", (0, -1.4, 1.19), (3.7, 1.0, 0.12), wood[1], bevel=0.03)
-    else:  # JOB: a low counter along the bottom edge (top at 82–90 % of the height), bread on it
-        box("counter", (0, -5.1, 0.3), (6, 1.0, 0.6), front, bevel=0.06)
-        box("counter_top", (0, -5.1, 0.62), (6.2, 1.2, 0.08), wood[1], bevel=0.03)
+    else:  # JOB: a low counter along the bottom edge, the loaves whole in 86–100 % (under the order card they were cut)
+        box("counter", (0, -5.1, 0.15), (6, 1.0, 0.3), front, bevel=0.06)
+        box("counter_top", (0, -5.1, 0.34), (6.2, 1.2, 0.08), wood[1], bevel=0.03)
         crust, cut = M("#C9803F", rough=0.5, sss=0.3, coat=0.3), M("#F6D9A8", rough=0.6, sss=0.2, coat=0.1)
         for x, s in ((-0.8, 1.0), (0.1, 1.15), (0.9, 0.9)):
-            sphere("loaf", (x, -5.2, 0.7), 0.26 * s, (1.4, 0.85, 0.6), crust)
+            sphere("loaf", (x, -5.2, 0.42), 0.26 * s, (1.4, 0.85, 0.6), crust)
             for d in (-0.13, 0.0, 0.13):
-                sphere("cut", (x + d * s, -5.22, 0.7 + 0.15 * s), 0.05 * s, (0.5, 2.0, 0.35), cut, rot=(0, 0, R(35)), levels=1)
+                sphere("cut", (x + d * s, -5.22, 0.42 + 0.15 * s), 0.05 * s, (0.5, 2.0, 0.35), cut, rot=(0, 0, R(35)), levels=1)
     for name, loc, s, rot in p["decor"]:
         put(name, loc, s, rot)
 
 
-def day_light(scene):
-    """room.py light_room(evening=False): lavender world, warm key, cool fill, sun from behind."""
+def day_light(scene, outdoors=False):
+    """room.py light_room(evening=False): lavender world, warm key, cool fill, sun from behind. Outdoors the key and
+    fill are weaker: no walls hold the room's light back, it burnt the floor and the awning to white."""
+    key, fill, amb = (2200, 900, 0.25) if outdoors else (5200, 2000, 0.45)
     world = bpy.data.worlds.new("w"); scene.world = world; world.use_nodes = True
-    bg = world.node_tree.nodes["Background"]; bg.inputs[0].default_value = (0.82, 0.8, 0.95, 1); bg.inputs[1].default_value = 0.45
-    light("key", "AREA", (-8, -12, 9), 5200, 8.0, (1.0, 0.96, 0.9), target=(0, 0, 1.5))
-    light("fill", "AREA", (9, -9, 5), 2000, 8.0, (0.88, 0.92, 1.0), target=(0, 0, 1.5))
+    bg = world.node_tree.nodes["Background"]; bg.inputs[0].default_value = (0.82, 0.8, 0.95, 1); bg.inputs[1].default_value = amb
+    light("key", "AREA", (-8, -12, 9), key, 8.0, (1.0, 0.96, 0.9), target=(0, 0, 1.5))
+    light("fill", "AREA", (9, -9, 5), fill, 8.0, (0.88, 0.92, 1.0), target=(0, 0, 1.5))
     light("sun", "SUN", (1.5, 8, 7), 1.5, color=(1.0, 0.93, 0.8), target=(0, -2, 0)).data.angle = math.radians(3)
 
 
@@ -132,7 +136,7 @@ def render_place(pid, out, samples, preview=False):
     scene = reset_scene(24 if preview else samples, width=540 if preview else 1080, height=960 if preview else 1920)
     scene.render.film_transparent = False; scene.render.image_settings.color_mode = "RGB"
     build(PLACES[pid], PLACES[pid]["colors"])
-    day_light(scene)
+    day_light(scene, PLACES[pid]["outdoors"])
     camera(scene, (0, -10.5, 3.1), (0, 2, 2.0), lens=36)
     render(scene, out)
 
