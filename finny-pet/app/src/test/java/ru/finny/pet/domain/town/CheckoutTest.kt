@@ -49,6 +49,17 @@ class CheckoutTest {
     private fun GameState.buy(itemId: String, shopId: String?, source: Source): GameState =
         town.buyAt(this, itemId, shopId, source).done().state
 
+    /**
+     * ВАРИАНТ (а) TOWN-S1c: в confirmPlan недели 1 приходит pk1_cheaper_food (§2e). Там, где тест
+     * про кассу, а не про события, ребёнок честно проходит мимо (исход SKIP, §6 pass) — дальше
+     * покупка корма никакое событие не разрешает, и line с why остаются строками кассы S1a.
+     */
+    private fun GameState.passCheaperFood(): GameState {
+        val o = town.pass(this, "pk1_cheaper_food").done()
+        assertEquals("«Пройти мимо» у Пк1", "Цены можно сравнить в другой раз.", o.line)
+        return o.state
+    }
+
     private fun Quote.pay(source: Source): PayOption? =
         options.firstOrNull { it.kind == PayKind.PAY && it.source == source }
 
@@ -240,6 +251,10 @@ class CheckoutTest {
 
     @Test
     fun `обязательное из Нужного списывает цену лавки`() {
+        // ВАРИАНТ (б) TOWN-S1c: событие оставлено. В confirmPlan недели 1 приходит pk1_cheaper_food
+        // (§2e, триггер PlanConfirmed), покупка корма у реки за 20 (дешевле, чем 30 у Фомы) разрешает
+        // его исходом BUY_AT:food_basic:CHEAPEST. По §3 line = строка исхода, why = [прежняя line
+        // кассы] + прежний why. Банки, журнал, Purchase и дневник — прежние, это и есть касса S1a.
         val s = ready(40, 20, 30)
         val o = town.buyAt(s, "food_basic", "shop_market", Source.NEED).done()
         val a = o.state
@@ -253,12 +268,28 @@ class CheckoutTest {
             Purchase("food_basic", "Корм", Category.MANDATORY, Need.FOOD, 20, "shop_market", Source.NEED),
             a.purchases.last(),
         )
-        assertEquals("строка", "Финни с удовольствием хрустит кормом!", o.line)
-        assertEquals("почему", listOf("Из «Нужного»: 40 → 20"), o.why)
+        assertEquals("строка — исход события", "Одинаковый корм — выбрали, где дешевле: сэкономили 10.", o.line)
+        assertEquals(
+            "почему — прежняя строка кассы и движение монет",
+            listOf("Финни с удовольствием хрустит кормом!", "Из «Нужного»: 40 → 20"),
+            o.why,
+        )
         assertEquals("дневник", listOf(DiaryLine(1, 1, "Купили у реки: корм")), a.diary)
         assertEquals("сундук пуст", emptyList<String>(), a.owned)
-        assertEquals("эффектов нет", emptyList<EventEffect>(), o.effects)
-        assertEquals("исходов событий нет", emptyList<EventResult>(), o.eventResults)
+        assertEquals("эффектов у верного исхода нет", emptyList<EventEffect>(), o.effects)
+        assertEquals(
+            "исход события",
+            listOf(
+                EventResult(
+                    "pk1_cheaper_food",
+                    Verdict.GOOD,
+                    "Одинаковый корм — выбрали, где дешевле: сэкономили 10.",
+                    "st_cheaper",
+                ),
+            ),
+            o.eventResults,
+        )
+        assertTrue("наклейка за сравнение цен", "st_cheaper" in a.stickers)
         assertEquals("журнал сходится с кошельком", a.balance, a.ledger.sumOf { it.amount })
     }
 
@@ -301,7 +332,8 @@ class CheckoutTest {
 
     @Test
     fun `первая доплата из запаса обнуляет Нужное и хвалит запас`() {
-        val s = ready(10, 40, 30)
+        // (а): Пк1 пройден мимо до покупки — проверяем приглашение доплаты и три строки движения монет
+        val s = ready(10, 40, 30).passCheaperFood()
         val o = town.buyAt(s, "food_basic", "shop_market", Source.RESERVE).done()
         val a = o.state
         assertEquals("кошелёк", 50, a.balance)
@@ -372,7 +404,8 @@ class CheckoutTest {
 
     @Test
     fun `перенос из Хочу закрывает Нужное`() {
-        val s = ready(10, 40, 30)
+        // (а): Пк1 пройден мимо до покупки — проверяем порядок строк переноса, а не исход события
+        val s = ready(10, 40, 30).passCheaperFood()
         val o = town.buyAt(s, "food_basic", "shop_market", Source.TRANSFER_WANT).done()
         val a = o.state
         assertEquals("кошелёк", 50, a.balance)
@@ -384,7 +417,8 @@ class CheckoutTest {
 
     @Test
     fun `оплата из копилки не трогает банки и пишет в журнал две строки`() {
-        val s = ready(10, 40, 30)
+        // (а): Пк1 пройден мимо до покупки — проверяем две строки журнала и «Из копилки», не событие
+        val s = ready(10, 40, 30).passCheaperFood()
         val o = town.buyAt(s, "food_basic", "shop_market", Source.SAVINGS).done()
         val a = o.state
         assertEquals("кошелёк не меняется", 70, a.balance)
