@@ -101,6 +101,8 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     val fresh = mutableStateListOf<String>()
     /** The last shop the child opened; «Лавки» goes there (not saved). */
     var lastShop by mutableStateOf("market")
+    /** The pay sheet is open (§B.3 уточнение п.2): LINE hides, a purchase's line waits for it to close. */
+    var cashOpen by mutableStateOf(false)
     var petLine: PetLine? by mutableStateOf(null)
         private set
     private var petTaps = 0
@@ -152,6 +154,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         }
         sfx(Sound.WHOOSH)
         petLine = null
+        lines.clear()
     }
 
     /** ⌂: the stack clears down to Room (Night while asleep); in a round it is «Закончить». */
@@ -162,13 +165,15 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         if (stack.size > 1) stack.removeAt(stack.lastIndex)
         if (screen == Screen.Room && state.asleep) { stack.clear(); stack += Screen.Night }
         petLine = null
+        lines.clear()
     }
 
     fun start() { navigate(if (state.hasProfile) Screen.Room else Screen.Intro) }
 
     // ---------- LINE and outcomes (§B.3) ----------
 
-    fun say(text: String, why: List<String> = emptyList()) { if (text.isNotBlank()) lines += Line(text, why) }
+    /** Queues a line; a text already waiting (this same step) is not queued twice (§B.3 уточнение п.1). */
+    fun say(text: String, why: List<String> = emptyList()) { if (text.isNotBlank() && lines.none { it.text == text }) lines += Line(text, why) }
     fun closeLine() { if (lines.isNotEmpty()) lines.removeAt(0) }
 
     private fun commit(s: GameState) {
@@ -176,24 +181,37 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         if (!store.save(s)) say("Не удалось сохранить", listOf("Проверь, есть ли свободное место на устройстве"))
     }
 
-    /** Commit, the line and why, results of events the action settled, then the intro of the first event that came. */
-    private fun show(o: TownOutcome, results: Boolean = true) {
+    /** Clears the old LINE, commit, the line and why, results the action settled, then the first arrival's intro. */
+    private fun show(o: TownOutcome, results: Boolean = true, silentArrivals: Set<String> = emptySet()) {
+        lines.clear()
         commit(o.state)
         say(o.line, o.why)
         if (results) o.eventResults.forEach { say(it.line) }
-        arrived(o.arrived)
+        arrived(o.arrived, silentArrivals)
     }
 
-    private fun arrived(ids: List<String>) {
+    /** Commit first, so [move] (usually navigate) sees the fresh state — not the stale one it would route on
+     * (R1: wake() into Room used to see the old asleep == true and land on Night instead). */
+    private fun moveThenShow(o: TownOutcome, silentArrivals: Set<String> = emptySet(), move: () -> Unit) {
+        commit(o.state)
+        move()
+        lines.clear()
+        say(o.line, o.why)
+        o.eventResults.forEach { say(it.line) }
+        arrived(o.arrived, silentArrivals)
+    }
+
+    /** [silent] ids get no LINE (their card is already on screen, §B.3 уточнение п.4) but still count as «новое». */
+    private fun arrived(ids: List<String>, silent: Set<String> = emptySet()) {
         val first = ids.firstOrNull() ?: return
-        tc.events.firstOrNull { it.id == first }?.let { say(it.intro) }
+        if (first !in silent) tc.events.firstOrNull { it.id == first }?.let { say(it.intro) }
         if (first !in fresh) fresh += first
     }
 
-    /** Done → commit and LINE, then [done]; Refused → LINE and the FAIL sound. */
+    /** Done → commit and LINE, then [done]; Refused → clear the old LINE, then LINE and the FAIL sound. */
     private inline fun act(r: TownResult, done: (TownOutcome) -> Unit = {}): Boolean = when (r) {
         is TownResult.Done -> { show(r.outcome); done(r.outcome); true }
-        is TownResult.Refused -> { say(r.line); sfx(Sound.FAIL); false }
+        is TownResult.Refused -> { lines.clear(); say(r.line); sfx(Sound.FAIL); false }
     }
 
     /** Economy outcome for the allowed calls (setPlan, chooseGoal, createPet). */
@@ -215,10 +233,13 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     fun createPet(name: String, speciesId: String, colorId: String) {
         val o = economy.createPet(state, name, speciesId, colorId)
         if (o is Outcome.Ok) {
-            lines.clear()
-            say(o.messages.firstOrNull().orEmpty())
-            settle(seeded(o.state).also(::commit))
+            val seededState = seeded(o.state)
+            commit(seededState)
             navigate(Screen.Room)
+            settle(seededState)
+            // envelope line before the arrival's intro settle() just queued (R2)
+            val envelopeLine = "Почтальон принёс конверт: карманные ${content.rules.allowance}"
+            if (lines.none { it.text == envelopeLine }) lines.add(0, Line(envelopeLine))
             sfx(Sound.FANFARE); emit(Effect.Confetti)
         } else ok(o)
     }
@@ -295,11 +316,11 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
                 val o = r.outcome
                 commit(o.state)
                 night = Report(Line(o.line, o.why), o.eventResults)
-                arrived(o.arrived)
                 sfx(Sound.SLEEP)
                 navigate(Screen.Night)
+                arrived(o.arrived)
             }
-            is TownResult.Refused -> { say(r.line); sfx(Sound.FAIL) }
+            is TownResult.Refused -> { lines.clear(); say(r.line); sfx(Sound.FAIL) }
         }
     }
 
@@ -310,22 +331,26 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
                 commit(o.state)
                 weekEnd = Report(Line(o.line, o.why), o.eventResults)
                 night = null
-                arrived(o.arrived)
                 sfx(Sound.SLEEP)
                 stack.clear(); stack += Screen.Night; stack += Screen.WeekEnd
                 petLine = null
+                lines.clear()
+                arrived(o.arrived)
             }
-            is TownResult.Refused -> { say(r.line); sfx(Sound.FAIL) }
+            is TownResult.Refused -> { lines.clear(); say(r.line); sfx(Sound.FAIL) }
         }
     }
 
     fun wake() {
         val s = state
         val envelope = !s.plan.confirmed && s.period > 1 && s.day == 1
-        if (act(town.wake(s))) {
-            night = null
-            navigate(Screen.Room)
-            if (envelope) { sfx(Sound.COIN); emit(Effect.CoinsFrom("mail", "coins", coinsFor(state.balance))) }
+        when (val r = town.wake(s)) {
+            is TownResult.Done -> {
+                night = null
+                moveThenShow(r.outcome) { navigate(Screen.Room) }
+                if (envelope) { sfx(Sound.COIN); emit(Effect.CoinsFrom("mail", "coins", coinsFor(state.balance))) }
+            }
+            is TownResult.Refused -> { lines.clear(); say(r.line); sfx(Sound.FAIL) }
         }
     }
 
@@ -336,14 +361,18 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---------- town (API for the town screens, §B.4) ----------
 
-    /** Every way into a place: visit (prices, ENTER triggers), LINE for arrivals, then the place's screen. */
+    /** Every way into a place: commit (visit: prices, ENTER triggers), then the transition, then LINE for arrivals. */
     fun openPlace(placeId: String) {
         val place = tc.places.firstOrNull { it.id == placeId } ?: return
-        show(town.visit(state, placeId))
-        when (place.template) {
-            Template.HOME -> navigate(Screen.Room)
-            Template.SHOP -> { lastShop = placeId; navigate(Screen.Place(placeId)) }
-            Template.JOB, Template.SCENE -> navigate(Screen.Place(placeId))
+        val outcome = town.visit(state, placeId)
+        // an arrival whose card is already visible on this place gets no LINE (§B.3 уточнение п.4)
+        val visible = eventsAtIn(outcome.state, placeId).map { it.id }.toSet()
+        moveThenShow(outcome, silentArrivals = visible) {
+            when (place.template) {
+                Template.HOME -> navigate(Screen.Room)
+                Template.SHOP -> { lastShop = placeId; navigate(Screen.Place(placeId)) }
+                Template.JOB, Template.SCENE -> navigate(Screen.Place(placeId))
+            }
         }
     }
 
@@ -371,11 +400,14 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
 
     fun makeGoal(itemId: String) { act(town.makeGoal(state, itemId)) { sfx(Sound.SUCCESS) } }
     fun pass(eventId: String) { act(town.pass(state, eventId)) }
-    fun startEvent(eventId: String) { if (act(town.startEvent(state, eventId))) goEvent(eventId, sayIntro = false) }
+    // navigate (goEvent) clears the LINE act() just set (§B.3 уточнение п.1): say the intro again, after the move
+    fun startEvent(eventId: String) { if (act(town.startEvent(state, eventId))) goEvent(eventId) }
 
-    fun eventsAt(placeId: String): List<EventDef> = town.activeEvents(state).filter { e ->
+    private fun eventsAtIn(s: GameState, placeId: String): List<EventDef> = town.activeEvents(s).filter { e ->
         e.place == placeId || e.triggers.any { it is Trigger.Enter && it.place == placeId }
     }
+
+    fun eventsAt(placeId: String): List<EventDef> = eventsAtIn(state, placeId)
 
     fun ordersAt(placeId: String): List<EventDef> = town.orders(state).filter { e ->
         e.place == placeId || tc.jobs.firstOrNull { it.id == e.params.job }?.place == placeId
@@ -424,6 +456,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         val score = if (job.game == JobGame.MATCH3) match?.score ?: 0 else taps.count { it }
         val bombs = if (job.game == JobGame.MATCH3) matchBombsUsed else 0
         val before = state.envelope.sumOf { it.amount }
+        lines.clear()
         when (val r = town.finishShift(state, jobId, score, bombs)) {
             is TownResult.Done -> {
                 val o = r.outcome

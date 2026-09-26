@@ -19,6 +19,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.runtime.Composable
@@ -171,6 +172,7 @@ fun GameApp(vm: GameViewModel = viewModel()) {
         BoxWithConstraints(Modifier.fillMaxSize().background(G.purpleDeep).semantics { testTagsAsResourceId = true }) {
             val landscape = maxWidth > maxHeight
             val layout = Layout(landscape, compact = (if (landscape) maxHeight else maxWidth) < 420.dp)
+            val lineMaxHeight = maxHeight * 0.4f
             CompositionLocalProvider(
                 LocalLayout provides layout, LocalParticles provides particles, LocalPetAction provides petAction,
                 LocalAnimate provides animate, LocalClipped provides clipped,
@@ -213,7 +215,10 @@ fun GameApp(vm: GameViewModel = viewModel()) {
                     }
                     // invisible centre target for confetti
                     Box(Modifier.align(Alignment.Center).size(1.dp).particleTarget(particles, "center"))
-                    Box(Modifier.align(Alignment.BottomCenter)) { SceneFontScale { LineHost(vm) } }
+                    // the pay sheet hides LINE (§B.3 уточнение п.2); in Room it sits above the bottom row, not over it
+                    if (!vm.cashOpen) Box(Modifier.align(Alignment.BottomCenter).padding(bottom = if (screen == Screen.Room) 72.dp else 0.dp)) {
+                        SceneFontScale { LineHost(vm, maxHeight = lineMaxHeight) }
+                    }
                     if (BuildConfig.DEBUG) {
                         TownMockHost(showEntry = screen == Screen.Parent)
                         // debug probe (WORKFLOW №17): how many texts are clipped right now, and which; no node in release

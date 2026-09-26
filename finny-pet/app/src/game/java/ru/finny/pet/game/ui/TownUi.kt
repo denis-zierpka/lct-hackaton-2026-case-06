@@ -3,6 +3,8 @@ package ru.finny.pet.game.ui
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -136,11 +138,13 @@ fun IconBox(icon: Int, desc: String, onClick: () -> Unit) {
     }
 }
 
-/** A room object: flat shape, Role.Button and a TalkBack description. */
+/** A room object: flat shape, Role.Button and a TalkBack description.
+ * clearAndSetSemantics: one merged node at the full w × h (a plain .semantics{} left a full-size description-only
+ * child node next to a sliver clickable one in TalkBack — R6, same cause as правка №6 on the bottom row). */
 @Composable
 fun Target(desc: String, w: Dp, h: Dp, modifier: Modifier = Modifier, color: Color = Color.White.copy(alpha = 0.85f), onClick: () -> Unit, content: @Composable BoxScope.() -> Unit) {
     Box(
-        modifier.size(w, h).background(color, RoundedCornerShape(10.dp)).clickable(role = Role.Button, onClick = onClick).semantics { contentDescription = desc },
+        modifier.size(w, h).background(color, RoundedCornerShape(10.dp)).clickable(role = Role.Button, onClick = onClick).clearAndSetSemantics { contentDescription = desc },
         contentAlignment = Alignment.Center, content = content,
     )
 }
@@ -188,7 +192,8 @@ private fun PiggyChip(vm: GameViewModel, big: Boolean) {
     val num = MaterialTheme.typography.titleMedium
     val eta = if (goal != null) vm.economy.goalEta(s)?.takeIf { it > 0 } else null
     val etaText = eta?.let { "≈$it✉" }
-    val desc = if (goal != null) "Копилка: мечта «${goal.title}», ${s.savings} из ${goal.price}" + (eta?.let { ", примерно $it конвертов" } ?: "") else "Копилка ${s.savings}. Выбери мечту"
+    // «примерно конвертов: N» — grammatically correct for any N (R5), not «примерно N конвертов»
+    val desc = if (goal != null) "Копилка: мечта «${goal.title}», ${s.savings} из ${goal.price}" + (eta?.let { ", примерно конвертов: $it" } ?: "") else "Копилка ${s.savings}. Выбери мечту"
     Row(
         (if (big) Modifier.fillMaxHeight() else Modifier.heightIn(min = 48.dp)).chip().clickable(role = Role.Button) { vm.navigate(Screen.Savings) }
             .clearAndSetSemantics { contentDescription = desc }.padding(horizontal = 6.dp),
@@ -199,10 +204,14 @@ private fun PiggyChip(vm: GameViewModel, big: Boolean) {
         val amount = if (goal != null) "${s.savings}/${goal.price}" else "${s.savings}"
         when {
             goal == null && big -> TText(amount, style = num, modifier = Modifier.padding(start = 4.dp), color = G.purpleDeep, maxLines = 1)
-            // 14 sp: UX_ACCESSIBILITY.md «Исключения: 14 sp» — «Выбери мечту» и «≈N✉» под числом
-            goal == null -> Column(Modifier.padding(start = 4.dp)) {
+            // 14 sp: UX_ACCESSIBILITY.md «Исключения: 14 sp» — «Выбери мечту» рядом с числом, не под ним, в двух узких
+            // строках 16 sp: три строки (число + два слова) не влезают в 48 dp (правка R3)
+            goal == null -> Row(Modifier.padding(start = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 TText(amount, style = num.copy(lineHeight = 20.sp), color = G.purpleDeep, maxLines = 1)
-                TText("Выбери мечту", style = MaterialTheme.typography.labelSmall, color = G.purpleDeep, maxLines = 1)
+                TText(
+                    "Выбери мечту", style = MaterialTheme.typography.labelSmall.copy(lineHeight = 16.sp), color = G.purpleDeep,
+                    maxLines = 2, modifier = Modifier.widthIn(max = 68.dp),
+                )
             }
             big -> Column(Modifier.padding(start = 4.dp)) {
                 TText(amount, style = MaterialTheme.typography.titleSmall, color = G.purpleDeep, maxLines = 1)
@@ -252,23 +261,24 @@ fun Hud2(content: @Composable RowScope.() -> Unit) {
 
 // ---------- LINE (§B.3) ----------
 
-/** The engine's line over the screen: pet portrait 48 dp, up to 3 lines, [Почему?] opens why; a tap closes it. */
+/** The engine's line over the screen: pet portrait 48 dp, the whole line (no clip), [Почему?] opens why; a tap closes it.
+ * [maxHeight] caps the bubble at ≤ 40 % of the screen (§B.3 уточнение п.3); a longer line scrolls inside it. */
 @Composable
-fun LineHost(vm: GameViewModel, modifier: Modifier = Modifier) {
+fun LineHost(vm: GameViewModel, modifier: Modifier = Modifier, maxHeight: Dp = Dp.Infinity) {
     val line = vm.lines.firstOrNull() ?: return
     val pet = vm.state.pet
     var why by remember(line) { mutableStateOf(false) }
     Column(
         modifier.fillMaxWidth().padding(8.dp).testTag("line").shadow(8.dp, RoundedCornerShape(20.dp)).background(Color.White, RoundedCornerShape(20.dp))
-            .clickable(onClickLabel = "Закрыть") { vm.closeLine() }.padding(10.dp),
+            .clickable(onClickLabel = "Закрыть") { vm.closeLine() }.heightIn(max = maxHeight).verticalScroll(rememberScrollState()).padding(10.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             if (pet != null) Image(painterResource(PetSprites.id(pet.speciesId, pet.colorId, vm.economy.stageIndex(pet.growth), "happy")), null, Modifier.size(48.dp))
-            TText(line.text, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f), maxLines = 3)
+            TText(line.text, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
         }
         if (line.why.isNotEmpty()) {
-            if (why) line.why.take(3).forEach { TText(it, style = MaterialTheme.typography.bodyMedium, color = G.inkSoft, maxLines = 3) }
+            if (why) line.why.forEach { TText(it, style = MaterialTheme.typography.bodyMedium, color = G.inkSoft) }
             else Row { Spacer(Modifier.width(56.dp)); GameButton("Почему?", style = ButtonStyle.PAPER, minHeight = 48.dp) { why = true } }
         }
     }

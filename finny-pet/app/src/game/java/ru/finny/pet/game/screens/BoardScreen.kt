@@ -10,7 +10,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import ru.finny.pet.domain.town.EventDef
@@ -32,8 +31,9 @@ fun BoardScreen(vm: GameViewModel) {
     Column(Modifier.fillMaxSize()) {
         Hud1(vm, inPlace = true)
         Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).testTag("events").padding(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            TText("События", style = MaterialTheme.typography.headlineSmall, color = Color.White)
-            if (active.isEmpty() && orders.isEmpty()) TText("В городке спокойно", color = Color.White)
+            // dark, not white on the light room background behind every screen (правка №14, ТЗ 3.6)
+            TText("События", style = MaterialTheme.typography.headlineSmall, color = G.ink)
+            if (active.isEmpty() && orders.isEmpty()) TText("В городке спокойно", color = G.ink)
             active.forEach { e ->
                 EventRow(vm, e) { if (e.place != null) GameButton("Перейти", Modifier.fillMaxWidth(), minHeight = 48.dp) { vm.goEvent(e.id) } }
             }
@@ -45,7 +45,7 @@ fun BoardScreen(vm: GameViewModel) {
                 }
             }
             if (demo.isNotEmpty()) {
-                TText("Все события (демо)", style = MaterialTheme.typography.titleMedium, color = Color.White)
+                TText("Все события (демо)", style = MaterialTheme.typography.titleMedium, color = G.ink)
                 demo.forEach { e -> EventRow(vm, e, bang = false) { GameButton("Начать", Modifier.fillMaxWidth(), ButtonStyle.PAPER, minHeight = 48.dp) { vm.startEvent(e.id) } } }
             }
         }

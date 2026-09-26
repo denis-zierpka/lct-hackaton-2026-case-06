@@ -13,7 +13,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import ru.finny.pet.game.GameViewModel
@@ -49,7 +48,8 @@ fun RoundScreen(vm: GameViewModel, jobId: String) {
             }
             vm.match != null -> MiniGameScreen(vm, Modifier.weight(1f))
             else -> Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                TText(job?.title ?: jobId, style = MaterialTheme.typography.headlineSmall, color = Color.White)
+                // dark, not white on the light room background behind every screen (правка №14, ТЗ 3.6)
+                TText(job?.title ?: jobId, style = MaterialTheme.typography.headlineSmall, color = G.ink)
                 vm.taps.forEachIndexed { i, done ->
                     GameButton((if (done) "✓ " else "") + job?.tasks?.getOrNull(i).orEmpty(), Modifier.fillMaxWidth(), if (done) ButtonStyle.GREEN else ButtonStyle.PAPER, minHeight = 48.dp) { vm.tapTask(i) }
                 }

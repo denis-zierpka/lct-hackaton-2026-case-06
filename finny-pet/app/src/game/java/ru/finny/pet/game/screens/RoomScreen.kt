@@ -44,7 +44,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ru.finny.pet.R
@@ -283,13 +282,15 @@ private fun BottomRow(vm: GameViewModel) {
             Triple(R.drawable.ui_book, "События") { vm.navigate(Screen.Board) },
             Triple(R.drawable.ui_trophy, "Дневник") { vm.navigate(Screen.Progress) },
         ).forEach { (icon, word, go) ->
+            // clearAndSetSemantics: one merged target per button, not a stray node from the icon or the label (правка №6)
             Column(
-                Modifier.weight(1f).fillMaxHeight().clickable(role = Role.Button, onClick = go).semantics { if (big) contentDescription = word },
+                Modifier.weight(1f).fillMaxHeight().clickable(role = Role.Button, onClick = go).clearAndSetSemantics { contentDescription = word },
                 horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
             ) {
                 Image(painterResource(icon), null, Modifier.size(if (big) 44.dp else 36.dp))
                 // 14 sp: UX_ACCESSIBILITY.md «Исключения: 14 sp», нижний ряд (16 sp не влезает в 72 dp)
-                if (!big) TText(word, style = MaterialTheme.typography.labelSmall, color = Color.White, maxLines = 1)
+                // dark, not white on the light room background behind every screen (правка R7, ТЗ 3.6)
+                if (!big) TText(word, style = MaterialTheme.typography.labelSmall, color = G.ink, maxLines = 1)
             }
         }
     }

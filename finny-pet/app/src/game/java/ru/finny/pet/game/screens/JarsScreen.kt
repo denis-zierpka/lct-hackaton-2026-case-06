@@ -132,10 +132,11 @@ private fun PlanJars(vm: GameViewModel, onDone: () -> Unit) {
                 TText(word, style = MaterialTheme.typography.titleSmall, maxLines = 2, align = TextAlign.Center)
                 TText("${values[i]}", style = MaterialTheme.typography.titleLarge, color = G.purpleDeep, maxLines = 1)
                 GameButton("−", Modifier.width(64.dp), ButtonStyle.PAPER, enabled = values[i] >= step, minHeight = 48.dp) { plan(i, -step) }
-                if (i == 0) NeedList(vm)
             }
         }
     }
+    // full width under the jars, not squeezed into the «Нужное» column (правка №7)
+    NeedList(vm)
     if (unalloc < step) TText("Больше, чем есть, положить нельзя", color = G.inkSoft)
     TText("Не разложено: $unalloc — будет запасом на всякий случай")
     GameButton("Готово", Modifier.fillMaxWidth(), ButtonStyle.GOLD, onClick = onDone)

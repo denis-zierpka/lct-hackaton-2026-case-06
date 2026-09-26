@@ -280,11 +280,14 @@ fun MiniGameScreen(vm: GameViewModel, modifier: Modifier = Modifier) {
                 }
             }
         }
-        // job row: shift tokens · score and moves · bombs · «Закончить»
-        Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).testTag("job_row").padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        // job row: shift tokens · score and moves · bombs · «Закончить», on a paper card, dark text (правка №12)
+        Row(
+            Modifier.fillMaxWidth().heightIn(min = 56.dp).testTag("job_row").background(G.paperTint, RoundedCornerShape(16.dp)).padding(horizontal = 8.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
             Column(Modifier.weight(1f)) {
-                ShiftTokens(vm, label = false, color = G.gold)
-                TText(if (bombMode) "Куда бомбочку? Нажми на клетку" else "Счёт ${cur.score} · Ходы ${cur.movesLeft}", style = MaterialTheme.typography.bodyMedium, color = Color.White)
+                ShiftTokens(vm, label = false, color = G.ink)
+                TText(if (bombMode) "Куда бомбочку? Нажми на клетку" else "Счёт ${cur.score} · Ходы ${cur.movesLeft}", style = MaterialTheme.typography.bodyMedium, color = G.ink)
             }
             GameButton(
                 "💣 ×${cur.bombs}", Modifier.semantics { contentDescription = "Бомбочки: ${cur.bombs}" },

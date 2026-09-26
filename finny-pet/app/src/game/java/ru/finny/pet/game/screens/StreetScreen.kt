@@ -57,7 +57,8 @@ fun StreetScreen(vm: GameViewModel) {
         Column(Modifier.fillMaxSize()) {
             Hud1(vm, inPlace = true)
             Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                TText("Улица", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(horizontal = 16.dp), color = Color.White)
+                // dark, not white on the light room background behind every screen (правка №14, ТЗ 3.6)
+                TText("Улица", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(horizontal = 16.dp), color = G.ink)
                 LazyRow(Modifier.fillMaxWidth().testTag("street"), contentPadding = PaddingValues(horizontal = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(vm.streetPlaces(), key = { it.id }) { PlaceCard(vm, it) }
                 }

@@ -55,7 +55,8 @@ fun SavingsScreen(vm: GameViewModel) {
                 GoalPic(goal, 72.dp)
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     TText(goal.title, style = MaterialTheme.typography.titleLarge)
-                    TText("${s.savings} / ${goal.price}, ещё $left" + (eta?.let { ", ≈ $it ✉" } ?: ""))
+                    // non-break spaces: «≈ N ✉» never wraps mid-phrase (правка №9)
+                    TText("${s.savings} / ${goal.price}, ещё $left" + (eta?.let { ", ≈ $it ✉" } ?: ""))
                     GameBar("", s.savings, G.magenta, max = goal.price)
                 }
             }

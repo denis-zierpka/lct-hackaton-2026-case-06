@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
@@ -25,6 +24,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -65,6 +65,7 @@ import ru.finny.pet.domain.town.Template
 import ru.finny.pet.game.GameViewModel
 import ru.finny.pet.game.LocalAnimate
 import ru.finny.pet.game.LocalPetAction
+import ru.finny.pet.game.Screen
 import ru.finny.pet.game.ui.ButtonStyle
 import ru.finny.pet.game.ui.G
 import ru.finny.pet.game.ui.GameButton
@@ -122,6 +123,9 @@ private fun ShopPlace(vm: GameViewModel, place: Place) {
     // after a purchase the pay panel stays while the pet at the counter plays the action, then closes
     var paid by remember { mutableIntStateOf(0) }
     LaunchedEffect(paid) { if (paid > 0) { if (animate) delay(1500); pick = null } }
+    // the pay sheet hides LINE and clears the old one; a purchase's line waits until it closes (правка №2)
+    LaunchedEffect(pick) { vm.cashOpen = pick != null; if (pick != null) vm.lines.clear() }
+    DisposableEffect(Unit) { onDispose { vm.cashOpen = false } }
     fun pay(id: String, o: PayOption) { o.source?.let { vm.buy(id, shop.id, it); paid++ } }
 
     Box(Modifier.fillMaxSize()) {
@@ -136,8 +140,21 @@ private fun ShopPlace(vm: GameViewModel, place: Place) {
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 PlaceEvents(vm, place.id)
-                FlowRow(Modifier.fillMaxWidth().testTag("shelf"), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    prices.shelf(vm.state, shop.id).forEach { ItemCard(it) { pick = it.item.id } }
+                val shelf = prices.shelf(vm.state, shop.id)
+                // above 1.15: two wide columns so names have room, not the auto-fit narrow cards (правка №13)
+                if (bigFont()) {
+                    Column(Modifier.fillMaxWidth().testTag("shelf"), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        shelf.chunked(2).forEach { row ->
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                row.forEach { ItemCard(it, Modifier.weight(1f)) { pick = it.item.id } }
+                                if (row.size == 1) Spacer(Modifier.weight(1f))
+                            }
+                        }
+                    }
+                } else {
+                    FlowRow(Modifier.fillMaxWidth().testTag("shelf"), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        shelf.forEach { ItemCard(it, Modifier.width(104.dp)) { pick = it.item.id } }
+                    }
                 }
                 vm.ordersAt(place.id).forEach { order ->
                     vm.tc.jobs.firstOrNull { it.id == order.params.job }?.let { OrderCard(vm, it, order) }
@@ -167,7 +184,8 @@ private fun ShopPlace(vm: GameViewModel, place: Place) {
 private fun RowScope.JarsHud(vm: GameViewModel) {
     val s = vm.state
     if (!s.plan.confirmed) {
-        TText("Не разложено ${s.balance - s.plan.total}", style = MaterialTheme.typography.titleSmall, color = Color.White, maxLines = 1)
+        // dark, not white on the light room background behind every screen (правка R7, ТЗ 3.6)
+        TText("Не разложено ${s.balance - s.plan.total}", style = MaterialTheme.typography.titleSmall, color = G.ink, maxLines = 1)
         return
     }
     val big = bigFont()
@@ -179,10 +197,11 @@ private fun RowScope.JarsHud(vm: GameViewModel) {
         Column(Modifier.clearAndSetSemantics { contentDescription = "$word $n" }.padding(horizontal = 2.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Image(painterResource(lid), null, Modifier.size(20.dp))
-                TText("$n", style = MaterialTheme.typography.titleMedium.copy(lineHeight = 22.sp), color = Color.White, maxLines = 1)
+                // dark, not white/pink on the light room background behind every screen (правка R7, ТЗ 3.6)
+                TText("$n", style = MaterialTheme.typography.titleMedium.copy(lineHeight = 22.sp), color = G.ink, maxLines = 1)
             }
             // 14 sp: UX_ACCESSIBILITY.md «Исключения: 14 sp» — подписи отделений HUD лавки
-            if (!big) TText(word, style = MaterialTheme.typography.labelSmall, color = G.pink, maxLines = 1)
+            if (!big) TText(word, style = MaterialTheme.typography.labelSmall, color = G.ink, maxLines = 1)
         }
     }
 }
@@ -201,19 +220,24 @@ private fun ShopTabs(vm: GameViewModel, placeId: String) {
 }
 
 @Composable
-private fun ItemCard(it: ShelfItem, onClick: () -> Unit) {
+private fun ItemCard(it: ShelfItem, modifier: Modifier, onClick: () -> Unit) {
     val item = it.item
     val body = MaterialTheme.typography.bodyMedium
     val price = if (it.was != null) "${it.was}→${it.price}" else "${it.price}"
     val desc = listOf(item.title, "${it.price} монет", item.tag().drop(3), item.effectWords()).filter { s -> s.isNotBlank() }.joinToString(", ")
     Column(
-        Modifier.width(104.dp).heightIn(min = 64.dp).background(Color.White, RoundedCornerShape(12.dp)).clickable(role = Role.Button, onClick = onClick)
+        modifier.heightIn(min = 64.dp).background(Color.White, RoundedCornerShape(12.dp)).clickable(role = Role.Button, onClick = onClick)
             .clearAndSetSemantics { contentDescription = desc }.padding(4.dp),
         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         Pic(itemRes(item.id), item.emoji, 40.dp)
-        // 14 sp: UX_ACCESSIBILITY.md «Исключения: 14 sp» — названия товаров на карточках
-        TText(item.title, style = MaterialTheme.typography.labelSmall.copy(hyphens = Hyphens.Auto, lineBreak = LineBreak.Paragraph), maxLines = 2, align = TextAlign.Center)
+        // 14 sp: UX_ACCESSIBILITY.md «Исключения: 14 sp» — названия товаров на карточках; hyphens = None: no mid-word
+        // break, but a real «-» (e.g. «Игрушка-подарок») still needs a break point — a zero-width space after it
+        // gives the layout one, instead of an emergency mid-word cut (правка R4)
+        TText(
+            item.title.replace("-", "-​"), style = MaterialTheme.typography.labelSmall.copy(hyphens = Hyphens.None, lineBreak = LineBreak.Paragraph),
+            maxLines = 2, align = TextAlign.Center,
+        )
         Row(verticalAlignment = Alignment.CenterVertically) {
             TText(price, style = MaterialTheme.typography.titleSmall, maxLines = 1)
             Image(painterResource(R.drawable.ui_coin), null, Modifier.size(18.dp))
@@ -257,6 +281,8 @@ private fun PayPanel(vm: GameViewModel, itemId: String, shopId: String, modifier
         TText(listOf(item.title, "${q.price}", item.tag(), item.effectWords()).filter { it.isNotBlank() }.joinToString(" · "), style = text)
         if (q.line.isNotBlank()) TText(q.line, style = text)
         if (q.note.isNotBlank()) TText(q.note, style = text, color = G.inkSoft)
+        // before the plan: [Разложить] under the quote's line, no jar to pay from yet (правка №5)
+        if (!vm.state.plan.confirmed) GameButton("Разложить", Modifier.fillMaxWidth(), minHeight = 48.dp) { onClose(); vm.navigate(Screen.Jars) }
         val (main, rest) = q.options.partition { !it.more }
         val option: @Composable (PayOption) -> Unit = { o ->
             val home = o.kind == PayKind.PAY && o.source == item.homeJar()
@@ -280,7 +306,8 @@ private fun JobPlace(vm: GameViewModel, place: Place) {
         Hud1(vm, inPlace = true)
         Hud2 { StatsCollapsed(vm); MailChip(vm) }
         Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            TText(place.title, style = MaterialTheme.typography.headlineSmall, color = Color.White)
+            // dark, not white on the light room background behind every screen (правка №14, ТЗ 3.6)
+            TText(place.title, style = MaterialTheme.typography.headlineSmall, color = G.ink)
             PlaceEvents(vm, place.id)
             if (job != null) OrderCard(vm, job, vm.ordersAt(place.id).firstOrNull { it.params.job == job.id })
         }
@@ -347,10 +374,10 @@ private fun Riddle(vm: GameViewModel) {
     when (step) {
         0 -> {
             TText("Загадка Бори: отгадаешь — бомбочка")
-            // one size for both answers: same width, height of the taller one
-            Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                GameButton("Ответить", Modifier.weight(1f).fillMaxHeight(), ButtonStyle.PAPER, minHeight = 48.dp) { step = 1 }
-                GameButton("Нет, спасибо", Modifier.weight(1f).fillMaxHeight(), ButtonStyle.PAPER, minHeight = 48.dp) { step = 2 }
+            // no IntrinsicSize.Min here: it does not see GameButton's minHeight and shrinks below 48 dp (правка №11)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                GameButton("Ответить", Modifier.weight(1f), ButtonStyle.PAPER, minHeight = 48.dp) { step = 1 }
+                GameButton("Нет, спасибо", Modifier.weight(1f), ButtonStyle.PAPER, minHeight = 48.dp) { step = 2 }
             }
         }
         1 -> {
