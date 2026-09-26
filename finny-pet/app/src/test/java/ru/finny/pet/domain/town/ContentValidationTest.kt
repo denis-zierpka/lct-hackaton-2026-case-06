@@ -706,4 +706,12 @@ class ContentValidationTest {
     fun `у каждой лавки сказано где она находится`() = town.shops.forEach {
         assertTrue("лавка «${it.id}»: пустое поле at", it.at.isNotBlank())
     }
+
+    // ---------- 24. Бомбы уровня (TOWN-S1b §1, ORACLE) ----------
+
+    @Test
+    fun `бомб уровня столько же сколько порогов мастерства`() = assertEquals(
+        "jobLevelBombs ${town.rules.jobLevelBombs} против jobLevelShifts ${town.rules.jobLevelShifts}",
+        town.rules.jobLevelShifts.size, town.rules.jobLevelBombs.size,
+    )
 }

@@ -37,7 +37,8 @@ data class ShiftQuote(val jobId: String, val open: Boolean, val paid: Boolean, v
 fun Town.shiftQuote(s: GameState, jobId: String): ShiftQuote
 - open: работа есть в town.jobs, её место открыто и она сама открыта: opensBy.week → s.period ≥ week
   или s.demo; opensBy.goal → цель с этим id есть в s.achievedGoals (и в демо); место — те же
-  правила по places[job.place].opensBy. (Какие открытые работы показывать в срезе 1 — без CHANGE —
+  правила по places[job.place].opensBy (в реальном контенте закрытое место есть только у курьера и
+  совпадает с ключом работы — оракул проверяет место на копии контента). (Какие открытые работы показывать в срезе 1 — без CHANGE —
   решает S1e.)
 - shiftsLeft = max(0, R.shiftsPerWeek − s.shiftsThisPeriod); paid = open и shiftsLeft > 0 (до плана
   тоже: решение 4).
@@ -51,6 +52,7 @@ fun Town.shiftQuote(s: GameState, jobId: String): ShiftQuote
   неделе закончились — можно играть ради рекорда»; !paid и TAPS «Смены на неделе закончились — новые
   с новым конвертом»; иначе «Смены на неделе закончились. Ради рекорда — после раскладки».
 - Неизвестная работа: open = paid = canPlay = false, level = base = levelBombs = 0, shiftsLeft — как выше.
+  Известная закрытая работа: open = paid = canPlay = false, level/base/levelBombs — по правилу выше.
 
 ### 2. Конец смены
 fun Town.finishShift(s: GameState, jobId: String, score: Int, bombsUsed: Int): TownResult
@@ -67,8 +69,9 @@ Done:
   читает endWeek S1a); shiftsThisPeriod += 1; jobShifts[jobId] += 1; DiaryLine(s.period, s.day,
   «Заработали {total}: «{job.title}»»). balance, банки и копилка НЕ меняются.
 - MATCH3 и CHANGE: records[jobId] = max(records[jobId] ?: 0, score); TAPS records не пишет.
-- s.bombs −= max(0, bombsUsed − levelBombs) (сначала тратятся бомбы уровня, потом накопленные).
-- MATCH3: riddleAsked = false (следующий заказ — новая загадка).
+- ВСЕГДА (и в оплачиваемой смене, и в игре ради рекорда): s.bombs −= max(0, bombsUsed − levelBombs)
+  (сначала тратятся бомбы уровня, потом накопленные); у MATCH3 riddleAsked = false (следующий заказ —
+  новая загадка). Конец недели riddleAsked не сбрасывает.
 - показатели питомца не меняются (благодарность и булочка — только анимация UI).
 НОВЫЙ = score > (records[jobId] ?: 0) до смены (только MATCH3 и CHANGE).
 line:
