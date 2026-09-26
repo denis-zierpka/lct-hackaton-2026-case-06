@@ -118,20 +118,19 @@
       "price": 15,
       "clean": 25,
       "description": "Дешёвый уход: чистит, но меньше шампуня.",
-      "reaction": "{pet} доволен: шёрстка гладкая."
+      "reaction": "{pet} жмурится: шёрстка гладкая."
     },
     {
       "id": "care_vitamins",
-      "title": "Витаминки",
-      "emoji": "💊",
+      "title": "Ванна с пеной",
+      "emoji": "🛁",
       "category": "MANDATORY",
       "need": "CARE",
       "price": 25,
       "clean": 20,
-      "hunger": 10,
       "mood": 5,
-      "description": "Здоровье и бодрость на всю неделю.",
-      "reaction": "{pet} бодрый и полон сил."
+      "description": "Пена и пузыри — чисто и весело.",
+      "reaction": "{pet} плещется в пене."
     },
     {
       "id": "fun_ball",
@@ -142,7 +141,9 @@
       "price": 25,
       "mood": 20,
       "description": "Игрушка. Радует, но можно и без неё.",
-      "reaction": "{pet} гоняет мячик по комнате!"
+      "reaction": "{pet} гоняет мячик по комнате!",
+      "keep": true,
+      "slot": "floor"
     },
     {
       "id": "fun_bow",
@@ -175,7 +176,9 @@
       "price": 35,
       "mood": 25,
       "description": "Вечер со сказкой — много радости.",
-      "reaction": "{pet} слушает сказку, затаив дыхание."
+      "reaction": "{pet} слушает сказку, затаив дыхание.",
+      "keep": true,
+      "slot": "table"
     },
     {
       "id": "fun_tent",
@@ -185,8 +188,10 @@
       "need": "FUN",
       "price": 60,
       "mood": 35,
-      "description": "Дорогая покупка. Подумай, хватит ли на еду.",
-      "reaction": "{pet} устроил в палатке штаб!"
+      "description": "Домик для игр и тайных штабов.",
+      "reaction": "{pet} строит в палатке штаб!",
+      "keep": true,
+      "slot": "floor"
     }
   ],
   "goals": [
@@ -694,5 +699,1835 @@
     "Дело доведено до конца",
     "Порядок в комнате",
     "Идея, как сэкономить"
-  ]
+  ],
+  "town": {
+    "rules": {
+      "_todo": "Все числа — заглушки, подобрать игротестом (GAME_CONCEPT §5.9, решение 6)",
+      "daysPerWeek": 3,
+      "shiftsPerWeek": 3,
+      "shiftBonusMax": 4,
+      "shiftScorePerBonus": 30,
+      "changeCoins": [
+        1,
+        2,
+        5,
+        10
+      ],
+      "jobLevelShifts": [
+        0,
+        6,
+        15
+      ],
+      "jobLevelBombs": [
+        0,
+        1,
+        2
+      ],
+      "customGoalFromItemMin": 50,
+      "freeFunMood": 5,
+      "eventsPerDay": 1
+    },
+    "places": [
+      {
+        "id": "home",
+        "title": "Дом",
+        "template": "HOME",
+        "sticker": "st_place_home"
+      },
+      {
+        "id": "market",
+        "title": "Рынок у реки",
+        "template": "SHOP",
+        "resident": "marta",
+        "sticker": "st_place_market"
+      },
+      {
+        "id": "foma",
+        "title": "Лавка «У Фомы»",
+        "template": "SHOP",
+        "resident": "foma",
+        "sticker": "st_place_foma"
+      },
+      {
+        "id": "bakery",
+        "title": "Пекарня",
+        "template": "JOB",
+        "resident": "borya",
+        "sticker": "st_place_bakery"
+      },
+      {
+        "id": "workshop",
+        "title": "Мастерская",
+        "template": "SHOP",
+        "opensBy": {
+          "week": 3
+        },
+        "resident": "stepan",
+        "sticker": "st_place_workshop"
+      },
+      {
+        "id": "toshas_house",
+        "title": "Дом Тоши",
+        "template": "SCENE",
+        "opensBy": {
+          "week": 2
+        },
+        "resident": "tosha",
+        "sticker": "st_place_tosha"
+      },
+      {
+        "id": "park",
+        "title": "Парк",
+        "template": "SCENE",
+        "opensBy": {
+          "goal": "goal_scooter"
+        },
+        "sticker": "st_place_park"
+      },
+      {
+        "id": "forest",
+        "title": "Лес у озера",
+        "template": "SCENE",
+        "opensBy": {
+          "goal": "goal_camp"
+        },
+        "sticker": "st_place_forest"
+      },
+      {
+        "id": "zoo",
+        "title": "Зоопарк",
+        "template": "SCENE",
+        "opensBy": {
+          "goal": "goal_zoo"
+        },
+        "sticker": "st_place_zoo"
+      }
+    ],
+    "shops": [
+      {
+        "id": "shop_market",
+        "place": "market",
+        "title": "Рынок у реки",
+        "sells": [
+          {
+            "item": "food_basic",
+            "price": 20
+          },
+          {
+            "item": "food_porridge",
+            "price": 15
+          },
+          {
+            "item": "food_super",
+            "price": 35
+          },
+          {
+            "item": "care_soap",
+            "price": 12
+          },
+          {
+            "item": "care_shampoo_simple",
+            "price": 15
+          },
+          {
+            "item": "fun_balloon",
+            "price": 8
+          },
+          {
+            "item": "fun_icecream",
+            "price": 10
+          },
+          {
+            "item": "fun_carousel",
+            "price": 20
+          }
+        ]
+      },
+      {
+        "id": "shop_foma",
+        "place": "foma",
+        "title": "Лавка «У Фомы»",
+        "sells": [
+          {
+            "item": "food_basic",
+            "price": 30
+          },
+          {
+            "item": "food_lunch",
+            "price": 45
+          },
+          {
+            "item": "care_soap",
+            "price": 10
+          },
+          {
+            "item": "care_shampoo",
+            "price": 20
+          },
+          {
+            "item": "care_brush",
+            "price": 15
+          },
+          {
+            "item": "care_vitamins",
+            "price": 25
+          },
+          {
+            "item": "fun_balloon",
+            "price": 10
+          },
+          {
+            "item": "fun_picture",
+            "price": 15
+          },
+          {
+            "item": "fun_rug",
+            "price": 20
+          },
+          {
+            "item": "fun_ball",
+            "price": 25
+          },
+          {
+            "item": "fun_spinner",
+            "price": 25
+          },
+          {
+            "item": "fun_kite",
+            "price": 30
+          },
+          {
+            "item": "fun_book",
+            "price": 35
+          },
+          {
+            "item": "fun_robot",
+            "price": 40
+          },
+          {
+            "item": "fun_starlamp",
+            "price": 40
+          },
+          {
+            "item": "fun_tent",
+            "price": 60
+          },
+          {
+            "item": "gift_card",
+            "price": 10
+          },
+          {
+            "item": "gift_toy",
+            "price": 25
+          }
+        ]
+      },
+      {
+        "id": "shop_workshop",
+        "place": "workshop",
+        "title": "Мастерская",
+        "sells": [
+          {
+            "item": "lamp_new",
+            "price": 25
+          }
+        ]
+      }
+    ],
+    "items": [
+      {
+        "id": "food_porridge",
+        "title": "Каша",
+        "emoji": "🍚",
+        "category": "MANDATORY",
+        "need": "FOOD",
+        "price": 15,
+        "hunger": 25,
+        "description": "Простая каша: сытно и недорого.",
+        "reaction": "{pet} уплетает кашу."
+      },
+      {
+        "id": "food_super",
+        "title": "Супер-корм",
+        "emoji": "🥫",
+        "category": "MANDATORY",
+        "need": "FOOD",
+        "price": 35,
+        "hunger": 40,
+        "unlockPeriod": 2,
+        "description": "Яркая банка и громкая реклама.",
+        "reaction": "{pet} хрустит кормом."
+      },
+      {
+        "id": "care_soap",
+        "title": "Мыло",
+        "emoji": "🧼",
+        "category": "MANDATORY",
+        "need": "CARE",
+        "price": 12,
+        "clean": 25,
+        "description": "Простое мыло для шёрстки.",
+        "reaction": "{pet} пускает мыльные пузыри."
+      },
+      {
+        "id": "care_shampoo_simple",
+        "title": "Шампунь простой",
+        "emoji": "🫧",
+        "category": "MANDATORY",
+        "need": "CARE",
+        "price": 15,
+        "clean": 25,
+        "description": "Дешевле обычного шампуня, но чистит слабее.",
+        "reaction": "{pet} встряхивает чистую шёрстку."
+      },
+      {
+        "id": "fun_icecream",
+        "title": "Мороженое",
+        "emoji": "🍦",
+        "category": "OPTIONAL",
+        "need": "FUN",
+        "price": 10,
+        "mood": 8,
+        "description": "Холодная радость на один раз.",
+        "reaction": "{pet} облизывает мороженое."
+      },
+      {
+        "id": "fun_carousel",
+        "title": "Карусель",
+        "emoji": "🎠",
+        "category": "OPTIONAL",
+        "need": "FUN",
+        "price": 20,
+        "mood": 15,
+        "description": "Покататься на ярмарке. Можно снова в другой раз.",
+        "reaction": "{pet} кружится и смеётся!"
+      },
+      {
+        "id": "fun_picture",
+        "title": "Картина",
+        "emoji": "🖼️",
+        "category": "OPTIONAL",
+        "need": "FUN",
+        "price": 15,
+        "mood": 10,
+        "keep": true,
+        "slot": "wall",
+        "description": "Повесим на стену — останется в доме.",
+        "reaction": "{pet} любуется картиной.",
+        "unlockPeriod": 5
+      },
+      {
+        "id": "fun_rug",
+        "title": "Коврик",
+        "emoji": "🧶",
+        "category": "OPTIONAL",
+        "need": "FUN",
+        "price": 20,
+        "mood": 15,
+        "keep": true,
+        "slot": "floor",
+        "description": "Мягкий коврик останется в комнате.",
+        "reaction": "{pet} валяется на новом коврике."
+      },
+      {
+        "id": "fun_spinner",
+        "title": "Светящаяся вертушка",
+        "emoji": "🌀",
+        "category": "OPTIONAL",
+        "need": "FUN",
+        "price": 25,
+        "mood": 15,
+        "keep": true,
+        "slot": "table",
+        "description": "Крутится и светится. Останется в доме.",
+        "reaction": "{pet} смотрит, как крутится вертушка."
+      },
+      {
+        "id": "fun_kite",
+        "title": "Воздушный змей",
+        "emoji": "🪁",
+        "category": "OPTIONAL",
+        "need": "FUN",
+        "price": 30,
+        "mood": 20,
+        "keep": true,
+        "slot": "wall",
+        "unlockPeriod": 2,
+        "description": "Змей на длинной нитке. Останется в доме.",
+        "reaction": "{pet} машет хвостиком змею."
+      },
+      {
+        "id": "fun_robot",
+        "title": "Робот",
+        "emoji": "🤖",
+        "category": "OPTIONAL",
+        "need": "FUN",
+        "price": 40,
+        "mood": 25,
+        "keep": true,
+        "slot": "floor",
+        "description": "Шагает и мигает. Останется в доме.",
+        "reaction": "{pet} играет с роботом!"
+      },
+      {
+        "id": "fun_starlamp",
+        "title": "Лампа-звёздочка",
+        "emoji": "⭐",
+        "category": "OPTIONAL",
+        "need": "FUN",
+        "price": 40,
+        "mood": 25,
+        "keep": true,
+        "slot": "table",
+        "description": "Светит звёздами на потолок. Останется в доме.",
+        "reaction": "{pet} разглядывает звёзды на потолке.",
+        "unlockPeriod": 3
+      },
+      {
+        "id": "fun_lego",
+        "title": "Конструктор",
+        "emoji": "🧱",
+        "category": "OPTIONAL",
+        "need": "FUN",
+        "price": 120,
+        "mood": 30,
+        "keep": true,
+        "slot": "floor",
+        "eventOnly": true,
+        "description": "Мечта: собирать можно без конца.",
+        "reaction": "{pet} строит замок из конструктора!"
+      },
+      {
+        "id": "gift_card",
+        "title": "Открытка",
+        "emoji": "💌",
+        "category": "OPTIONAL",
+        "need": "FUN",
+        "price": 10,
+        "mood": 5,
+        "tags": [
+          "gift"
+        ],
+        "description": "Подарок другу.",
+        "reaction": "{pet} рисует на открытке сердечко."
+      },
+      {
+        "id": "gift_toy",
+        "title": "Игрушка-подарок",
+        "emoji": "🎁",
+        "category": "OPTIONAL",
+        "need": "FUN",
+        "price": 25,
+        "mood": 10,
+        "tags": [
+          "gift"
+        ],
+        "description": "Подарок другу в коробке с бантом.",
+        "reaction": "{pet} аккуратно заворачивает подарок."
+      },
+      {
+        "id": "care_doctor",
+        "title": "Приём доктора",
+        "emoji": "🩺",
+        "category": "UNPLANNED",
+        "need": "UNPLANNED",
+        "price": 10,
+        "eventOnly": true,
+        "description": "Доктор Ася: осмотр и яркая повязка.",
+        "reaction": "{pet} в повязке со звёздочками."
+      },
+      {
+        "id": "lamp_new",
+        "title": "Новая лампа",
+        "emoji": "💡",
+        "category": "UNPLANNED",
+        "need": "UNPLANNED",
+        "price": 25,
+        "description": "Новая лампа над кроватью.",
+        "reaction": "Над кроватью снова светло.",
+        "eventOnly": true
+      }
+    ],
+    "homeItems": [
+      {
+        "id": "home_lamp",
+        "title": "Лампа над кроватью",
+        "emoji": "💡",
+        "repairPrice": 8,
+        "replaceItem": "lamp_new"
+      },
+      {
+        "id": "home_flower",
+        "title": "Цветок",
+        "emoji": "🪴",
+        "spot": "spot_1"
+      },
+      {
+        "id": "home_armchair",
+        "title": "Кресло",
+        "emoji": "🛋️",
+        "spot": "spot_4"
+      }
+    ],
+    "goals": [
+      {
+        "id": "goal_paints",
+        "title": "Краски",
+        "emoji": "🎨",
+        "price": 80,
+        "unlocks": {
+          "houseColors": true,
+          "cards": true
+        }
+      },
+      {
+        "id": "goal_zoo",
+        "title": "Билет в зоопарк",
+        "emoji": "🦁",
+        "price": 100,
+        "unlocks": {
+          "place": "zoo"
+        }
+      },
+      {
+        "id": "goal_lego",
+        "title": "Конструктор",
+        "emoji": "🧱",
+        "price": 120,
+        "unlocks": {
+          "item": "fun_lego"
+        }
+      },
+      {
+        "id": "goal_camp",
+        "title": "Походная палатка",
+        "emoji": "🏕️",
+        "price": 120,
+        "unlocks": {
+          "place": "forest"
+        }
+      },
+      {
+        "id": "goal_scooter",
+        "title": "Самокат",
+        "emoji": "🛴",
+        "price": 150,
+        "unlocks": {
+          "place": "park"
+        }
+      }
+    ],
+    "jobs": [
+      {
+        "id": "job_bakery",
+        "place": "bakery",
+        "resident": "borya",
+        "title": "Булочки в ряд",
+        "game": "MATCH3",
+        "baseByLevel": [
+          6,
+          7,
+          8
+        ],
+        "board": {
+          "w": 6,
+          "h": 6
+        },
+        "moves": 15,
+        "demoMoves": 5
+      },
+      {
+        "id": "job_market",
+        "place": "market",
+        "resident": "marta",
+        "title": "Помочь Марте",
+        "game": "TAPS",
+        "baseByLevel": [
+          6,
+          7,
+          8
+        ],
+        "tasks": [
+          "Разложить яблоки",
+          "Подмести у прилавка",
+          "Отнести ящик"
+        ]
+      },
+      {
+        "id": "job_kassa",
+        "place": "foma",
+        "resident": "kesha",
+        "title": "Касса",
+        "game": "CHANGE",
+        "baseByLevel": [
+          6,
+          7,
+          8
+        ],
+        "opensBy": {
+          "week": 4
+        }
+      },
+      {
+        "id": "job_courier",
+        "place": "park",
+        "resident": "osya",
+        "title": "Курьер",
+        "game": "TAPS",
+        "baseByLevel": [
+          8,
+          9,
+          10
+        ],
+        "opensBy": {
+          "goal": "goal_scooter"
+        },
+        "tasks": [
+          "Отнести письмо Марте",
+          "Отнести посылку Фоме",
+          "Отнести газету Боре"
+        ]
+      }
+    ],
+    "residents": [
+      {
+        "id": "marta",
+        "name": "Марта",
+        "look": {
+          "species": "bunny",
+          "color": "orange",
+          "accessory": "apron"
+        },
+        "arrivesWeek": 1,
+        "place": "market",
+        "lines": [
+          "Свежее с утра! Заглядывай."
+        ]
+      },
+      {
+        "id": "foma",
+        "name": "Фома",
+        "look": {
+          "species": "cat",
+          "color": "blue",
+          "accessory": "cap"
+        },
+        "arrivesWeek": 1,
+        "place": "foma",
+        "lines": [
+          "Добро пожаловать в лавку!"
+        ]
+      },
+      {
+        "id": "borya",
+        "name": "Боря",
+        "look": {
+          "species": "puppy",
+          "color": "green",
+          "accessory": "apron"
+        },
+        "arrivesWeek": 1,
+        "place": "bakery",
+        "lines": [
+          "Булочки сами себя не разложат!"
+        ]
+      },
+      {
+        "id": "osya",
+        "name": "Ося",
+        "look": {
+          "species": "bunny",
+          "color": "blue",
+          "accessory": "cap"
+        },
+        "arrivesWeek": 1,
+        "lines": [
+          "Вам письмо!"
+        ]
+      },
+      {
+        "id": "tosha",
+        "name": "Тоша",
+        "look": {
+          "species": "puppy",
+          "color": "orange"
+        },
+        "arrivesWeek": 2,
+        "place": "toshas_house",
+        "lines": [
+          "Привет! Пойдём гулять?"
+        ]
+      },
+      {
+        "id": "stepan",
+        "name": "Степан",
+        "look": {
+          "species": "puppy",
+          "color": "blue",
+          "accessory": "cap"
+        },
+        "arrivesWeek": 3,
+        "place": "workshop",
+        "lines": [
+          "Сломалось? Посмотрим, что можно починить."
+        ]
+      },
+      {
+        "id": "kesha",
+        "name": "Кеша",
+        "look": {
+          "species": "bunny",
+          "color": "green",
+          "accessory": "apron"
+        },
+        "arrivesWeek": 4,
+        "place": "foma",
+        "lines": [
+          "Касса открыта! Сдачу считаю вслух."
+        ]
+      },
+      {
+        "id": "liza",
+        "name": "Лиза",
+        "look": {
+          "species": "cat",
+          "color": "orange",
+          "accessory": "apron"
+        },
+        "arrivesWeek": 5,
+        "lines": [
+          "Я рисую картины и открытки."
+        ]
+      },
+      {
+        "id": "asya",
+        "name": "Ася",
+        "look": {
+          "species": "cat",
+          "color": "blue",
+          "accessory": "glasses"
+        },
+        "arrivesWeek": 5,
+        "lines": [
+          "Я доктор Ася. Будем знакомы!"
+        ]
+      }
+    ],
+    "events": [
+      {
+        "id": "p1_list",
+        "kind": "ASK",
+        "title": "Список на неделю",
+        "theme": "BUDGET",
+        "place": "home",
+        "arrives": {
+          "week": 1,
+          "day": 1
+        },
+        "requires": [
+          "beforePlan"
+        ],
+        "intro": "Мне на неделю нужны корм и мыло.",
+        "params": {
+          "list": [
+            "food_basic",
+            "care_soap"
+          ]
+        },
+        "outcomes": [
+          {
+            "fact": "PLAN:NEED>=LIST",
+            "verdict": "GOOD",
+            "line": "Посмотрели цены заранее — на корм и мыло хватит."
+          },
+          {
+            "fact": "PLAN:NEED<LIST",
+            "verdict": "MISTAKE",
+            "line": "Корм и мыло — 30, а в «Нужном» меньше. Можно добавить из «Хочу».",
+            "recovery": [
+              "WANT_TO_NEED",
+              "RESERVE_TO_NEED",
+              "PLAN_TWEAK(NEED, 10)"
+            ]
+          }
+        ],
+        "sticker": "st_list",
+        "repeat": {
+          "afterWeeks": 4,
+          "pool": true
+        },
+        "demo": {
+          "wrongPath": "Положить в «Нужное» 10 и нажать «Готово»"
+        }
+      },
+      {
+        "id": "p2_party",
+        "kind": "ASK",
+        "title": "Праздник у Тоши",
+        "theme": "BUDGET",
+        "place": "home",
+        "resident": "tosha",
+        "arrives": {
+          "week": 2,
+          "day": 1
+        },
+        "intro": "Письмо от Тоши: «Приходи на праздник в выходной!»",
+        "followUp": {
+          "day": 3,
+          "place": "toshas_house"
+        },
+        "outcomes": [
+          {
+            "fact": "BUY:#gift:WANT",
+            "verdict": "GOOD",
+            "line": "Про праздник знали заранее — подарок был в плане."
+          },
+          {
+            "fact": "MAKE_CARD",
+            "verdict": "GOOD",
+            "line": "Открытка своими руками — подарок без монет."
+          },
+          {
+            "fact": "BUY:#gift:TRANSFER_NEED",
+            "verdict": "MISTAKE",
+            "line": "Подарок удобно заложить в «Хочу» при раскладке.",
+            "recovery": [
+              "RESERVE_TO_NEED"
+            ],
+            "effects": [
+              "NOTE(Подарки?)"
+            ]
+          },
+          {
+            "fact": "BUY:#gift:SAVINGS",
+            "verdict": "MISTAKE",
+            "line": "Подарок удобно заложить в «Хочу» при раскладке.",
+            "recovery": [
+              "RESERVE_TO_SAVINGS"
+            ],
+            "effects": [
+              "NOTE(Подарки?)"
+            ]
+          },
+          {
+            "fact": "ATTEND:toshas_house",
+            "verdict": "OK",
+            "line": "Тоша рад гостям — главное, что вы вместе."
+          },
+          {
+            "fact": "SKIP",
+            "verdict": "OK",
+            "line": "Тоша позовёт ещё — праздники бывают."
+          }
+        ],
+        "default": {
+          "at": "WEEK_END",
+          "fact": "SKIP"
+        },
+        "sticker": "st_party",
+        "repeat": {
+          "afterWeeks": 3,
+          "pool": true
+        },
+        "demo": {
+          "wrongPath": "Купить открытку через «Взять из „Нужного“»"
+        }
+      },
+      {
+        "id": "p3_price_up",
+        "kind": "PRICE",
+        "title": "Корм подорожал",
+        "theme": "BUDGET",
+        "resident": "marta",
+        "arrives": {
+          "week": 3
+        },
+        "triggers": [
+          "ENTER:market",
+          "ENTER:foma"
+        ],
+        "requires": [
+          "afterPlan",
+          "notBought:FOOD"
+        ],
+        "setup": [
+          "PRICE(food_basic, shop_market, 30, WEEK_END)",
+          "PRICE(food_basic, shop_foma, 40, WEEK_END)"
+        ],
+        "intro": "Ценник: «Привоз задержался — корм подорожал»",
+        "outcomes": [
+          {
+            "fact": "BUY:FOOD:SAVINGS",
+            "when": "want>=1 || reserve>=1",
+            "verdict": "MISTAKE",
+            "line": "Когда нужное дорожает, первым урезают «Хочу», а не копилку.",
+            "recovery": [
+              "RESERVE_TO_SAVINGS",
+              "PLAN_TWEAK(NEED, 10)"
+            ]
+          },
+          {
+            "fact": "BUY:FOOD:SAVINGS",
+            "verdict": "OK",
+            "line": "Других монет не было — копилка выручила."
+          },
+          {
+            "fact": "BUY:FOOD",
+            "verdict": "GOOD",
+            "line": "Нужное подорожало — монеты нашлись, копилка цела."
+          },
+          {
+            "fact": "WEEK_END_NO:FOOD",
+            "verdict": "MISTAKE",
+            "line": "Когда нужное дорожает, первым урезают «Хочу», а не еду.",
+            "recovery": [
+              "PLAN_TWEAK(NEED, 10)"
+            ]
+          }
+        ],
+        "sticker": "st_price_up",
+        "repeat": {
+          "afterWeeks": 3,
+          "pool": true
+        },
+        "demo": {
+          "wrongPath": "Купить корм «Из копилки», когда в «Хочу» есть монеты"
+        },
+        "priority": 3
+      },
+      {
+        "id": "c1_robot_sale",
+        "kind": "OFFER",
+        "title": "Распродажа робота",
+        "theme": "SAVINGS",
+        "place": "foma",
+        "resident": "foma",
+        "arrives": {
+          "week": 2,
+          "day": 2
+        },
+        "requires": [
+          "afterPlan",
+          "notOwned:fun_robot"
+        ],
+        "setup": [
+          "OFFER(fun_robot, shop_foma, 40, 25, WEEK_END)"
+        ],
+        "intro": "Робот! Было 40 — стало 25. Такая распродажа бывает.",
+        "outcomes": [
+          {
+            "fact": "SKIP",
+            "verdict": "GOOD",
+            "line": "Скидка — это дешевле, а не нужнее."
+          },
+          {
+            "fact": "BUY:fun_robot:WANT",
+            "verdict": "OK",
+            "line": "На «Хочу» хватило — это твой выбор."
+          },
+          {
+            "fact": "BUY:fun_robot:SAVINGS",
+            "verdict": "MISTAKE",
+            "line": "Робот из копилки — мечта отодвинулась.",
+            "recovery": [
+              "RESERVE_TO_SAVINGS"
+            ]
+          },
+          {
+            "fact": "BUY:fun_robot:TRANSFER_NEED",
+            "verdict": "MISTAKE",
+            "line": "Робот из «Нужного» — на корм может не хватить.",
+            "recovery": [
+              "RESERVE_TO_NEED"
+            ]
+          }
+        ],
+        "default": {
+          "at": "WEEK_END",
+          "fact": "SKIP"
+        },
+        "sticker": "st_robot_sale",
+        "repeat": {
+          "afterWeeks": 3,
+          "pool": true
+        },
+        "demo": {
+          "keepOnShelf": true,
+          "wrongPath": "Положить в «Хочу» меньше 25 и купить через «Взять из „Нужного“»"
+        }
+      },
+      {
+        "id": "c2_lamp",
+        "kind": "BREAK",
+        "title": "Погасла лампа",
+        "theme": "SAVINGS",
+        "place": "home",
+        "resident": "stepan",
+        "arrives": {
+          "week": 3,
+          "day": 1
+        },
+        "requires": [
+          "resident:stepan",
+          "notBroken:home_lamp"
+        ],
+        "setup": [
+          "ITEM_BREAK(home_lamp)"
+        ],
+        "intro": "Лампа над кроватью погасла. Степан чинит вещи в мастерской.",
+        "outcomes": [
+          {
+            "fact": "REPAIR:home_lamp:RESERVE",
+            "verdict": "GOOD",
+            "line": "Запас выручил: лампа горит, план цел.",
+            "effects": [
+              "ITEM_FIX(home_lamp)"
+            ]
+          },
+          {
+            "fact": "REPAIR:home_lamp:WANT",
+            "verdict": "GOOD",
+            "line": "Хотелки подождут — лампа снова горит.",
+            "effects": [
+              "ITEM_FIX(home_lamp)"
+            ]
+          },
+          {
+            "fact": "REPAIR:home_lamp:SAVINGS",
+            "when": "reserve>=8 || want>=8",
+            "verdict": "MISTAKE",
+            "line": "Починку оплачивают из запаса, а копилка — на мечту.",
+            "recovery": [
+              "PLAN_TWEAK(RESERVE, 10)"
+            ],
+            "effects": [
+              "ITEM_FIX(home_lamp)"
+            ]
+          },
+          {
+            "fact": "REPAIR:home_lamp:SAVINGS",
+            "verdict": "OK",
+            "line": "Копилка выручила — лампа снова горит.",
+            "effects": [
+              "ITEM_FIX(home_lamp)"
+            ]
+          },
+          {
+            "fact": "BUY:lamp_new",
+            "verdict": "MISTAKE",
+            "line": "Починка — 8, новая — 25. Сначала спрашивают мастера.",
+            "recovery": [
+              "PLAN_TWEAK(RESERVE, 10)"
+            ],
+            "effects": [
+              "ITEM_FIX(home_lamp)"
+            ]
+          },
+          {
+            "fact": "SKIP",
+            "verdict": "OK",
+            "line": "Лампу можно починить в любой день."
+          }
+        ],
+        "default": {
+          "at": "WEEK_END",
+          "fact": "SKIP"
+        },
+        "sticker": "st_lamp",
+        "repeat": {
+          "afterWeeks": 3,
+          "pool": true
+        },
+        "demo": {
+          "wrongPath": "Купить новую лампу вместо починки"
+        }
+      },
+      {
+        "id": "c3_almost",
+        "kind": "OFFER",
+        "title": "Мечта почти твоя",
+        "theme": "SAVINGS",
+        "place": "foma",
+        "resident": "foma",
+        "arrives": {
+          "week": 2
+        },
+        "requires": [
+          "afterPlan",
+          "hasGoal",
+          "savingsPct>=70",
+          "notOwned:fun_kite"
+        ],
+        "intro": "В витрине новинка — воздушный змей за 30. А до мечты совсем чуть-чуть!",
+        "outcomes": [
+          {
+            "fact": "SKIP",
+            "verdict": "GOOD",
+            "line": "До мечты чуть-чуть — копилка цела."
+          },
+          {
+            "fact": "BUY:fun_kite:WANT",
+            "verdict": "OK",
+            "line": "На «Хочу» хватило — это твой выбор."
+          },
+          {
+            "fact": "BUY:fun_kite:SAVINGS",
+            "verdict": "MISTAKE",
+            "line": "Копилка −30 — мечта снова дальше.",
+            "recovery": [
+              "RESERVE_TO_SAVINGS",
+              "PLAN_TWEAK(SAVINGS, 10)"
+            ]
+          },
+          {
+            "fact": "BUY:fun_kite:TRANSFER_NEED",
+            "verdict": "MISTAKE",
+            "line": "Змей из «Нужного» — на корм может не хватить.",
+            "recovery": [
+              "RESERVE_TO_NEED"
+            ]
+          }
+        ],
+        "default": {
+          "at": "WEEK_END",
+          "fact": "SKIP"
+        },
+        "sticker": "st_almost",
+        "repeat": {
+          "afterWeeks": 3,
+          "pool": true
+        },
+        "demo": {
+          "keepOnShelf": true,
+          "setup": [
+            "DEMO_GOAL(70)"
+          ],
+          "wrongPath": "Купить змея «Из копилки»"
+        }
+      },
+      {
+        "id": "c4_paw",
+        "kind": "MISHAP",
+        "title": "Лапка",
+        "theme": "SAVINGS",
+        "place": "home",
+        "resident": "asya",
+        "arrives": {
+          "week": 5,
+          "day": 2
+        },
+        "requires": [
+          "afterPlan",
+          "resident:asya"
+        ],
+        "intro": "Лапка подвернулась! Доктор Ася: «Ничего страшного — повязка, и снова прыгать!»",
+        "outcomes": [
+          {
+            "fact": "BUY:care_doctor:RESERVE",
+            "verdict": "GOOD",
+            "line": "Запас выручил: лапку вылечили, копилка цела."
+          },
+          {
+            "fact": "BUY:care_doctor:WANT",
+            "verdict": "GOOD",
+            "line": "Хотелки подождут — лапку вылечили, копилка цела."
+          },
+          {
+            "fact": "BUY:care_doctor:SAVINGS",
+            "verdict": "MISTAKE",
+            "line": "Запас — на непредвиденное, копилка — на мечту.",
+            "recovery": [
+              "PLAN_TWEAK(RESERVE, 10)"
+            ]
+          },
+          {
+            "fact": "SKIP",
+            "verdict": "MISTAKE",
+            "line": "Ася вылечила бесплатно. Запас пригодится на всякий случай.",
+            "recovery": [
+              "PLAN_TWEAK(RESERVE, 10)"
+            ]
+          }
+        ],
+        "sticker": "st_doctor",
+        "repeat": {
+          "weeks": [
+            9
+          ]
+        },
+        "demo": {
+          "wrongPath": "Оплатить приём «Из копилки» под «Ещё»"
+        }
+      },
+      {
+        "id": "pk1_cheaper_food",
+        "kind": "PRICE",
+        "title": "Где дешевле: корм",
+        "theme": "SHOPPING",
+        "resident": "osya",
+        "arrives": {
+          "week": 1
+        },
+        "triggers": [
+          "PLAN_CONFIRMED"
+        ],
+        "requires": [
+          "afterPlan"
+        ],
+        "priority": 2,
+        "intro": "Почтальон Ося: «Говорят, корм в лавках стоит по-разному»",
+        "outcomes": [
+          {
+            "fact": "BUY_AT:food_basic:CHEAPEST",
+            "verdict": "GOOD",
+            "line": "Одинаковый корм — выбрали, где дешевле: сэкономили 10."
+          },
+          {
+            "fact": "BUY_AT:food_basic:DEARER",
+            "verdict": "MISTAKE",
+            "line": "У реки такой же корм дешевле.",
+            "recovery": [
+              "RETRY_NEXT_WEEK"
+            ],
+            "effects": [
+              "NOTE(корм у реки дешевле)"
+            ]
+          },
+          {
+            "fact": "SKIP",
+            "verdict": "OK",
+            "line": "Цены можно сравнить в другой раз."
+          }
+        ],
+        "default": {
+          "at": "WEEK_END",
+          "fact": "SKIP"
+        },
+        "sticker": "st_cheaper",
+        "repeat": {
+          "afterWeeks": 1,
+          "pool": true
+        },
+        "demo": {
+          "wrongPath": "Купить корм у Фомы за 30"
+        }
+      },
+      {
+        "id": "pk1_cheaper_soap",
+        "kind": "PRICE",
+        "title": "Где дешевле: мыло",
+        "theme": "SHOPPING",
+        "resident": "osya",
+        "arrives": {
+          "week": 2
+        },
+        "requires": [
+          "afterPlan"
+        ],
+        "priority": 2,
+        "intro": "Почтальон Ося: «Говорят, мыло в лавках тоже стоит по-разному»",
+        "outcomes": [
+          {
+            "fact": "BUY_AT:care_soap:CHEAPEST",
+            "verdict": "GOOD",
+            "line": "Одинаковое мыло — выбрали, где дешевле."
+          },
+          {
+            "fact": "BUY_AT:care_soap:DEARER",
+            "verdict": "MISTAKE",
+            "line": "У Фомы такое же мыло дешевле.",
+            "recovery": [
+              "RETRY_NEXT_WEEK"
+            ],
+            "effects": [
+              "NOTE(мыло у Фомы дешевле)"
+            ]
+          },
+          {
+            "fact": "SKIP",
+            "verdict": "OK",
+            "line": "Цены можно сравнить в другой раз."
+          }
+        ],
+        "default": {
+          "at": "WEEK_END",
+          "fact": "SKIP"
+        },
+        "sticker": "st_cheaper",
+        "repeat": {
+          "afterWeeks": 1,
+          "pool": true
+        },
+        "demo": {
+          "wrongPath": "Купить мыло на рынке за 12"
+        },
+        "triggers": [
+          "PLAN_CONFIRMED"
+        ]
+      },
+      {
+        "id": "pk2_change",
+        "kind": "CHANGE",
+        "title": "Сдача",
+        "theme": "SHOPPING",
+        "place": "foma",
+        "resident": "kesha",
+        "arrives": {
+          "week": 4
+        },
+        "requires": [
+          "afterPlan",
+          "resident:kesha"
+        ],
+        "setup": [
+          "SHORT_CHANGE(5)"
+        ],
+        "intro": "Кеша выдаёт сдачу: платишь 50 за 35, а на ладони 10 монет.",
+        "outcomes": [
+          {
+            "fact": "CHECK_CHANGE",
+            "verdict": "GOOD",
+            "line": "50 − 35 = 15. Сдачу считают у кассы.",
+            "effects": [
+              "COINS(5, CHANGE_RETURN)"
+            ]
+          },
+          {
+            "fact": "SKIP",
+            "verdict": "MISTAKE",
+            "line": "Дали 10, а нужно 15: 50 − 35 = 15.",
+            "recovery": [
+              "RETURN_LATER"
+            ]
+          }
+        ],
+        "sticker": "st_change",
+        "repeat": {
+          "afterWeeks": 2,
+          "pool": true
+        },
+        "demo": {
+          "wrongPath": "Уйти от кассы, не пересчитав сдачу"
+        },
+        "triggers": [
+          "ENTER:foma"
+        ]
+      },
+      {
+        "id": "pk3_super_food",
+        "kind": "OFFER",
+        "title": "Супер-корм",
+        "theme": "SHOPPING",
+        "place": "market",
+        "resident": "marta",
+        "arrives": {
+          "week": 2
+        },
+        "requires": [
+          "afterPlan"
+        ],
+        "priority": 1,
+        "intro": "Плакат: «Супер-корм! Все питомцы в восторге!» А стоит дороже обычного корма.",
+        "outcomes": [
+          {
+            "fact": "BUY_AT:food_basic:CHEAPEST",
+            "verdict": "GOOD",
+            "line": "Реклама хвалит, а сытость та же — обычный корм дешевле."
+          },
+          {
+            "fact": "BUY:food_super",
+            "verdict": "MISTAKE",
+            "line": "Сытость одинаковая — выгоднее тот, что дешевле.",
+            "recovery": [
+              "RETRY_NEXT_WEEK"
+            ],
+            "effects": [
+              "NOTE(сытость +40 у обоих)"
+            ]
+          },
+          {
+            "fact": "BUY_AT:food_basic:DEARER",
+            "verdict": "OK",
+            "line": "Сытость как у супер-корма, а у реки корм ещё дешевле."
+          },
+          {
+            "fact": "SKIP",
+            "verdict": "OK",
+            "line": "Плакат висит — выбрать можно в другой раз."
+          }
+        ],
+        "default": {
+          "at": "WEEK_END",
+          "fact": "SKIP"
+        },
+        "sticker": "st_poster",
+        "repeat": {
+          "afterWeeks": 1,
+          "pool": true
+        },
+        "demo": {
+          "wrongPath": "Купить супер-корм за 35"
+        },
+        "triggers": [
+          "ENTER:market"
+        ]
+      },
+      {
+        "id": "pk4_everyone_has",
+        "kind": "ASK",
+        "title": "У всех уже есть!",
+        "theme": "SHOPPING",
+        "resident": "tosha",
+        "arrives": {
+          "week": 2,
+          "day": 3
+        },
+        "requires": [
+          "afterPlan",
+          "resident:tosha",
+          "notOwned:fun_spinner"
+        ],
+        "intro": "Тоша: «У всех уже есть светящаяся вертушка! Она у Фомы за 25»",
+        "outcomes": [
+          {
+            "fact": "SKIP",
+            "verdict": "GOOD",
+            "line": "Решаешь ты, а не «все»."
+          },
+          {
+            "fact": "BUY:fun_spinner:WANT",
+            "verdict": "OK",
+            "line": "Захотелось, и в плане хватило — это твой выбор."
+          },
+          {
+            "fact": "BUY:fun_spinner:TRANSFER_NEED",
+            "verdict": "MISTAKE",
+            "line": "Вертушка из «Нужного» — на корм может не хватить.",
+            "recovery": [
+              "RESERVE_TO_NEED"
+            ]
+          },
+          {
+            "fact": "BUY:fun_spinner:SAVINGS",
+            "verdict": "MISTAKE",
+            "line": "Вертушка из копилки — мечта отодвинулась.",
+            "recovery": [
+              "RESERVE_TO_SAVINGS"
+            ]
+          }
+        ],
+        "default": {
+          "at": "WEEK_END",
+          "fact": "SKIP"
+        },
+        "sticker": "st_spinner",
+        "repeat": {
+          "afterWeeks": 3,
+          "pool": true
+        },
+        "demo": {
+          "wrongPath": "Купить вертушку через «Взять из „Нужного“»",
+          "keepOnShelf": true
+        }
+      },
+      {
+        "id": "windfall_granny",
+        "kind": "WINDFALL",
+        "title": "Бабушкин подарок",
+        "place": "home",
+        "resident": "osya",
+        "arrives": {
+          "week": 3,
+          "day": 1
+        },
+        "setup": [
+          "COINS(20, WINDFALL)"
+        ],
+        "intro": "В конверте открытка: «Подарок от бабушки +20». Такое бывает не каждую неделю.",
+        "sticker": "st_granny",
+        "repeat": {
+          "weeks": [
+            7
+          ]
+        }
+      },
+      {
+        "id": "job_bakery_help",
+        "kind": "JOB",
+        "title": "Пекарне нужен помощник",
+        "place": "bakery",
+        "resident": "borya",
+        "arrives": {
+          "week": 1
+        },
+        "requires": [
+          "afterPlan || week>=2"
+        ],
+        "intro": "Пекарне нужен помощник! Боря платит за работу.",
+        "params": {
+          "job": "job_bakery"
+        },
+        "sticker": "st_job_bakery"
+      },
+      {
+        "id": "job_market_help",
+        "kind": "JOB",
+        "title": "Помочь Марте",
+        "place": "market",
+        "resident": "marta",
+        "arrives": {
+          "week": 1
+        },
+        "requires": [
+          "afterPlan || week>=2"
+        ],
+        "intro": "Марта просит разобрать ящики на рынке.",
+        "params": {
+          "job": "job_market"
+        },
+        "sticker": "st_job_market"
+      },
+      {
+        "id": "job_kassa_help",
+        "kind": "JOB",
+        "title": "Касса у Кеши",
+        "place": "foma",
+        "resident": "kesha",
+        "arrives": {
+          "week": 4
+        },
+        "requires": [
+          "afterPlan || week>=5",
+          "resident:kesha"
+        ],
+        "intro": "Кеше нужен помощник на кассе — сдачу считаем вместе.",
+        "params": {
+          "job": "job_kassa"
+        },
+        "sticker": "st_job_kassa"
+      },
+      {
+        "id": "job_courier_help",
+        "kind": "JOB",
+        "title": "Нужен курьер",
+        "place": "park",
+        "resident": "osya",
+        "arrives": {
+          "week": 1
+        },
+        "intro": "Ося ищет курьера: отнести письма соседям.",
+        "params": {
+          "job": "job_courier"
+        },
+        "sticker": "st_job_courier"
+      }
+    ],
+    "stickers": [
+      {
+        "id": "st_place_home",
+        "title": "Мой дом",
+        "hint": "Есть с первого дня"
+      },
+      {
+        "id": "st_place_market",
+        "title": "Рынок у реки",
+        "hint": "Зайти на рынок"
+      },
+      {
+        "id": "st_place_foma",
+        "title": "Лавка «У Фомы»",
+        "hint": "Зайти в лавку"
+      },
+      {
+        "id": "st_place_bakery",
+        "title": "Пекарня",
+        "hint": "Зайти в пекарню"
+      },
+      {
+        "id": "st_place_workshop",
+        "title": "Мастерская",
+        "hint": "Откроется, когда приедет Степан"
+      },
+      {
+        "id": "st_place_tosha",
+        "title": "Дом Тоши",
+        "hint": "Прийти в гости к Тоше"
+      },
+      {
+        "id": "st_place_park",
+        "title": "Парк",
+        "hint": "Откроет мечта «Самокат»"
+      },
+      {
+        "id": "st_place_forest",
+        "title": "Лес у озера",
+        "hint": "Откроет мечта «Походная палатка»"
+      },
+      {
+        "id": "st_place_zoo",
+        "title": "Зоопарк",
+        "hint": "Откроет мечта «Билет в зоопарк»"
+      },
+      {
+        "id": "st_list",
+        "title": "Список покупок",
+        "hint": "Событие «Список на неделю»"
+      },
+      {
+        "id": "st_party",
+        "title": "Праздник у Тоши",
+        "hint": "Событие «Праздник у Тоши»"
+      },
+      {
+        "id": "st_price_up",
+        "title": "Корм подорожал",
+        "hint": "Событие «Корм подорожал»"
+      },
+      {
+        "id": "st_robot_sale",
+        "title": "Распродажа",
+        "hint": "Событие «Распродажа робота»"
+      },
+      {
+        "id": "st_lamp",
+        "title": "Лампа",
+        "hint": "Событие «Погасла лампа»"
+      },
+      {
+        "id": "st_almost",
+        "title": "Почти мечта",
+        "hint": "Событие «Мечта почти твоя»"
+      },
+      {
+        "id": "st_doctor",
+        "title": "Доктор Ася",
+        "hint": "Знакомство с доктором Асей"
+      },
+      {
+        "id": "st_cheaper",
+        "title": "Где дешевле",
+        "hint": "Сравнить цены на корм или мыло"
+      },
+      {
+        "id": "st_change",
+        "title": "Сдача",
+        "hint": "Событие «Сдача»"
+      },
+      {
+        "id": "st_poster",
+        "title": "Плакат",
+        "hint": "Событие «Супер-корм»"
+      },
+      {
+        "id": "st_spinner",
+        "title": "Вертушка",
+        "hint": "Событие «У всех уже есть!»"
+      },
+      {
+        "id": "st_granny",
+        "title": "Бабушкин подарок",
+        "hint": "Приходит в конверте"
+      },
+      {
+        "id": "st_job_bakery",
+        "title": "Помощник пекаря",
+        "hint": "Смена в пекарне"
+      },
+      {
+        "id": "st_job_market",
+        "title": "Помощник Марты",
+        "hint": "Смена на рынке"
+      },
+      {
+        "id": "st_job_kassa",
+        "title": "Кассир",
+        "hint": "Смена на кассе у Кеши"
+      },
+      {
+        "id": "st_job_courier",
+        "title": "Курьер",
+        "hint": "Смена курьера в парке"
+      }
+    ],
+    "quiz": [
+      {
+        "id": "q_budget_1",
+        "theme": "BUDGET",
+        "question": "Что такое бюджет?",
+        "options": [
+          "Все монеты на неделю и план, как их потратить",
+          "Самая дорогая игрушка",
+          "Копилка"
+        ],
+        "correct": 0,
+        "explanation": "Бюджет — это все монеты, которые у тебя есть, и план: сколько на что."
+      },
+      {
+        "id": "q_budget_2",
+        "theme": "BUDGET",
+        "question": "Можно ли потратить больше монет, чем у тебя есть?",
+        "options": [
+          "Да",
+          "Нет, расходы не больше доходов"
+        ],
+        "correct": 1,
+        "explanation": "Тратим только те монеты, что есть: расходы не больше доходов."
+      },
+      {
+        "id": "q_budget_3",
+        "theme": "BUDGET",
+        "question": "Когда лучше составить план: до покупок или после?",
+        "options": [
+          "До покупок",
+          "После покупок"
+        ],
+        "correct": 0,
+        "explanation": "План делают заранее, а потом сравнивают с тем, что вышло."
+      },
+      {
+        "id": "q_budget_4",
+        "theme": "BUDGET",
+        "question": "У тебя 100 монет. Корм 30, шампунь 20. Сколько монет будет на остальное?",
+        "options": [
+          "50",
+          "70",
+          "30"
+        ],
+        "correct": 0,
+        "explanation": "100 − 30 − 20 = 50 монет."
+      },
+      {
+        "id": "q_budget_5",
+        "theme": "BUDGET",
+        "question": "Что такое доход?",
+        "options": [
+          "Монеты, которые приходят",
+          "Монеты, которые уходят"
+        ],
+        "correct": 0,
+        "explanation": "Доход — это монеты, которые приходят: карманные и зарплата."
+      },
+      {
+        "id": "q_save_1",
+        "theme": "SAVINGS",
+        "question": "Что такое копилка?",
+        "options": [
+          "Монеты, отложенные на мечту",
+          "Монеты, которые уже потрачены",
+          "Магазин"
+        ],
+        "correct": 0,
+        "explanation": "Копилка — отложенные монеты. Они ждут твою мечту."
+      },
+      {
+        "id": "q_save_2",
+        "theme": "SAVINGS",
+        "question": "Мечта стоит 100. В копилке 40. Сколько ещё накопить?",
+        "options": [
+          "60",
+          "40",
+          "140"
+        ],
+        "correct": 0,
+        "explanation": "100 − 40 = 60 монет."
+      },
+      {
+        "id": "q_save_3",
+        "theme": "SAVINGS",
+        "question": "Как быстрее накопить на мечту?",
+        "options": [
+          "Откладывать понемногу с каждого конверта",
+          "Ждать, пока монеты появятся сами"
+        ],
+        "correct": 0,
+        "explanation": "Регулярные небольшие взносы приближают мечту."
+      },
+      {
+        "id": "q_save_4",
+        "theme": "SAVINGS",
+        "question": "Ты откладываешь по 20 монет с конверта. Мечта стоит 60. Сколько нужно конвертов?",
+        "options": [
+          "3",
+          "2",
+          "6"
+        ],
+        "correct": 0,
+        "explanation": "60 ÷ 20 = 3 конверта."
+      },
+      {
+        "id": "q_save_5",
+        "theme": "SAVINGS",
+        "question": "Что будет с мечтой, если взять монеты из копилки?",
+        "options": [
+          "Мечта станет дальше",
+          "Ничего не изменится"
+        ],
+        "correct": 0,
+        "explanation": "Накопленное уменьшится, и до мечты будет дольше."
+      },
+      {
+        "id": "q_shop_1",
+        "theme": "SHOPPING",
+        "question": "Что из этого нужно питомцу каждую неделю?",
+        "options": [
+          "Корм",
+          "Шарик",
+          "Робот"
+        ],
+        "correct": 0,
+        "explanation": "Еда нужна каждую неделю — это нужное."
+      },
+      {
+        "id": "q_shop_2",
+        "theme": "SHOPPING",
+        "question": "Что из этого «хочу», а не «нужно»?",
+        "options": [
+          "Мячик",
+          "Шампунь",
+          "Корм"
+        ],
+        "correct": 0,
+        "explanation": "Мячик радует, но без него можно обойтись."
+      },
+      {
+        "id": "q_shop_3",
+        "theme": "SHOPPING",
+        "question": "Не хватает монет на игрушку. Что можно сделать?",
+        "options": [
+          "Подождать нового конверта или выбрать дешевле",
+          "Взять из копилки"
+        ],
+        "correct": 0,
+        "explanation": "Можно подождать нового конверта или выбрать дешевле — копилка ждёт мечту."
+      },
+      {
+        "id": "q_shop_4",
+        "theme": "SHOPPING",
+        "question": "Мячик стоит 25, у тебя 20. Сколько не хватает?",
+        "options": [
+          "5",
+          "45",
+          "15"
+        ],
+        "correct": 0,
+        "explanation": "25 − 20 = 5 монет."
+      },
+      {
+        "id": "q_shop_5",
+        "theme": "SHOPPING",
+        "question": "Перед покупкой полезно посмотреть на…",
+        "options": [
+          "Цену и что даст покупка",
+          "Только на картинку"
+        ],
+        "correct": 0,
+        "explanation": "Полезно смотреть на цену, метку «нужно» или «хочу» и что покупка даст питомцу."
+      }
+    ],
+    "parentBonusReasons": [
+      "Идея, как сэкономить",
+      "Рассказ о своей мечте",
+      "Сравнили цены в магазине вместе"
+    ]
+  }
 }

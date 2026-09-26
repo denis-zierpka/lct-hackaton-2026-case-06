@@ -97,6 +97,10 @@ grep -rnE 'Рисуется на Canvas|примитивами \(Canvas\)|Нет
   | `ModifierFactoryExtensionFunction` | `game/…/ui/PetSprite.kt:152` | `game` |
   | `UnusedResources` | `game/res/drawable-nodpi/ui_sun.webp` | `game` |
 
+- **Картинка «Ванны с пеной» — ещё витаминки** (TOWN-S0b, 2026-09-26). `care_vitamins` переименован
+  (решение 16), а `game/res/drawable-nodpi/item_care_vitamins.webp` рисует таблетки: новых ассетов в
+  срезе 0 нет. Пересобрать пропом ванны в `tools/art/props.py` в блоке арта среза 1 (GAME_CONCEPT
+  §17.3), запись в `LICENSES.md`. До этого в 1.3.0-интерфейсе `game` у ванны старая картинка.
 - Закрыто: число 10 в совете про копилку (`Economy.kt:348` на 83404be) — теперь
   `rules.savingsAmounts.firstOrNull() ?: rules.planStep` (`Economy.kt:395`).
   `docs/EXAMPLE_TASK.md` описывает его как образец на коммите 83404be.

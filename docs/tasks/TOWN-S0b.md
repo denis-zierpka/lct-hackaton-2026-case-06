@@ -35,7 +35,7 @@ data class TownContent(
 data class TownRules(val daysPerWeek: Int, val shiftsPerWeek: Int, val shiftBonusMax: Int,
     val shiftScorePerBonus: Int, val changeCoins: List<Int>, val jobLevelShifts: List<Int>,
     val jobLevelBombs: List<Int>, val customGoalFromItemMin: Int, val freeFunMood: Int,
-    val eventsPerDay: Int, val offerReturnWeeks: Int)          // без умолчаний: числа только в JSON
+    val eventsPerDay: Int)   // без умолчаний: числа только в JSON; срок возврата распродажи — repeat.afterWeeks записи
 enum class Template { HOME, SHOP, JOB, SCENE }
 data class OpensBy(val week: Int? = null, val goal: String? = null)   // оба null — сразу
 data class Place(val id: String, val title: String, val template: Template,
@@ -116,8 +116,10 @@ town.items. «Тексты town» = все строковые значения �
     «знали», «надо было».
  9. Род: тексты town не содержат целых слов (Unicode-границы) «отложил», «планировал»,
     «потратил», «положил», «взял», «проголодался», «запачкался», «пришёл», «пришла», «захотел»,
-    «захотела», «купил», «купила», «выбрал», «выбрала», «бегал», «подвернул», «достал»
-    (список 1.3.0 плюс новые; ребёнок и питомец — без рода).
+    «захотела», «купил», «купила», «выбрал», «выбрала», «бегал», «подвернул», «достал», «видел»,
+    «видела», «доволен», «довольна», «устроил», «чистенький» (список 1.3.0 плюс новые; ребёнок и
+    питомец — без рода). Проверка идёт по текстам town И по description/reaction всех товаров,
+    которые продают лавки town (там же тексты 1.3.0, которые game показывает у Фомы).
 10. Длина: каждая outcomes[].line ≤ 80 символов; каждый intro ≤ 120 символов.
 11. №11: ItemBreak только над homeItem с repairPrice != null и starter == true.
 12. №12 и №4: COINS(WINDFALL) — только в setup событий kind WINDFALL; COINS(CHANGE_RETURN) — только
@@ -129,10 +131,11 @@ town.items. «Тексты town» = все строковые значения �
 15. Пул: у каждого засчитываемого события, кроме MISHAP, repeat.pool == true.
 16. №16 MISHAP: приходы = [arrives.week] + repeat.weeks — не больше 2, по возрастанию, разрыв
     ≥ 4; ни один приход не совпадает с arrives.week событий kind BREAK и событий с эффектом PRICE
-    в setup; requires только из ResidentArrived/WeekAtLeast/DayIs; default == null; intro и
+    в setup; requires только из ResidentArrived/WeekAtLeast/DayIs/AfterPlan (не действия ребёнка); default == null; intro и
     строки исходов не содержат названий товаров с keep == true и названий мест с opensBy.goal.
-17. Вещи: ITEM_BREAK-вещь с repairPrice имеет replaceItem; eventOnly-товары не продаёт ни одна
-    лавка; бантик (fun_bow) не продаёт ни одна лавка town; keep == true у fun_ball, fun_book,
+17. Вещи: ITEM_BREAK-вещь с repairPrice имеет replaceItem; eventOnly-товар продаёт лавка, только если
+    он replaceItem какой-то homeItem (новая лампа — на полке, пока идёт С2), остальные eventOnly
+    (care_doctor, fun_lego) не продаёт ни одна лавка; бантик (fun_bow) не продаёт ни одна лавка town; keep == true у fun_ball, fun_book,
     fun_tent и у всех товаров town со slot != null.
 18. «Ванна с пеной» (решение 16): care_vitamins — title «Ванна с пеной», emoji «🛁», price 25,
     hunger 0, clean 20, mood 5; description и reaction без «здоров», «бодр», «витамин».
