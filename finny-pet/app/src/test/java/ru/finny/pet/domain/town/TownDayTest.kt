@@ -358,6 +358,25 @@ class TownDayTest {
     }
 
     @Test
+    fun `одна и та же поправка из правила и из события предлагается один раз`() {
+        val start = economy.chooseGoal(S1aStand.planned(40, 20, 30), S1aStand.townGoal("goal_scooter")).ok()
+        val done = town.endWeek(start).s1aState()
+        val summary = done.history.last()
+        assertFalse("нужное покрыто — правило не даст поправку «Нужное»", summary.mandatoryCovered)
+        assertTrue("мечты нет — не будет поправки «В копилку»", done.goal != null)
+        // ход события пишет S1c; p1_list, исход 1 (MISTAKE) — recovery с тем же PLAN_TWEAK(NEED, 10)
+        val s = done.copy(events = listOf(EventState("p1_list", EventStatus.DONE, Verdict.MISTAKE, 1, summary.period, 1)))
+        assertEquals(
+            "поправки без дубля «Нужного»",
+            listOf(
+                Recovery.PlanTweak(TweakDir.NEED, S1aStand.step),
+                Recovery.PlanTweak(TweakDir.SAVINGS, S1aStand.step),
+            ),
+            town.planTweaks(s, summary),
+        )
+    }
+
+    @Test
     fun `ходы событий без исхода и с неизвестным id пропускаются`() {
         val done = town.endWeek(demoWeekOne()).s1aState()
         val summary = done.history.last()

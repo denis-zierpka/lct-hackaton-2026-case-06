@@ -612,6 +612,41 @@ class CheckoutTest {
     }
 
     @Test
+    fun `когда план уже нарушен касса не грозит штампом второй раз`() {
+        // перерасход «Хочу»: мячик 25 при плане «Хочу» 5 — штамп «По плану» потерян ещё до кассы
+        val s = ready(50, 5, 0).buy("fun_ball", "shop_foma", Source.TRANSFER_NEED)
+        assertEquals("«Нужное» после переноса", 30, s.jarNeed)
+        assertEquals("«Хочу» после переноса", 0, s.jarWant)
+        assertEquals("факт «Хочу» больше плана", 25, s.factOptional)
+        assertTrue("план должен быть уже нарушен", !planKept(s))
+
+        val q = town.quote(s, "food_basic", "shop_market")
+        assertEquals("вариант один", listOf(PayKind.PAY to Source.NEED), q.kinds())
+        assertPay("покупка корма", q.pay(Source.NEED), "Купить за 20", listOf("Из «Нужного»: 30 → 10"), false)
+        val after = town.buyAt(s, "food_basic", "shop_market", Source.NEED).done().state
+        assertTrue("план не держится и после покупки", !planKept(after))
+    }
+
+    @Test
+    fun `дешевле предлагает самый дорогой подходящий товар полки`() {
+        val s = ready(0, 30, 0, demo = false)
+        assertEquals("«Хочу»", 30, s.jarWant)
+        val q = town.quote(s, "fun_robot", "shop_foma")
+        assertEquals("цена робота", 40, q.price)
+        assertEquals("строка", "В «Хочу» 30, робот стоит 40. Не хватает 10", q.line)
+        assertEquals("порядок вариантов", listOf(PayKind.CHEAPER to null, PayKind.WAIT to null), q.kinds())
+
+        val cheaper = q.options[0]
+        assertEquals("подпись «дешевле»", "Дешевле: мячик 25", cheaper.label)
+        assertEquals("товар «дешевле»", "fun_ball", cheaper.itemId)
+        // на полке есть и дешевле — шарик 10: касса предлагает не самый дешёвый, а самый дорогой по карману
+        assertTrue(
+            "шарика 10 нет на полке — проверка обессмыслена",
+            prices.shelf(s, "shop_foma").any { it.item.id == "fun_balloon" && it.price == 10 },
+        )
+    }
+
+    @Test
     fun `демо-путь шаг 7 когда не хватает всего кошелька`() {
         var s = ready(40, 20, 30)
         assertEquals("кошелёк после раскладки", 70, s.balance)
