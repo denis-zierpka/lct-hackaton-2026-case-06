@@ -28,8 +28,10 @@ BRANCH: feat/town
   с HOME — закрыть макет.
 - Масштаб шрифта в макете ограничен 1,3 так же, как SceneFontScale в GameApp.kt (своя копия
   трёх строк — SceneFontScale приватная).
-- Пока макет открыт — портрет: activity.requestedOrientation = SCREEN_ORIENTATION_PORTRAIT,
-  при закрытии — прежнее значение.
+- Ориентацию макет не блокирует: requestedOrientation даёт новое предупреждение lint
+  SourceLockedOrientationActivity (потолок 5 / 6 нарушился бы), а обходить проверку нельзя.
+  Замер идёт в портрете с выключенным автоповоротом; закрепление портрета для всего `game` —
+  срез 1, через манифест (GAME_CONCEPT §17.3). Решение оркестратора по блокеру кодера 2026-09-26.
 - Корень макета: Modifier.semantics { testTagsAsResourceId = true }; теги ниже — для замера
   через uiautomator (resource-id).
 
