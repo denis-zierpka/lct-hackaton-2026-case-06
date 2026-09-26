@@ -92,6 +92,7 @@ private fun ButtonStyle.content(): Color = when (this) {
  * Face ≥ [minHeight] tall, keep it ≥ 48 dp (ТЗ 3.6: touch targets ≥ 48 dp).
  * [selected] turns it into one option of a choice: magenta + «✓» when chosen, paper otherwise, announced as selected.
  * [tight] is for a one-word label in a narrow tab: 14 sp and 8 dp side paddings keep the word on one line.
+ * [centered] puts the label in the middle of a button wider than its label (title screen); by default it sits at the start, like a list row.
  */
 @Composable
 fun GameButton(
@@ -104,6 +105,7 @@ fun GameButton(
     minHeight: Dp = 56.dp,
     selected: Boolean? = null,
     tight: Boolean = false,
+    centered: Boolean = false,
     onClick: () -> Unit,
 ) {
     val interaction = remember { MutableInteractionSource() }
@@ -126,6 +128,7 @@ fun GameButton(
                 drawRoundRect(edgeColor, topLeft = androidx.compose.ui.geometry.Offset(0f, e), size = androidx.compose.ui.geometry.Size(size.width, size.height - e), cornerRadius = androidx.compose.ui.geometry.CornerRadius(size.height / 2))
             }
             .padding(bottom = edge),
+        contentAlignment = if (centered) Alignment.Center else Alignment.TopStart,
     ) {
         Box(
             Modifier

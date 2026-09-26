@@ -73,9 +73,9 @@ fun TitleScreen(vm: GameViewModel) {
                 Text("Финни", style = MaterialTheme.typography.displayMedium, color = Color.White)
                 Text("Копи, планируй, заботься", style = MaterialTheme.typography.bodyLarge, color = G.pink)
                 Spacer(Modifier.height(8.dp))
-                GameButton(if (s.hasProfile) "Продолжить" else "Играть", Modifier.widthIn(min = 220.dp), style = ButtonStyle.GOLD, minHeight = 60.dp) { vm.start() }
-                if (s.hasProfile) GameButton("Подсказка", Modifier.widthIn(min = 220.dp), style = ButtonStyle.GHOST, minHeight = 48.dp) { vm.navigate(Screen.Intro) }
-                GameButton("Для взрослого", Modifier.widthIn(min = 220.dp), style = ButtonStyle.GHOST, minHeight = 48.dp, icon = painterResource(R.drawable.ui_lock), iconSize = 24.dp) { vm.navigate(Screen.Parent) }
+                GameButton(if (s.hasProfile) "Продолжить" else "Играть", Modifier.widthIn(min = 220.dp), style = ButtonStyle.GOLD, minHeight = 60.dp, centered = true) { vm.start() }
+                if (s.hasProfile) GameButton("Подсказка", Modifier.widthIn(min = 220.dp), style = ButtonStyle.GHOST, minHeight = 48.dp, centered = true) { vm.navigate(Screen.Intro) }
+                GameButton("Для взрослого", Modifier.widthIn(min = 220.dp), style = ButtonStyle.GHOST, minHeight = 48.dp, icon = painterResource(R.drawable.ui_lock), iconSize = 24.dp, centered = true) { vm.navigate(Screen.Parent) }
                 Text("Без регистрации. Данные остаются на устройстве.", style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.8f), textAlign = TextAlign.Center)
             }
         }
