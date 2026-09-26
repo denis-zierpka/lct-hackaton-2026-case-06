@@ -180,12 +180,15 @@ Compose перерисовывает экраны по state / screen / lines / 
 | Скрипт | Что делает | Куда попадает |
 |---|---|---|
 | `pet.py` → `import_sprites.py` | Blender рендерит питомца (3 вида × 3 цвета × 3 стадии × 4 лица = 108 PNG); `import_sprites.py` конвертирует в WebP и перегенерирует `PetSprites.kt` | `app/src/main/res/drawable-nodpi/pet_*.webp`, `app/src/main/java/ru/finny/pet/PetSprites.kt` |
+| `pet.py --residents` | Жители города из `town.residents` (`content.json`): своя палитра `RESIDENT_COLORS`, силуэт взрослого, аксессуар из контента и предмет роли `ROLE_PROPS`, 1 кадр на жителя (PNG) | `res_<id>` — в приложение с TOWN-A1f |
 | `room.py` | Комната: альбом/портрет × день/вечер (PNG) | `app/src/game/res/drawable-nodpi/room_*` |
+| `place.py` | Фоны мест «Городка» — «кит интерьера»: рынок у реки, «У Фомы», пекарня; портрет 1080 × 1920, RGB (PNG) | `bg_<place>_port` — в приложение с TOWN-A1c |
+| `facade.py` | Фасады карточек улицы 384 × 384 RGBA: дом, рынок, «У Фомы», пекарня, калитки парка, леса, зоопарка (замок — оверлей UI) (PNG) | `fac_<place>` — с TOWN-A1g |
 | `props.py` | Товары, цели, плитки мини-игры, монета (PNG) | там же: `item_*`, `goal_*`, `tile_*`, `ui_coin` |
 | `uiprops.py` | Иконки интерфейса: банка и крышки бюджета, копилка, кошелёк и др. (PNG) | там же: `ui_*` |
 | `sounds.py` | Синтез эффектов и музыки на stdlib Python, кодирование ffmpeg в OGG | `app/src/game/res/raw/*.ogg` |
 
-`lib.py` — общие хелперы Blender (материалы, свет, камера, выбор GPU: OptiX, CUDA, HIP, oneAPI, Metal, иначе CPU), `smoke.py` — проверка `lib.py`. `room.py`, `props.py`, `uiprops.py` выдают PNG и импортируются другими скриптами (CLI — под `__main__`); `to_webp.py` переводит PNG в WebP (фоны `--rgb`, спрайты RGBA).
+`lib.py` — общие хелперы Blender (материалы, свет, камера, выбор GPU: OptiX, CUDA, HIP, oneAPI, Metal, иначе CPU; оболочка интерьера — пол из досок и стены, навес, табличка с объёмными буквами статического Montserrat ExtraBold `montserrat_extrabold.ttf`), `smoke.py` — проверка `lib.py`. `room.py`, `place.py`, `facade.py`, `props.py`, `uiprops.py` выдают PNG и импортируются другими скриптами (CLI — под `__main__`; `facade.py` берёт цвета мест из `place.py`); `to_webp.py` переводит PNG в WebP (фоны `--rgb`, спрайты RGBA). Приёмочные зонды арта — [tools/art_check.py](../../tools/art_check.py) в корне репозитория (регрессия кадра дампом сцены, композиты UI на фон места с контрастом и пересветом, bbox, палитра жителей).
 
 ## Тесты
 
