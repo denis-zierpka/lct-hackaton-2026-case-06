@@ -8,10 +8,10 @@ its HUD, tabs, cards and the Match3 field over the background, so the frame is b
   0–31 %    light and plain (sky or wall): G.ink text of HUD-2 and place titles sits right on it (≥ 4.5 : 1); the
             place is told by big colour masses — the striped awning at the top edge, posts and wall colour at the sides;
   SHOP      31–100 % calm large forms: counter, shelves;
-  JOB       10–24 %, x 52–88 %: a shelf of bread under the awning (round loaf, baton, two baguettes; the bread in
+  JOB       10–24 %, x 52–88 %: a mint shelf of bread under the awning (round loaf, baton, two baguettes; the bread in
             14–21 %) — the band every bakery screen leaves open, right of the HUD chips and the title (TOWN-A1c);
-            25–80 % plain wall and floor, nothing like a Match3 tile; 80–100 % the counter with bread (matte top:
-            the glossy one clipped to white).
+            25–80 % plain wall and floor, nothing like a Match3 tile; 80–100 % the counter with a mint front and
+            loaves in 89–96 % (matte top: the glossy one clipped to white).
 Decor on the shelves comes only from props.py builders on the per-place white list (PLACES[id]["decor"]).
 """
 import sys, os, math, argparse
@@ -43,7 +43,9 @@ PLACES = {  # decor: (props.py builder, location, scale, rotation deg)
                         ("item_care_shampoo", (0.3, WALL_Y - 0.4, 1.56), 0.55, (0, 0, -5))]),
     "bakery": dict(kind="JOB", outdoors=False, sign="ХЛЕБ",
                    colors=dict(wall="#FFEBD2", side="#F8DDBE", floor=("#E9B983", "#D9A36C"), awning=("#F4A261", "#FFF6E6"),
-                               board="#FFF3D6", letters="#8D5A3B", counter="#F4A261"),
+                               board="#F4A261", letters="#8D5A3B", counter="#7FD6C2"),
+                   # board in the awning's tone: the cream one peeked between the HUD pills as one more pill. Counter —
+                   # the market's mint, also the bread shelf: the cold accent of the warm room, the bread told by hue
                    decor=[]),
 }
 assert not [n for p in PLACES.values() for n, *_ in p["decor"] if n in FORBIDDEN or n.startswith("tile_")]
@@ -100,8 +102,8 @@ def bread_shelf(board, crust, cut):
     for x, a in ((2.46, -9), (2.64, 7)):  # two baguettes standing in the corner of the shelf; cuts: bread, not ears
         sphere("baguette", (x, WALL_Y - 0.2, 6.15), 0.1, (1, 1, 5.2), crust, rot=(0, R(a), 0))
         for t in (-0.26, 0.0, 0.26):
-            sphere("baguette_cut", (x + t * math.sin(R(a)), WALL_Y - 0.29, 6.15 + t * math.cos(R(a))), 0.04, (2.0, 0.4, 0.5),
-                   cut, rot=(0, R(a + 35), 0), levels=1)
+            sphere("baguette_cut", (x + t * math.sin(R(a)), WALL_Y - 0.31, 6.15 + t * math.cos(R(a))), 0.045, (1.8, 0.5, 0.75),
+                   cut, rot=(0, R(a + 35), 0), levels=1)  # out of the crust and thicker: the thin ones read pale
 
 
 def build(p, c):
@@ -132,15 +134,18 @@ def build(p, c):
                 box("shelf", (0, WALL_Y - 0.4, z), (5.36, 0.8, 0.12), wood[1], bevel=0.03)
         box("counter", (0, -1.4, 0.575), (3.5, 0.8, 1.15), front, bevel=0.06)
         box("counter_top", (0, -1.4, 1.19), (3.7, 1.0, 0.12), wood[1], bevel=0.03)
-    else:  # JOB: a low counter along the bottom edge, the loaves whole in 86–100 % (under the order card they were cut)
+    else:  # JOB: a low counter along the bottom edge; the loaves sit low at its front edge, whole in 89–96 %: open
+        # under the order card (from 86 %), hidden whole under the S23 round's work row (88–97 %), not cut in half
         box("counter", (0, -5.1, 0.15), (6, 1.0, 0.3), front, bevel=0.06)
         box("counter_top", (0, -5.1, 0.34), (6.2, 1.2, 0.08), M(c["floor"][1], rough=0.7, sss=0.1, coat=0.0), bevel=0.03)
-        crust, cut = M("#C9803F", rough=0.5, sss=0.3, coat=0.3), M("#F6D9A8", rough=0.6, sss=0.2, coat=0.1)
+        # one matte golden-brown bread on the shelf and the counter (the coat glared the counter loaves pale): the counter
+        # takes ≈ 3× the light of the shelf under the awning, so its crust is darker and both render in one tone
+        crust, cut = M("#8A511F", rough=0.75, sss=0.3, coat=0.0), M("#FFF4DE", rough=0.6, sss=0.2, coat=0.0)
         for x, s in ((-0.8, 1.0), (0.1, 1.15), (0.9, 0.9)):
-            sphere("loaf", (x, -5.2, 0.42), 0.26 * s, (1.4, 0.85, 0.6), crust)
+            sphere("loaf", (x, -5.4, 0.36), 0.26 * s, (1.4, 0.85, 0.6), crust)
             for d in (-0.13, 0.0, 0.13):
-                sphere("cut", (x + d * s, -5.22, 0.42 + 0.15 * s), 0.05 * s, (0.5, 2.0, 0.35), cut, rot=(0, 0, R(35)), levels=1)
-        bread_shelf(wood[2], crust, cut)
+                sphere("cut", (x + d * s, -5.42, 0.36 + 0.15 * s), 0.05 * s, (0.5, 2.0, 0.35), cut, rot=(0, 0, R(35)), levels=1)
+        bread_shelf(front, M("#D8934B", rough=0.75, sss=0.3, coat=0.0), cut)
     for name, loc, s, rot in p["decor"]:
         put(name, loc, s, rot)
 
