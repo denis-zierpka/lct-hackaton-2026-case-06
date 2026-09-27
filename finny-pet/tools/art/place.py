@@ -10,7 +10,7 @@ its HUD, tabs, cards and the Match3 field over the background, so the frame is b
   SHOP      31–100 % calm large forms: counter, shelves;
   JOB       10–24 %, x 52–88 %: a mint shelf of bread under the awning (round loaf, baton, two baguettes; the bread in
             14–21 %) — the band every bakery screen leaves open, right of the HUD chips and the title (TOWN-A1c);
-            25–80 % plain wall and floor, nothing like a Match3 tile; 80–100 % the counter with a mint front and
+            25–80 % plain wall and floor, nothing like a Match3 tile; 80–100 % the counter with a warm front and
             loaves in 89–96 % (matte top: the glossy one clipped to white).
 Decor on the shelves comes only from props.py builders on the per-place white list (PLACES[id]["decor"]).
 """
@@ -43,9 +43,10 @@ PLACES = {  # decor: (props.py builder, location, scale, rotation deg)
                         ("item_care_shampoo", (0.3, WALL_Y - 0.4, 1.56), 0.55, (0, 0, -5))]),
     "bakery": dict(kind="JOB", outdoors=False, sign="ХЛЕБ",
                    colors=dict(wall="#FFEBD2", side="#F8DDBE", floor=("#E9B983", "#D9A36C"), awning=("#F4A261", "#FFF6E6"),
-                               board="#F4A261", letters="#8D5A3B", counter="#7FD6C2"),
-                   # board in the awning's tone: the cream one peeked between the HUD pills as one more pill. Counter —
-                   # the market's mint, also the bread shelf: the cold accent of the warm room, the bread told by hue
+                               board="#F4A261", letters="#8D5A3B", counter="#F4A261", shelf="#7FD6C2"),
+                   # board in the awning's tone: the cream one peeked between the HUD pills as one more pill. The shelf —
+                   # the market's mint, the cold accent of the warm room, the bread told by hue; the counter front stays
+                   # warm: a mint band at the very bottom read as one more UI panel under the round's white row
                    decor=[]),
 }
 assert not [n for p in PLACES.values() for n, *_ in p["decor"] if n in FORBIDDEN or n.startswith("tile_")]
@@ -141,11 +142,12 @@ def build(p, c):
         # one matte golden-brown bread on the shelf and the counter (the coat glared the counter loaves pale): the counter
         # takes ≈ 3× the light of the shelf under the awning, so its crust is darker and both render in one tone
         crust, cut = M("#8A511F", rough=0.75, sss=0.3, coat=0.0), M("#FFF4DE", rough=0.6, sss=0.2, coat=0.0)
+        low_cut = M("#A8886A", rough=0.6, sss=0.2, coat=0.0)  # the same cream as the shelf's under ≈ 3× the light
         for x, s in ((-0.8, 1.0), (0.1, 1.15), (0.9, 0.9)):
             sphere("loaf", (x, -5.4, 0.36), 0.26 * s, (1.4, 0.85, 0.6), crust)
-            for d in (-0.13, 0.0, 0.13):
-                sphere("cut", (x + d * s, -5.42, 0.36 + 0.15 * s), 0.05 * s, (0.5, 2.0, 0.35), cut, rot=(0, 0, R(35)), levels=1)
-        bread_shelf(front, M("#D8934B", rough=0.75, sss=0.3, coat=0.0), cut)
+            for d in (-0.13, 0.0, 0.13):  # thin, like the shelf's: the thick white ones read as stickers
+                sphere("cut", (x + d * s, -5.42, 0.36 + 0.15 * s), 0.05 * s, (0.3, 1.8, 0.3), low_cut, rot=(0, 0, R(35)), levels=1)
+        bread_shelf(M(c["shelf"], rough=0.5, sss=0.2, coat=0.3), M("#D8934B", rough=0.75, sss=0.3, coat=0.0), cut)
     for name, loc, s, rot in p["decor"]:
         put(name, loc, s, rot)
 
