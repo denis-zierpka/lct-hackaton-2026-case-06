@@ -3,7 +3,8 @@ finny-pet/screenshots/town/bakery_mock_1.jpg). Кадр 1080 × 1920 = 360 × 64
 HUD — полоса живого снимка SNAP (тот же фон под плашками); выпечка и ингредиенты — эмодзи-заглушки Segoe UI Emoji (в игре —
 спрайты Blender); жители — рендеры pet.py --residents в RES. Эскиз для решений владельца, не ассет.
 
-  python tools/mock_bakery.py RES_DIR OUT_DIR [SNAP.png]
+  python tools/mock_bakery.py RES_DIR OUT_DIR [SNAP.png]            — направления (ворота № 40, 41)
+  python tools/mock_bakery.py RES_DIR OUT_DIR SNAP.png decisions     — решения № 42–44 концепции TOWN-J1 (d42_*, d43_*, d44_*)
   (RES_DIR: Blender -b --factory-startup --python-exit-code 1 -P finny-pet/tools/art/pet.py -- --residents RES_DIR
    --only-resident borya | marta | kesha; SNAP по умолчанию — finny-pet/screenshots/emu_a_job10.png, снимок пекарни 360 × 640)"""
 import os, sys
@@ -13,6 +14,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RES, HERE = sys.argv[1], sys.argv[2]
 os.makedirs(HERE, exist_ok=True)
 BG = os.path.join(ROOT, "finny-pet/app/src/game/res/drawable-nodpi/bg_bakery_port.webp")
+DECISIONS = "decisions" in sys.argv[4:]
 SNAP = sys.argv[3] if len(sys.argv) > 3 else os.path.join(ROOT, "finny-pet/screenshots/emu_a_job10.png")
 COIN = os.path.join(ROOT, "finny-pet/app/src/game/res/drawable-nodpi/ui_coin.webp")
 MONT = os.path.join(ROOT, "finny-pet/app/src/main/res/font/montserrat.ttf")
@@ -108,6 +110,87 @@ def tokens(im, xy, n=0, of=3, size=34):
 def save(im, name):
     p = os.path.join(HERE, name); im.convert("RGB").save(p, quality=92); print(p)
 
+
+def pointer(im, xy, size=110):
+    emoji(im, "☝️", xy, size)
+
+
+def tray_scene(order, marks, on_tray, tiles, stars=0, point=None, note=None, riddle_chip=False, customer="marta"):
+    """Раунд «Поднос» по синтезу J1: облачко-заказ сверху, покупатель слева, Боря справа, поднос на прилавке, витрина,
+    ряд смены с кнопками 50 dp. marks[i]: None / "ok" (✓) / "need" (рамка и «?») у картинки заказа i."""
+    im = base()
+    b = res("borya", 430); im.alpha_composite(b, (760, 1010 - b.height + 30))
+    counter(im, 930, 1110)
+    slots = len(order); w = 150; x0 = 540 - slots * w // 2
+    d = ImageDraw.Draw(im)
+    if slots: d.rounded_rectangle((x0 - 30, 850, x0 + slots * w + 30, 950), 40, fill=(250, 244, 232), outline=(210, 190, 160), width=5)
+    for k in range(slots):
+        cx = x0 + k * w + w // 2
+        if k < len(on_tray): emoji(im, on_tray[k], (cx, 890), 100)
+        else: d.ellipse((cx - 45, 845, cx + 45, 935), outline=(190, 170, 150), width=4)
+    if customer:
+        m = res(customer, 560); im.alpha_composite(m, (20, 1110 - m.height + 120))
+    bw = 170 * len(order) + 80
+    if order: bubble(im, (40, 440, 40 + max(bw, 300), 660), (200, 760))
+    for k, ch in enumerate(order):
+        x = 120 + k * 170
+        emoji(im, ch, (x, 550), 120)
+        if marks[k] == "ok":
+            d = ImageDraw.Draw(im); d.ellipse((x + 20, 580, x + 74, 634), fill=GREEN)
+            d.line([(x + 33, 608), (x + 44, 620), (x + 62, 594)], fill=PAPER, width=7, joint="curve")  # ✓ is missing in Montserrat
+        elif marks[k] == "need":
+            d = ImageDraw.Draw(im); d.rounded_rectangle((x - 72, 478, x + 72, 622), 24, outline=PURPLE, width=6)
+            d.ellipse((x + 22, 580, x + 76, 634), fill=PURPLE); text(im, (x + 49, 607), "?", 38, True, PAPER, "mm")
+    if note: text(im, (60, 690), note, 44, True, PURPLE)
+    n = len(tiles); cols = 3
+    for k, ch in enumerate(tiles):
+        tx = 50 + (k % cols) * 332; ty = 1150 + (k // cols) * 250
+        shadow_box(im, (tx, ty, tx + 300, ty + 220), 36, PAPER); emoji(im, ch, (tx + 150, ty + 110), 150)
+        if point == k: pointer(im, (tx + 250, ty + 190), 110)
+    ImageDraw.Draw(im).rounded_rectangle((20, 1672, 1060, 1868), 48, fill=(244, 242, 248))
+    for k in range(4):
+        emoji(im, "⭐" if k < stars else "⚪", (80 + k * 92, 1770), 56)
+        if k < stars: text(im, (80 + k * 92, 1832), "+1", 34, True, PURPLE, "mm")
+    button(im, (440, 1695, 1044, 1845), "Отдать", GREEN, size=56)
+    button(im, (800, 420, 1050, 540), "Закончить", (244, 242, 248), PURPLE, 38)   # corner of the scene, not next to «Отдать»
+    if riddle_chip:
+        d = ImageDraw.Draw(im); d.ellipse((960, 560, 1060, 660), fill=PURPLE); text(im, (1010, 612), "?", 64, True, PAPER, "mm")
+    return im
+
+
+def order_scene(line1, line2):
+    im = base()
+    b = res("borya", 700); im.alpha_composite(b, (70, 1370 - b.height + 40))
+    counter(im, 1250, 1480, goods=[("🥐", 700), ("🍞", 850), ("🥖", 980)])
+    bubble(im, (470, 560, 1040, 1010), (330, 820))
+    text(im, (520, 610), line1, 52, True); text(im, (520, 676), line2, 52, True)
+    text(im, (520, 780), "6–10", 84, True, PURPLE); coin(im, (745, 782), 78)
+    text(im, (520, 900), "Смены:", 44); tokens(im, (700, 905), 0)
+    button(im, (60, 1560, 1020, 1704), "Начать смену")
+    return im
+
+
+if DECISIONS:
+    # № 42 — текст облачка заказа
+    for tag, a, b in (("a", "Помоги испечь", "булочки!"), ("b", "Помоги продать", "булочки!"), ("c", "Помоги Боре", "в пекарне!")):
+        save(order_scene(a, b), f"d42_{tag}.jpg")
+    # № 43 — галочки по ходу сборки: а) нет (✓ и «?» только после «Отдать»), б) да, как на макете; и отдача с расхождением
+    save(tray_scene(["🥐", "🥐", "🍞"], [None, None, None], ["🥐"], ["🥐", "🍞", "🥖", "🥨", "🍩", "🧁"]), "d43_a_building.jpg")
+    save(tray_scene(["🥐", "🥐", "🍞"], ["ok", None, None], ["🥐"], ["🥐", "🍞", "🥖", "🥨", "🍩", "🧁"]), "d43_b_building.jpg")
+    save(tray_scene(["🥐", "🥐", "🍞"], ["ok", "need", "ok"], ["🥐", "🍞"], ["🥐", "🍞", "🥖", "🥨", "🍩", "🧁"]),
+         "d43_after_give.jpg")
+    # № 44 — первая смена: а) обучение — 3 изделия, заказ из одного, указатель; б) сразу 6 изделий и заказ 2–4
+    save(tray_scene(["🥐"], [None], [], ["🥐", "🍞", "🥖"], point=0), "d44_a_first.jpg")
+    save(tray_scene(["🥐", "🥐", "🍞"], [None, None, None], [], ["🥐", "🍞", "🥖", "🥨", "🍩", "🧁"]), "d44_b_first.jpg")
+    # № 48 — загадка: а) облачко Бори поверх витрины, у прилавка никого; б) значок «?» у Бори, витрина работает
+    im = tray_scene([], [], [], ["🥐", "🍞", "🥖", "🥨", "🍩", "🧁"], stars=1, customer=None)
+    bubble(im, (80, 1120, 1000, 1640), (900, 1000))
+    text(im, (130, 1160), "Загадка!", 54, True, PURPLE); text(im, (130, 1240), "Отгадаешь — Боря положит", 44)
+    text(im, (130, 1296), "одну булочку на поднос", 44)
+    button(im, (130, 1400, 530, 1550), "Отгадать", GREEN, size=48); button(im, (560, 1400, 960, 1550), "Не сейчас", (244, 242, 248), PURPLE, 44)
+    save(im, "d48_a_bubble.jpg")
+    save(tray_scene(["🥐", "🍞"], [None, None], [], ["🥐", "🍞", "🥖", "🥨", "🍩", "🧁"], stars=1, riddle_chip=True, customer="osya"), "d48_b_chip.jpg")
+    sys.exit(0)
 
 # 1. Экран заказа в сцене: Боря на полу за прилавком, облачко, «6–10», жетоны, «Начать смену»
 im = base()
