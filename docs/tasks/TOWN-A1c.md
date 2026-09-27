@@ -136,7 +136,7 @@ S23 открывает только y 10–17 %). Караваи внизу ви
 ## БЮДЖЕТ
 дифф кода — insertions + deletions по `git diff --numstat BASE -- finny-pet/tools/art/place.py
 finny-pet/app/src/game/java/` (правки оркестратора — доки, спека, art_check.py — сюда не входят): place.py ≤ 120,
-GameApp.kt ≤ 50, 5 экранов — ровно 14 (7 + 7), MiniGameScreen.kt (только круг α) — 2; всего ≤ 192; группа 3 —
+GameApp.kt ≤ 50, 5 экранов — ровно 14 (7 + 7), MiniGameScreen.kt (только круг α) — 2, TownUi.kt (круг 1 группы 2) — 3; всего ≤ 195; группа 3 —
 бюджет в дополнении спеки. Новые файлы кода: 0. Ассеты: 3 WebP, каждый ≤ 61 440 Б. Прирост release APK к BASE
 (4 081 493 Б) ≤ сумма трёх WebP + 6 000 Б (dex, resources.arsc, заголовки zip); остаток бюджета эпика
 (1 048 576 Б сверх 4 081 493 Б) — в отчёт. Зависимости: 0.
@@ -147,6 +147,8 @@ GameApp.kt ≤ 50, 5 экранов — ровно 14 (7 + 7), MiniGameScreen.kt
   finny-pet/app/src/game/java/ru/finny/pet/game/screens/{PlaceScreen,RoundScreen,StreetScreen,BoardScreen,RoomScreen}.kt
   (в экранах — только 7 строк CONTRACT п. 3 г; проверка — п. 10)
 круг α (только по CONTRACT п. 4): finny-pet/app/src/game/java/ru/finny/pet/game/screens/MiniGameScreen.kt
+круг 1 группы 2 (решение по F1 этапа б): finny-pet/app/src/game/java/ru/finny/pet/game/ui/TownUi.kt — только
+  `Modifier.chip()` (плашки HUD непрозрачные)
 protect (обе группы): базовый из WORKFLOW (.claude/, CLAUDE.md, docs/, gradle-файлы, манифест main, proguard,
   finny-pet/app/src/test/) + finny-pet/docs/, генераторы finny-pet/tools/art/{lib,room,facade,pet,props,uiprops,
   to_webp,import_sprites,sounds,smoke}.py и montserrat_extrabold.ttf, finny-pet/tools/{ui.py,demo_run.sh,office/},
@@ -240,7 +242,7 @@ protect (обе группы): базовый из WORKFLOW (.claude/, CLAUDE.md
      7 вставок и 7 удалений; `git diff -U0 BASE -- <5 экранов> | grep -E '^[+-][^+-]' | grep -vE '^[+-][[:space:]]*//'`
      → пусто; новая формулировка — ровно в 7 строках
  11. `node .claude/hooks/assert-oracle-intact.js` со скоупом последней группы → exit 0 (protect в рабочем дереве цел,
-     хук сверяет с HEAD); `git diff --name-only BASE` и `git status --porcelain -uall` → только allow групп (и круга α,
+     хук сверяет с HEAD); `git diff --name-only BASE` и `git status --porcelain -uall` → только allow групп и кругов (TownUi.kt — круг 1 группы 2; круга α,
      если был) и файлы коммитов оркестратора:
      docs/, finny-pet/docs/, tools/art_check.py, 3 WebP, finny-pet/screenshots/town/a1c_*.jpg; бюджет диффа — раздел
      «Бюджет»; изменения place.py — только части пекарни по CONTRACT п. 1 д (чтение диффа ревьювером)
