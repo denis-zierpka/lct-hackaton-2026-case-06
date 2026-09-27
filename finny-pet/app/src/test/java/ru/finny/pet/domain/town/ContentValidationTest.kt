@@ -148,11 +148,12 @@ class ContentValidationTest {
     }
 
     @Test
-    fun `в сыром JSON town rules есть все десять полей`() {
+    fun `в сыром JSON town rules есть все одиннадцать полей`() {
         val r = rawTown.getValue("rules").jsonObject
         listOf(
             "daysPerWeek", "shiftsPerWeek", "shiftBonusMax", "shiftScorePerBonus", "changeCoins",
             "jobLevelShifts", "jobLevelBombs", "customGoalFromItemMin", "freeFunMood", "eventsPerDay",
+            "riddleHint",
         ).forEach { assertTrue("town.rules: нет поля «$it»", r.containsKey(it)) }
     }
 
@@ -615,15 +616,18 @@ class ContentValidationTest {
     // ---------- 19. Работы ----------
 
     @Test
-    fun `работа MATCH3 имеет поле шесть на шесть и ходы`() {
-        val m3 = town.jobs.filter { it.game == JobGame.MATCH3 }
-        assertTrue("нет ни одной работы MATCH3", m3.isNotEmpty())
-        m3.forEach {
+    fun `есть работа MATCH3 или TRAY`() {
+        val m = town.jobs.filter { it.game == JobGame.MATCH3 || it.game == JobGame.TRAY }
+        assertTrue("нет ни одной работы MATCH3 или TRAY — «Загадке Бори» некуда класть подсказку", m.isNotEmpty())
+    }
+
+    @Test
+    fun `у каждой работы MATCH3 есть поле шесть на шесть и ходы`() =
+        town.jobs.filter { it.game == JobGame.MATCH3 }.forEach {
             assertEquals("работа «${it.id}»: board", Board(6, 6), it.board)
             assertNotNull("работа «${it.id}»: нет moves", it.moves)
             assertNotNull("работа «${it.id}»: нет demoMoves", it.demoMoves)
         }
-    }
 
     @Test
     fun `работа TAPS имеет ровно три задания`() {
@@ -637,6 +641,173 @@ class ContentValidationTest {
         assertEquals(
             "работа «${it.id}»: baseByLevel ${it.baseByLevel} против jobLevelShifts ${town.rules.jobLevelShifts}",
             town.rules.jobLevelShifts.size, it.baseByLevel.size,
+        )
+    }
+
+    // ---------- 19б. Поднос по заказу (TOWN-J1-0 § 5) ----------
+
+    /**
+     * Правила подноса применяются к двум контентам: к настоящему content.json (у пекарни есть
+     * menu и steps, game — MATCH3 до среза 1а) и к копии с TRAY из TrayTest (J1Stand).
+     */
+    private val trayContents: List<Pair<String, TownContent>> by lazy {
+        listOf("content.json" to town, "копия с пекарней на подносах" to (J1Stand.content.town ?: error("нет town в копии")))
+    }
+
+    /** Работы, к которым применяются правила § 5: с непустыми ступенями и все TRAY. */
+    private fun trayJobs(t: TownContent): List<Job> =
+        t.jobs.filter { it.steps.isNotEmpty() || it.game == JobGame.TRAY }
+
+    /** Каждая проверяемая работа обоих контентов: подпись для сообщения, правила и сама работа. */
+    private fun eachTrayJob(check: (String, TownRules, Job) -> Unit) = trayContents.forEach { (where, t) ->
+        trayJobs(t).forEach { check("$where, работа «${it.id}»", t.rules, it) }
+    }
+
+    /** Сколько разных видов изделий в заказе из k штук (§ 3). */
+    private fun kindsNeeded(k: Int) = minOf(k, 1 + k / 2)
+
+    @Test
+    fun `правила подноса есть к чему применять`() {
+        trayContents.forEach { (where, t) ->
+            assertTrue("$where: ни одной работы с ступенями подноса", trayJobs(t).isNotEmpty())
+        }
+        assertTrue(
+            "в копии нет работы TRAY — правила TRAY проверяются вхолостую",
+            trayContents.any { (_, t) -> t.jobs.any { it.game == JobGame.TRAY } },
+        )
+    }
+
+    @Test
+    fun `у работы на подносах есть меню и ступени`() = trayContents.forEach { (where, t) ->
+        t.jobs.filter { it.game == JobGame.TRAY }.forEach {
+            assertTrue("$where, работа «${it.id}»: у TRAY пустое menu", it.menu.isNotEmpty())
+            assertTrue("$where, работа «${it.id}»: у TRAY пустые steps", it.steps.isNotEmpty())
+        }
+    }
+
+    @Test
+    fun `id изделий меню уникальны`() = eachTrayJob { where, _, job ->
+        dup("$where — меню", job.menu.map { it.id })
+    }
+
+    @Test
+    fun `у каждого изделия меню есть название и картинка`() = eachTrayJob { where, _, job ->
+        job.menu.forEach {
+            assertTrue("$where: у изделия «${it.id}» пустое title", it.title.isNotBlank())
+            assertTrue("$where: у изделия «${it.id}» пустое emoji", it.emoji.isNotBlank())
+        }
+    }
+
+    @Test
+    fun `первая ступень действует с нулевой смены`() = eachTrayJob { where, _, job ->
+        assertEquals("$where: первая ступень начинается не с нулевой смены", 0, job.steps.first().fromShift)
+    }
+
+    @Test
+    fun `ступени идут по возрастанию смен`() = eachTrayJob { where, _, job ->
+        val shifts = job.steps.map { it.fromShift }
+        shifts.zipWithNext().forEach { (a, b) ->
+            assertTrue("$where: ступени $shifts не строго по возрастанию", b > a)
+        }
+    }
+
+    @Test
+    fun `изделий на витрине не становится меньше`() = eachTrayJob { where, _, job ->
+        val kinds = job.steps.map { it.kinds }
+        kinds.zipWithNext().forEach { (a, b) ->
+            assertTrue("$where: изделия на витрине $kinds убывают", b >= a)
+        }
+    }
+
+    @Test
+    fun `изделий на витрине не больше чем в меню и хотя бы одно`() = eachTrayJob { where, _, job ->
+        job.steps.forEach {
+            assertTrue("$where: на витрине ${it.kinds} изделий, в меню ${job.menu.size}", it.kinds <= job.menu.size)
+            assertTrue("$where: на витрине ${it.kinds} изделий", it.kinds >= 1)
+        }
+    }
+
+    @Test
+    fun `покупателей в смене столько же сколько потолок надбавки`() = eachTrayJob { where, rules, job ->
+        job.steps.forEach {
+            assertEquals(
+                "$where, ступень с ${it.fromShift} смен: заказов ${it.sizes} против потолка надбавки ${rules.shiftBonusMax}",
+                rules.shiftBonusMax, it.sizes.size,
+            )
+        }
+    }
+
+    @Test
+    fun `в демо покупателей столько же сколько потолок надбавки`() = eachTrayJob { where, rules, job ->
+        job.demoSizes?.let {
+            assertEquals("$where: демо-заказы $it против потолка надбавки ${rules.shiftBonusMax}", rules.shiftBonusMax, it.size)
+        }
+    }
+
+    @Test
+    fun `размер заказа от одного до четырёх изделий`() = eachTrayJob { where, _, job ->
+        (job.steps.map { it.sizes } + listOfNotNull(job.demoSizes)).forEach { sizes ->
+            sizes.forEach {
+                assertTrue("$where: размер заказа $it в списке $sizes", it in 1..4)
+            }
+        }
+    }
+
+    @Test
+    fun `на витрине ступени хватает видов для её заказов`() = eachTrayJob { where, _, job ->
+        job.steps.forEach { st ->
+            st.sizes.forEach { k ->
+                assertTrue(
+                    "$where, ступень с ${st.fromShift} смен: заказу из $k изделий нужно ${kindsNeeded(k)} видов, на витрине ${st.kinds}",
+                    st.kinds >= kindsNeeded(k),
+                )
+            }
+        }
+    }
+
+    @Test
+    fun `на витрине первой ступени хватает видов для демо`() = eachTrayJob { where, _, job ->
+        val kinds = job.steps.first().kinds
+        job.demoSizes?.forEach { k ->
+            assertTrue(
+                "$where: демо-заказу из $k изделий нужно ${kindsNeeded(k)} видов, на витрине первой ступени $kinds",
+                kinds >= kindsNeeded(k),
+            )
+        }
+    }
+
+    @Test
+    fun `подсказка Бори кладёт хотя бы одно изделие`() = eachTrayJob { where, rules, _ ->
+        assertTrue("$where: riddleHint ${rules.riddleHint}", rules.riddleHint >= 1)
+    }
+
+    @Test
+    fun `подсказка Бори не собирает заказ целиком`() = eachTrayJob { where, rules, job ->
+        (job.steps.map { it.sizes } + listOfNotNull(job.demoSizes)).forEach { sizes ->
+            val smallest = sizes.drop(1).minOrNull() ?: error("$where: в списке заказов $sizes нет второго покупателя")
+            assertTrue(
+                "$where: riddleHint ${rules.riddleHint} собирает заказ из $smallest изделий целиком (заказы $sizes)",
+                rules.riddleHint <= smallest - 1,
+            )
+        }
+    }
+
+    @Test
+    fun `покупателей на первой неделе не меньше двух`() = eachTrayJob { where, _, job ->
+        val pool = town.residents.filter {
+            val w = it.arrivesWeek
+            w != null && w <= 1 && it.id != job.resident
+        }
+        assertTrue("$where: покупателей на первой неделе ${pool.map { it.id }}, нужно ≥ 2", pool.size >= 2)
+    }
+
+    @Test
+    fun `реплики ступеней без спешки и срочности`() = eachTrayJob { where, _, job ->
+        val intros = job.steps.mapNotNull { st -> st.intro?.let { "$where, ступень с ${st.fromShift} смен" to it } }
+        assertNoSubstring(
+            intros,
+            listOf("сегодня", "осталось", "до конца недели", "скорее", "пока не", "успей", "последн"),
+            "правило 3 (без срочности, реплики ступеней)",
         )
     }
 

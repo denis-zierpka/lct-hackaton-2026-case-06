@@ -817,12 +817,16 @@ class EventCatalogTest {
     }
 
     @Test
-    fun `смена ради рекорда наклейку заказа не даёт`() {
+    fun `после лимита смена отказывает и наклейки заказа не даёт`() {
         var s = S1cStand.planned(S1cStand.profile(), 40, 20, 30)
         repeat(3) { s = town.finishShift(s, "job_market", 3, 0).s1aState() }
         assertEquals(listOf("st_job_market"), s.stickers.filter { it.startsWith("st_job_") })
-        val record = town.finishShift(s, "job_bakery", 60, 0).s1aState()
-        assertFalse("за игру ради рекорда наклейки нет", "st_job_bakery" in record.stickers)
+        assertEquals(
+            "четвёртая смена в пекарне",
+            "Смены на неделе закончились — новые с новым конвертом",
+            town.finishShift(s, "job_bakery", 60, 0).s1aRefusal(),
+        )
+        assertFalse("наклейка заказа пекарни без смены", "st_job_bakery" in s.stickers)
     }
 
     @Test

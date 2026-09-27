@@ -71,6 +71,7 @@ class TownContentTest {
         assertEquals("customGoalFromItemMin", num("customGoalFromItemMin"), r.customGoalFromItemMin)
         assertEquals("freeFunMood", num("freeFunMood"), r.freeFunMood)
         assertEquals("eventsPerDay", num("eventsPerDay"), r.eventsPerDay)
+        assertEquals("riddleHint", num("riddleHint"), r.riddleHint)
     }
 
     @Test
@@ -84,6 +85,7 @@ class TownContentTest {
         val fields = listOf(
             "daysPerWeek", "shiftsPerWeek", "shiftBonusMax", "shiftScorePerBonus", "changeCoins",
             "jobLevelShifts", "jobLevelBombs", "customGoalFromItemMin", "freeFunMood", "eventsPerDay",
+            "riddleHint",
         )
         fields.forEach { field ->
             val rules = JsonObject(rawTown.getValue("rules").jsonObject - field)
@@ -202,7 +204,7 @@ class TownContentTest {
 
     @Test
     fun `JobGame содержит ровно значения контракта`() =
-        assertEquals(listOf(JobGame.MATCH3, JobGame.TAPS, JobGame.CHANGE), JobGame.entries.toList())
+        assertEquals(listOf(JobGame.MATCH3, JobGame.TAPS, JobGame.CHANGE, JobGame.TRAY), JobGame.entries.toList())
 
     @Test
     fun `OpensBy без полей — оба null`() {
@@ -287,6 +289,53 @@ class TownContentTest {
 
         val courier = town.jobs.first { it.id == "job_courier" }
         assertEquals("job_courier.opensBy.goal", "goal_scooter", courier.opensBy.goal)
+    }
+
+    /** Запись работы в сыром JSON. */
+    private fun rawJob(id: String): JsonObject = rawTown.getValue("jobs").jsonArray
+        .map { it.jsonObject }.first { it.getValue("id").jsonPrimitive.content == id }
+
+    @Test
+    fun `запись пекарни читает меню ступени и размеры демо из JSON`() {
+        val bakery = town.jobs.first { it.id == "job_bakery" }
+        val j = rawJob("job_bakery")
+
+        val menu = j.getValue("menu").jsonArray.map { it.jsonObject }
+        assertTrue("в сыром JSON пекарни пустое меню", menu.isNotEmpty())
+        assertEquals("изделий в меню", menu.size, bakery.menu.size)
+        menu.forEachIndexed { i, raw ->
+            val p = bakery.menu[i]
+            assertEquals("menu $i — id", raw.getValue("id").jsonPrimitive.content, p.id)
+            assertEquals("menu $i — title", raw.getValue("title").jsonPrimitive.content, p.title)
+            assertEquals("menu $i — emoji", raw.getValue("emoji").jsonPrimitive.content, p.emoji)
+        }
+
+        val steps = j.getValue("steps").jsonArray.map { it.jsonObject }
+        assertTrue("в сыром JSON пекарни нет ступеней", steps.isNotEmpty())
+        assertEquals("ступеней", steps.size, bakery.steps.size)
+        steps.forEachIndexed { i, raw ->
+            val st = bakery.steps[i]
+            assertEquals("steps $i — fromShift", raw.getValue("fromShift").jsonPrimitive.int, st.fromShift)
+            assertEquals("steps $i — kinds", raw.getValue("kinds").jsonPrimitive.int, st.kinds)
+            assertEquals("steps $i — sizes", raw.getValue("sizes").jsonArray.map { s -> s.jsonPrimitive.int }, st.sizes)
+            assertEquals("steps $i — intro", raw["intro"]?.jsonPrimitive?.content, st.intro)
+        }
+
+        assertEquals(
+            "demoSizes",
+            j.getValue("demoSizes").jsonArray.map { it.jsonPrimitive.int },
+            bakery.demoSizes,
+        )
+    }
+
+    @Test
+    fun `у работы без подноса меню и ступени пусты а ступень без реплики молчит`() {
+        val market = town.jobs.first { it.id == "job_market" }
+        assertTrue("в сыром JSON у рынка есть меню", "menu" !in rawJob("job_market"))
+        assertEquals("job_market.menu", emptyList<Pastry>(), market.menu)
+        assertEquals("job_market.steps", emptyList<TrayStep>(), market.steps)
+        assertNull("job_market.demoSizes", market.demoSizes)
+        assertNull("ступень без реплики жителя", TrayStep(fromShift = 0, kinds = 3, sizes = listOf(1, 2)).intro)
     }
 
     @Test
