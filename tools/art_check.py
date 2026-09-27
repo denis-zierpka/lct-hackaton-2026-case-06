@@ -16,6 +16,9 @@
   python tools/art_check.py which SHOT … [--expect N] [--bgdir D]  какой фон под снимком (360 × 640 или S23): по полосе
                                                       статус-бара; D — фоны bg_*_port.webp, которых ещё нет в res
   python tools/art_check.py tiles BG [--veil A]       ΔE плиток Match3 до фона места под подложкой поля (p5 ≥ 15)
+  python tools/art_check.py residents [--selfcheck]   id town.residents = ветки residentRes в TownUi.kt = res_*.webp в
+                                                      game/res, else -> null (TOWN-A1f); --selfcheck — 4 мутанта дают
+                                                      MISMATCH
 
 Дамп пишет этот же файл, запущенный внутри Blender ПОСЛЕ генератора: --python tools/art_check.py с env DUMP_OUT.
 Снимки для композитов — finny-pet/screenshots/emu_*.png (в .gitignore, лежат на машине команды).
@@ -331,6 +334,36 @@ def palette():
     return 1 if bad else 0
 
 
+def residents(args):
+    """id town.residents = ветки `"<id>" -> R.drawable.res_<id>` в residentRes (TownUi.kt) = файлы res_*.webp (TOWN-A1f)."""
+    import re
+    src = open(os.path.join(FP, "app/src/game/java/ru/finny/pet/game/ui/TownUi.kt"), encoding="utf-8").read()
+    ids = {r["id"] for r in json.load(open(os.path.join(FP, "app/src/main/assets/content/content.json"), encoding="utf-8"))["town"]["residents"]}
+    files = {f[4:-5] for f in os.listdir(os.path.join(FP, "app/src/game/res/drawable-nodpi")) if f.startswith("res_") and f.endswith(".webp")}
+
+    def check(text):
+        body = re.search(r"fun residentRes\(id: String\): Int\? = when \(id\) \{(.*?)\n\}", text, re.S)
+        # commented-out branches are not branches; an unknown id must fall back to the pet frame (else -> null)
+        code = re.sub(r"//[^\n]*|/\*.*?\*/", "", body.group(1), flags=re.S) if body else ""
+        pairs = re.findall(r'"(\w+)"\s*->\s*R\.drawable\.res_(\w+)', code)
+        br = {a for a, b in pairs if a == b}; bad = [(a, b) for a, b in pairs if a != b]
+        tail = bool(re.search(r"\n\s*else\s*->\s*null\s*$", code))
+        ok = bool(ids) and ids == br == files and not bad and len(pairs) == len(ids) and tail
+        print(f"id {len(ids)}, ветки {len(br)}, файлы {len(files)}, чужой ресурс {bad}, else -> null {tail}; нет ветки "
+              f"{sorted(ids - br)}, нет файла {sorted(ids - files)}, лишние {sorted((br | files) - ids)} -> "
+              f"{'MATCH %d' % len(ids) if ok else 'MISMATCH'}")
+        return ok
+    if "--selfcheck" in args:  # мутанты обязаны дать MISMATCH: без ветки Марты, Марта с ресурсом Фомы, ветка в /* */,
+        # неизвестный житель рисуется Мартой
+        m = [re.sub(r'\n\s*"marta"\s*->\s*R\.drawable\.res_marta', "", src, count=1),
+             src.replace('"marta" -> R.drawable.res_marta', '"marta" -> R.drawable.res_foma', 1),
+             src.replace('"marta" -> R.drawable.res_marta', '/* "marta" -> R.drawable.res_marta */', 1),
+             re.sub(r"(fun residentRes.*?)else\s*->\s*null", r"\1else -> R.drawable.res_marta", src, count=1, flags=re.S)]
+        r = [x != src and not check(x) for x in m]
+        print("SELFCHECK OK" if all(r) else f"SELFCHECK FAIL {r}"); return 0 if all(r) else 1
+    return 0 if check(src) else 1
+
+
 if __name__ == "__main__":
     if os.environ.get("DUMP_OUT") and "bpy" in sys.modules:  # внутри Blender после генератора
         dump()
@@ -338,4 +371,4 @@ if __name__ == "__main__":
         cmd, rest = sys.argv[1], sys.argv[2:]
         sys.exit({"regress": lambda: regress(*rest), "diff": lambda: diff(*rest), "bg": lambda: bg(*rest),
                   "bbox": lambda: bbox(rest), "palette": palette, "which": lambda: which(rest),
-                  "tiles": lambda: tiles(*rest)}[cmd]())
+                  "tiles": lambda: tiles(*rest), "residents": lambda: residents(rest)}[cmd]())
