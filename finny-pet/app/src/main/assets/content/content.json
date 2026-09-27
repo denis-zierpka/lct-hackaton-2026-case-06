@@ -725,7 +725,8 @@
       ],
       "customGoalFromItemMin": 50,
       "freeFunMood": 5,
-      "eventsPerDay": 1
+      "eventsPerDay": 1,
+      "riddleHint": 1
     },
     "places": [
       {
@@ -1245,7 +1246,24 @@
           "h": 6
         },
         "moves": 15,
-        "demoMoves": 5
+        "demoMoves": 5,
+        "_todo": "Меню, ступени и demoSizes — заглушки, подобрать плейтестом (TOWN-J1, концепция § 5 п. 4)",
+        "menu": [
+          { "id": "croissant", "title": "Круассан", "emoji": "🥐" },
+          { "id": "bread", "title": "Хлеб", "emoji": "🍞" },
+          { "id": "baguette", "title": "Багет", "emoji": "🥖" },
+          { "id": "pretzel", "title": "Крендель", "emoji": "🥨" },
+          { "id": "donut", "title": "Пончик", "emoji": "🍩" },
+          { "id": "cupcake", "title": "Кекс", "emoji": "🧁" }
+        ],
+        "steps": [
+          { "fromShift": 0, "kinds": 3, "sizes": [1, 2, 2, 2] },
+          { "fromShift": 1, "kinds": 4, "sizes": [2, 2, 3, 3], "intro": "Новинка — крендель!" },
+          { "fromShift": 3, "kinds": 5, "sizes": [2, 3, 3, 3], "intro": "Новинка — пончики!" },
+          { "fromShift": 5, "kinds": 6, "sizes": [2, 3, 3, 3], "intro": "Новинка — кексы!" },
+          { "fromShift": 7, "kinds": 6, "sizes": [3, 3, 4, 4], "intro": "Большие заказы!" }
+        ],
+        "demoSizes": [1, 2, 2, 2]
       },
       {
         "id": "job_market",
