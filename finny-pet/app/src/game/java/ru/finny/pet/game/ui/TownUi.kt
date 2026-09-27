@@ -125,9 +125,23 @@ fun Pic(res: Int?, emoji: String, size: Dp, modifier: Modifier = Modifier) {
 @Composable
 fun GoalPic(goal: Goal, size: Dp, modifier: Modifier = Modifier) = Pic(goalRes(goal.id), goal.emoji, size, modifier)
 
+/** Drawable of a resident (res_<id>, rendered by pet.py --residents), or null — then the pet frame of its look is drawn. */
+fun residentRes(id: String): Int? = when (id) {
+    "marta" -> R.drawable.res_marta
+    "foma" -> R.drawable.res_foma
+    "borya" -> R.drawable.res_borya
+    "osya" -> R.drawable.res_osya
+    "tosha" -> R.drawable.res_tosha
+    "stepan" -> R.drawable.res_stepan
+    "kesha" -> R.drawable.res_kesha
+    "liza" -> R.drawable.res_liza
+    "asya" -> R.drawable.res_asya
+    else -> null
+}
+
 @Composable
 fun ResidentPic(r: Resident, size: Dp, modifier: Modifier = Modifier) =
-    Image(painterResource(PetSprites.id(r.look.species, r.look.color, 0, "happy")), r.name, modifier.size(size))
+    Image(painterResource(residentRes(r.id) ?: PetSprites.id(r.look.species, r.look.color, 0, "happy")), r.name, modifier.size(size))
 
 // ---------- HUD (§C, macket MockHome) ----------
 
