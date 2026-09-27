@@ -25,7 +25,7 @@ app/src/
 ├── game/                          вариант game
 │   ├── java/ru/finny/pet/MainActivity.kt
 │   ├── java/ru/finny/pet/game/    GameApp, GameViewModel (+ Screen, Effect), audio/Sfx, ui/, screens/, mock/ (debug-макеты «Городка»)
-│   └── res/                       drawable-nodpi: комната, фоны мест, товары, цели, плитки, иконки (43 WebP);
+│   └── res/                       drawable-nodpi: комната, фоны мест, жители, товары, цели, плитки, иконки (52 WebP);
 │                                  raw: 13 звуков + музыка (OGG)
 ├── classic/                       вариант classic (не сдаётся)
 └── test/java/ru/finny/pet/domain/ JVM-тесты правил
@@ -180,7 +180,7 @@ Compose перерисовывает экраны по state / screen / lines / 
 | Скрипт | Что делает | Куда попадает |
 |---|---|---|
 | `pet.py` → `import_sprites.py` | Blender рендерит питомца (3 вида × 3 цвета × 3 стадии × 4 лица = 108 PNG); `import_sprites.py` конвертирует в WebP и перегенерирует `PetSprites.kt` | `app/src/main/res/drawable-nodpi/pet_*.webp`, `app/src/main/java/ru/finny/pet/PetSprites.kt` |
-| `pet.py --residents` | Жители города из `town.residents` (`content.json`): своя палитра `RESIDENT_COLORS`, силуэт взрослого, аксессуар из контента и предмет роли `ROLE_PROPS`, 1 кадр на жителя (PNG) | `res_<id>` — в приложение с TOWN-A1f |
+| `pet.py --residents` | Жители города из `town.residents` (`content.json`): своя палитра `RESIDENT_COLORS`, силуэт взрослого, аксессуар из контента и предмет роли `ROLE_PROPS`, 1 кадр на жителя (PNG) | `res_<id>` в `game/res/drawable-nodpi/` (TOWN-A1f); `ResidentPic` рисует `residentRes(id)`, для жителя без ветки — кадр питомца его `look` (защита от падения). Новый житель: строка `RESIDENT_COLORS` + рендер + `to_webp.py` + ветка `residentRes`; сверка — `python tools/art_check.py residents` |
 | `room.py` | Комната: альбом/портрет × день/вечер (PNG) | `app/src/game/res/drawable-nodpi/room_*` |
 | `place.py` | Фоны мест «Городка» — «кит интерьера»: рынок у реки, «У Фомы», пекарня; портрет 1080 × 1920, RGB (PNG) | `bg_<place>_port` в `game/res/drawable-nodpi/` (TOWN-A1c); у пекарни — полка с хлебом в полосе, открытой на всех её экранах |
 | `facade.py` | Фасады карточек улицы 384 × 384 RGBA: дом, рынок, «У Фомы», пекарня, калитки парка, леса, зоопарка (замок — оверлей UI) (PNG) | `fac_<place>` — с TOWN-A1g |

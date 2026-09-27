@@ -49,7 +49,7 @@ BRANCH: feat/town
   (решение 10) — решением 40 отменяется.
 - UI: «большое окно» — `OrderCard` (Panel, `PlaceScreen.kt:351-368`) с `Riddle` (`:370-390`) в прокручиваемой колонке
   `JobPlace` (`:303-316`); раунд выбирает UI по `vm.match != null` (`RoundScreen.kt:51`), итог `job_result` — общий Panel
-  (`:43-49`). `ResidentPic` — пока кадр питомца (`TownUi.kt:129-130`), спрайты жителей — A1f.
+  (`:43-49`). `ResidentPic` — спрайт жителя `res_<id>` (A1f, кадр 512 × 512, линия ног y 492; для Бори крупным планом — лист `a1f_frame.jpg`, решение владельца по размеру кадра — в TOWN-A1f.md).
 - Тесты, которые правит test-author: `TownContentTest.kt:204-205, 274-280`, `ContentValidationTest.kt:617-626`, `ShiftTest`
   (строки оплаты, бомбы уровня `:415, 446-458`, сброс загадки `:537, 545, 585`), `TownDayTest.kt:283`. `Match3Test` и
   `MvpRulesTest:851` проверяют сам движок — если движок остаётся, не трогаются.

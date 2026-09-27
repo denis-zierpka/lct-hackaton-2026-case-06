@@ -23,10 +23,14 @@ shot2() {
   "$A" font 1.0; sleep 1.5
 }
 swipe_up() { for i in $(seq ${1:-3}); do "$A" shell input swipe 540 1450 540 450 300; done; sleep 1; }  # from mid-screen: at y ≈ 1737 (360 × 640) sits the debug button «Макеты „Городка“»
+scroll_to() {  # swipe up until a node starting with $1 is on screen: the parent screen grows with the profile's history
+  local k; for k in 1 2 3 4 5 6 7 8 9 10; do [ -n "$(find_xy "$1")" ] && return; swipe_up 1; done
+}
 gate() {  # parent gate «A × B = ?»; on a slow device the field may get focus after the typing — check and retry
   local q a b i j
   question() { "$A" ui | grep -oE '[0-9]+ × [0-9]+ = \?' | head -1; }
-  for j in 1 2 3 4 5; do q=$(question); [ -n "$q" ] && break; sleep 1.5; done   # wait for the gate to be drawn
+  for j in $(seq 10); do q=$(question); [ -n "$q" ] && break; sleep 1.5; done   # wait for the gate to be drawn (cold start after install is slow)
+  [ -z "$q" ] && echo "  gate not passed: no question"
   for i in 1 2 3; do
     [ -z "$q" ] && return
     a=${q%% ×*}; b=${q#*× }; b=${b%% =*}
@@ -39,7 +43,7 @@ plan() { tp "Банки"; for i in 1 2 3 4; do tp "Нужное: " 0.3; done; fo
 
 "$A" font 1.0
 "$A" launch >/dev/null; sleep 2.5; shot1 title
-tp "Для взрослого"; gate; swipe_up 3; tp "Создать тестовый профиль (демо)"; tp "Да, продолжить" 2
+tp "Для взрослого"; gate; scroll_to "Создать тестовый профиль (демо)"; tp "Создать тестовый профиль (демо)"; tp "Да, продолжить" 2
 for i in 1 2 3 4 5; do "$A" tap "Дальше" >/dev/null 2>&1 || break; sleep 1; done
 tp "Создать питомца"; tp "Зайка" 0.5; tp "Рыжий" 0.5; tp "Финни" 0.5; swipe_up 1; tp "Начать!" 2.5
 shot1 room
