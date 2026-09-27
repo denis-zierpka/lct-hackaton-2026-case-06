@@ -82,7 +82,8 @@ fun TText(text: String, modifier: Modifier = Modifier, style: TextStyle = Materi
 @Composable
 fun bigFont() = LocalDensity.current.fontScale > 1.15f
 
-fun Modifier.chip() = background(Color.White.copy(alpha = 0.92f), RoundedCornerShape(50))
+// Opaque: the place background sits under the chip and sign letters showed through (TOWN-A1c).
+fun Modifier.chip() = background(Color.White, RoundedCornerShape(50))
 
 // ---------- pictures (§B.9) ----------
 
