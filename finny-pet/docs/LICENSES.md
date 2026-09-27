@@ -33,7 +33,7 @@
 | Шрифт | Лицензия | Где |
 |---|---|---|
 | Montserrat (variable, wght 100–900; Julieta Ulanovsky и соавторы) | SIL Open Font License 1.1 — разрешает встраивание и распространение в составе приложения | `app/src/main/res/font/montserrat.ttf`, единственный встроенный шрифт; шрифт шаблона презентации ЛЦТ-2026 |
-| Montserrat ExtraBold — статический экземпляр того же шрифта (wght 800), производная по SIL OFL 1.1 | SIL Open Font License 1.1 | `tools/art/montserrat_extrabold.ttf` — только буквы вывесок в рендерах Blender (у Blender нет осей вариативного шрифта), в APK не входит. Пересборка: `python -c "from fontTools.ttLib import TTFont; from fontTools.varLib import instancer; instancer.instantiateVariableFont(TTFont('finny-pet/app/src/main/res/font/montserrat.ttf'), {'wght': 800}).save('finny-pet/tools/art/montserrat_extrabold.ttf')"` (fontTools 4.62, только у оркестратора) |
+| Montserrat ExtraBold — статический экземпляр того же шрифта (wght 800), производная по SIL OFL 1.1 | SIL Open Font License 1.1 | `tools/art/montserrat_extrabold.ttf` — только буквы вывесок в рендерах Blender (у Blender нет осей вариативного шрифта); сам файл в APK не входит, буквы вывесок запечены в фоны мест `bg_*` (картинки, созданные шрифтом, OFL 1.1 не ограничивает). Пересборка: `python -c "from fontTools.ttLib import TTFont; from fontTools.varLib import instancer; instancer.instantiateVariableFont(TTFont('finny-pet/app/src/main/res/font/montserrat.ttf'), {'wght': 800}).save('finny-pet/tools/art/montserrat_extrabold.ttf')"` (fontTools 4.62, только у оркестратора) |
 
 Эмодзи (в `classic` — иконки категорий и разделов) отображаются системным шрифтом
 (Noto Color Emoji, SIL OFL 1.1) и в APK не входят.
@@ -49,11 +49,12 @@
 |---|---|---|
 | Питомец: кот, зайка, щенок × 3 цвета × 3 стадии × 4 выражения | 108 WebP `pet_*` в `app/src/main/res/drawable-nodpi/` (общие для обоих вариантов) | `tools/art/pet.py` (Blender 5.2) → `tools/art/import_sprites.py` (WebP и `PetSprites.kt`) |
 | Комната: альбом и портрет, день и вечер | 4 WebP `room_*` в `app/src/game/res/drawable-nodpi/` | `tools/art/room.py` |
+| Фоны мест «Городка»: рынок у реки, лавка «У Фомы», пекарня (портрет) | 3 WebP `bg_market_port`, `bg_foma_port`, `bg_bakery_port` там же | `tools/art/place.py` → `tools/art/to_webp.py --rgb` (TOWN-A1c) |
 | Товары, цели, плитки мини-игры, монета | 22 WebP там же: `item_*` (10), `goal_*` (5), `tile_*` (6), `ui_coin` | `tools/art/props.py` |
 | Иконки интерфейса: банка и крышки направлений бюджета, кошелёк, копилка, кубок, книга, замок, солнце, луна, геймпад, сумка, пузырь с вопросом | 14 WebP `ui_*` там же | `tools/art/uiprops.py` |
 | Иконка приложения — рендер 3D-котика на фирменном градиенте | `app/src/main/res/drawable-xxxhdpi/ic_launcher_foreground.png` (адаптивная иконка, фон `drawable/ic_launcher_background.xml`), `assets/icon/icon-512.png` для магазина | котик — `tools/art/pet.py` |
 
-Итого в `game/res/drawable-nodpi/` 40 файлов. Анимация питомца в `game` — код
+Итого в `game/res/drawable-nodpi/` 43 файла. Анимация питомца в `game` — код
 `game/ui/PetSprite.kt` (в `classic` — `ui/PetView.kt`).
 
 ## Звуки
