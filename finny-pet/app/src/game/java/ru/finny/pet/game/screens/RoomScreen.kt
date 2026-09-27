@@ -289,7 +289,7 @@ private fun BottomRow(vm: GameViewModel) {
             ) {
                 Image(painterResource(icon), null, Modifier.size(if (big) 44.dp else 36.dp))
                 // 14 sp: UX_ACCESSIBILITY.md «Исключения: 14 sp», нижний ряд (16 sp не влезает в 72 dp)
-                // dark, not white on the light room background behind every screen (правка R7, ТЗ 3.6)
+                // dark, not white on the light room background (TOWN-A1c) (правка R7, ТЗ 3.6)
                 if (!big) TText(word, style = MaterialTheme.typography.labelSmall, color = G.ink, maxLines = 1)
             }
         }

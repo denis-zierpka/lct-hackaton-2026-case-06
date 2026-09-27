@@ -5,9 +5,11 @@ import android.provider.Settings
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -181,6 +183,10 @@ fun GameApp(vm: GameViewModel = viewModel()) {
                 BackHandler(enabled = vm.canGoBack) { vm.back() }
 
                 RoomBackground(landscape = landscape, evening = screen == Screen.Night || screen == Screen.WeekEnd)
+                // place layer over the room, outside AnimatedContent: same key (market → round → result) does not blink (TOWN-A1c)
+                Crossfade(targetState = placeBackground(screen, vm), animationSpec = if (animate) tween(320) else snap(), label = "place") { res ->
+                    if (res != null) Image(painterResource(res), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                }
                 Box(Modifier.fillMaxSize().systemBarsPadding()) {
                     AnimatedContent(
                         targetState = screen,
@@ -230,6 +236,20 @@ fun GameApp(vm: GameViewModel = viewModel()) {
             }
         }
     }
+}
+
+/** Screen → place background (TOWN-A1c table); explicit R.drawable refs keep the images through R8 shrinking. null = room. */
+private fun placeBackground(s: Screen, vm: GameViewModel): Int? = when (s) {
+    is Screen.Place -> placeBackground(s.placeId)
+    is Screen.Round -> vm.tc.jobs.firstOrNull { it.id == s.jobId }?.place?.let(::placeBackground)
+    else -> null
+}
+
+private fun placeBackground(placeId: String): Int? = when (placeId) {
+    "market" -> R.drawable.bg_market_port
+    "foma" -> R.drawable.bg_foma_port
+    "bakery" -> R.drawable.bg_bakery_port
+    else -> null
 }
 
 @Composable

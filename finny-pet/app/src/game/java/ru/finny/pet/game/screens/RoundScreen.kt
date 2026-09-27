@@ -50,7 +50,7 @@ fun RoundScreen(vm: GameViewModel, jobId: String) {
             }
             vm.match != null -> MiniGameScreen(vm, Modifier.weight(1f))
             else -> Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                // dark, not white on the light room background behind every screen (правка №14, ТЗ 3.6)
+                // dark, not white on the light place background (TOWN-A1c) (правка №14, ТЗ 3.6)
                 TText(job?.title ?: jobId, style = MaterialTheme.typography.headlineSmall, color = G.ink)
                 vm.taps.forEachIndexed { i, done ->
                     GameButton((if (done) "✓ " else "") + job?.tasks?.getOrNull(i).orEmpty(), Modifier.fillMaxWidth(), if (done) ButtonStyle.GREEN else ButtonStyle.PAPER, minHeight = 48.dp) { vm.tapTask(i) }

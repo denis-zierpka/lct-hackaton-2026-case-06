@@ -185,7 +185,7 @@ private fun ShopPlace(vm: GameViewModel, place: Place) {
 private fun RowScope.JarsHud(vm: GameViewModel) {
     val s = vm.state
     if (!s.plan.confirmed) {
-        // dark, not white on the light room background behind every screen (правка R7, ТЗ 3.6)
+        // dark, not white on the light place background (TOWN-A1c) (правка R7, ТЗ 3.6)
         TText("Не разложено ${s.balance - s.plan.total}", style = MaterialTheme.typography.titleSmall, color = G.ink, maxLines = 1)
         return
     }
@@ -198,7 +198,7 @@ private fun RowScope.JarsHud(vm: GameViewModel) {
         Column(Modifier.clearAndSetSemantics { contentDescription = "$word $n" }.padding(horizontal = 2.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Image(painterResource(lid), null, Modifier.size(20.dp))
-                // dark, not white/pink on the light room background behind every screen (правка R7, ТЗ 3.6)
+                // dark, not white/pink on the light place background (TOWN-A1c) (правка R7, ТЗ 3.6)
                 TText("$n", style = MaterialTheme.typography.titleMedium.copy(lineHeight = 22.sp), color = G.ink, maxLines = 1)
             }
             // 14 sp: UX_ACCESSIBILITY.md «Исключения: 14 sp» — подписи отделений HUD лавки
@@ -307,7 +307,7 @@ private fun JobPlace(vm: GameViewModel, place: Place) {
         Hud1(vm, inPlace = true)
         Hud2 { StatsCollapsed(vm); MailChip(vm) }
         Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            // dark, not white on the light room background behind every screen (правка №14, ТЗ 3.6)
+            // dark, not white on the light place background (TOWN-A1c) (правка №14, ТЗ 3.6)
             TText(place.title, style = MaterialTheme.typography.headlineSmall, color = G.ink)
             PlaceEvents(vm, place.id)
             if (job != null) OrderCard(vm, job, vm.ordersAt(place.id).firstOrNull { it.params.job == job.id })

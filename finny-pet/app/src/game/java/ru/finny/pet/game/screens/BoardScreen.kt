@@ -31,7 +31,7 @@ fun BoardScreen(vm: GameViewModel) {
     Column(Modifier.fillMaxSize()) {
         Hud1(vm, inPlace = true)
         Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).testTag("events").padding(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            // dark, not white on the light room background behind every screen (правка №14, ТЗ 3.6)
+            // dark, not white on the light room background (TOWN-A1c) (правка №14, ТЗ 3.6)
             TText("События", style = MaterialTheme.typography.headlineSmall, color = G.ink)
             if (active.isEmpty() && orders.isEmpty()) TText("В городке спокойно", color = G.ink)
             active.forEach { e ->
