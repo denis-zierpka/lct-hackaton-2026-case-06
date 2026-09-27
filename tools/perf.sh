@@ -2,7 +2,8 @@
 # Замер плавности ru.finny.pet через gfxinfo (TOWN-S1f). Устройство — как в adbui.sh (ANDROID_SERIAL).
 #   tools/perf.sh reset          — сбросить счётчики кадров перед сценарием
 #   tools/perf.sh frames LABEL   — сводка: кадров, janky, p50/p90/p95/p99, медленных кадров UI-потока
-#   tools/perf.sh max LABEL      — 5 самых долгих из последних ~120 кадров (IntendedVsync → FrameCompleted), > 100 и > 250 мс
+#   tools/perf.sh max LABEL      — 5 самых долгих из последних ~120 кадров (IntendedVsync → FrameCompleted), > 100 и > 250 мс;
+#                                  читать не позже ~0,7 с после действия: через 3 с кадр перехода выпадает из окна (TOWN-A1c)
 # Урезанный эмулятор: emulator -avd finni -cores 2 -memory 3072 -gpu swiftshader_indirect.
 # На swiftshader p50 ≈ 32 мс даже в покое — доля janky там не отражает телефон; порог S1f — кадров > 250 мс нет, p99 ≤ 150 мс.
 set -uo pipefail
