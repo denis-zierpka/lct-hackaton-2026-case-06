@@ -1,7 +1,7 @@
 ```
 TASK: TOWN-J1-0 — контракт «Поднос по заказу»: TRAY, Tray.kt, закрытые работы после лимита (№ 47 б)
 EPIC: TOWN-J1 (docs/tasks/TOWN-J1.md — концепция, решения владельца № 40–48, журнал проверки)
-BASE: <sha коммита оракула> (для кодера и ревьювера); старт — <sha коммита спеки и контента>
+BASE: f4360b3 (коммит оракула; для кодера и ревьювера); старт — a45496f (спека и контент)
 BRANCH: feat/town
 
 ## КОНТЕКСТ
@@ -300,8 +300,8 @@ steps пусты, demoSizes null) и TrayStep.intro = null. ContentValidationTes
 
 ## ACCEPTANCE (из finny-pet/, оркестратор)
 1. ./gradlew testClassicDebugUnitTest --console=plain            -> exit 0, не UP-TO-DATE
-2. tests = число @Test в app/src/test на BASE (grep -rho '@Test' app/src/test | wc -l; вписать при
-   коммите оракула), failed 0, skipped 0 — скрипт пресета по XML
+2. tests = 581 (число @Test в app/src/test на BASE: grep -rho '@Test' app/src/test | wc -l), failed 0,
+   skipped 0 — скрипт пресета по XML
 3. ./gradlew testGameDebugUnitTest --console=plain               -> exit 0, то же число
 4. ./gradlew assembleClassicDebug assembleGameDebug assembleGameRelease -> exit 0
 5. ./gradlew lintClassicDebug lintGameDebug -> ошибок 0, предупреждений без сетевых ≤ 5 / 5 (замер
