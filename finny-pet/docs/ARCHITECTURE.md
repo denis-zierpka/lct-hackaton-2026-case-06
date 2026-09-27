@@ -25,7 +25,7 @@ app/src/
 ├── game/                          вариант game
 │   ├── java/ru/finny/pet/MainActivity.kt
 │   ├── java/ru/finny/pet/game/    GameApp, GameViewModel (+ Screen, Effect), audio/Sfx, ui/, screens/, mock/ (debug-макеты «Городка»)
-│   └── res/                       drawable-nodpi: комната, товары, цели, плитки, иконки (40 WebP);
+│   └── res/                       drawable-nodpi: комната, фоны мест, товары, цели, плитки, иконки (43 WebP);
 │                                  raw: 13 звуков + музыка (OGG)
 ├── classic/                       вариант classic (не сдаётся)
 └── test/java/ru/finny/pet/domain/ JVM-тесты правил
@@ -70,7 +70,7 @@ app/src/
 | Компонент | Файл | Ответственность |
 |---|---|---|
 | Точка входа | [MainActivity.kt](../app/src/game/java/ru/finny/pet/MainActivity.kt) | Edge-to-edge, `setContent { GameApp() }` |
-| Оболочка | [game/GameApp.kt](../app/src/game/java/ru/finny/pet/game/GameApp.kt) | Тема, фон комнаты (день/вечер), смена экранов `AnimatedContent`, корневой `BackHandler`, строка `LineHost` ([ui/TownUi.kt](../app/src/game/java/ru/finny/pet/game/ui/TownUi.kt)) поверх экранов, слой частиц; сбор эффектов VM; `CompositionLocal`: `LocalLayout`, `LocalParticles`, `LocalPetAction`, `LocalAnimate`, `LocalClipped` (зонд обрезки текста; узел `overflow` — только в debug); в debug поверх экранов ещё `TownMockHost` — макеты «Городка» с входом на экране `Parent` |
+| Оболочка | [game/GameApp.kt](../app/src/game/java/ru/finny/pet/game/GameApp.kt) | Тема, фон под экранами вне `AnimatedContent`: комната (день/вечер) всегда в композиции и над ней слой места `placeBackground` — `Place` рынка, «У Фомы», пекарни и `Round` работы этих мест (`bg_<place>_port` через `when` с явными `R.drawable`; смена — crossfade 320 мс, без анимаций — сразу; TOWN-A1c), смена экранов `AnimatedContent`, корневой `BackHandler`, строка `LineHost` ([ui/TownUi.kt](../app/src/game/java/ru/finny/pet/game/ui/TownUi.kt)) поверх экранов, слой частиц; сбор эффектов VM; `CompositionLocal`: `LocalLayout`, `LocalParticles`, `LocalPetAction`, `LocalAnimate`, `LocalClipped` (зонд обрезки текста; узел `overflow` — только в debug); в debug поверх экранов ещё `TownMockHost` — макеты «Городка» с входом на экране `Parent` |
 | Состояние UI | [game/GameViewModel.kt](../app/src/game/java/ru/finny/pet/game/GameViewModel.kt) | `AndroidViewModel`: `state`; стек экранов (`screen` — верхний); очередь строк `lines` для `LineHost`; `petLine` — реплика по тапу; `night` и `weekEnd` — отчёт ночи и итога недели; `fresh` — «новое» на доске событий; раунд работы — `match`, `matchOver` (во ViewModel, чтобы пережить пересоздание Activity), `taps`, `roundResult`. При загрузке неизвестные `speciesId`/`colorId` питомца заменяются первыми из контента, затем `Migration.migrate` и `Town.tick`. Типы `Screen`, `Effect`, `Line`, `Report`, `PetAct`. Правил не содержит — вызывает `Town` (деньги и время), `Economy` (только `createPet`, `setPlan`, `chooseGoal`, профиль и запросы) и `Match3`, сохраняет |
 | Звук | [game/audio/Sfx.kt](../app/src/game/java/ru/finny/pet/game/audio/Sfx.kt) | 13 эффектов `Sound` на `SoundPool` и музыкальная петля на `MediaPlayer`; `effects` = тумблер «Звуки», `music` = тумблер «Музыка» (на заставке музыка не играет); `GameApp` ставит музыку на паузу, когда приложение свёрнуто |
 | Общие виджеты | [game/ui/](../app/src/game/java/ru/finny/pet/game/ui/) | `GameTheme.kt` (палитра `G`, шрифт Montserrat, тема M3), `Widgets.kt` (кнопки, панели, HUD, полосы, пузырь речи), `GameTextField.kt`, `PetSprite.kt` (спрайт с дыханием, морганием, прыжком и действиями), `Particles.kt` (одна система частиц поверх всего экрана), `TownUi.kt` (текст `TText` с зондом обрезки, картинки `itemRes`/`goalRes`, HUD `Hud1`/`Hud2`, строка `LineHost`) |
@@ -182,7 +182,7 @@ Compose перерисовывает экраны по state / screen / lines / 
 | `pet.py` → `import_sprites.py` | Blender рендерит питомца (3 вида × 3 цвета × 3 стадии × 4 лица = 108 PNG); `import_sprites.py` конвертирует в WebP и перегенерирует `PetSprites.kt` | `app/src/main/res/drawable-nodpi/pet_*.webp`, `app/src/main/java/ru/finny/pet/PetSprites.kt` |
 | `pet.py --residents` | Жители города из `town.residents` (`content.json`): своя палитра `RESIDENT_COLORS`, силуэт взрослого, аксессуар из контента и предмет роли `ROLE_PROPS`, 1 кадр на жителя (PNG) | `res_<id>` — в приложение с TOWN-A1f |
 | `room.py` | Комната: альбом/портрет × день/вечер (PNG) | `app/src/game/res/drawable-nodpi/room_*` |
-| `place.py` | Фоны мест «Городка» — «кит интерьера»: рынок у реки, «У Фомы», пекарня; портрет 1080 × 1920, RGB (PNG) | `bg_<place>_port` — в приложение с TOWN-A1c |
+| `place.py` | Фоны мест «Городка» — «кит интерьера»: рынок у реки, «У Фомы», пекарня; портрет 1080 × 1920, RGB (PNG) | `bg_<place>_port` в `game/res/drawable-nodpi/` (TOWN-A1c); у пекарни — полка с хлебом в полосе, открытой на всех её экранах |
 | `facade.py` | Фасады карточек улицы 384 × 384 RGBA: дом, рынок, «У Фомы», пекарня, калитки парка, леса, зоопарка (замок — оверлей UI) (PNG) | `fac_<place>` — с TOWN-A1g |
 | `props.py` | Товары, цели, плитки мини-игры, монета (PNG) | там же: `item_*`, `goal_*`, `tile_*`, `ui_coin` |
 | `uiprops.py` | Иконки интерфейса: банка и крышки бюджета, копилка, кошелёк и др. (PNG) | там же: `ui_*` |
