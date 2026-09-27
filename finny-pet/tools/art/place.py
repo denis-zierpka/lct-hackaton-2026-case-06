@@ -8,7 +8,10 @@ its HUD, tabs, cards and the Match3 field over the background, so the frame is b
   0–31 %    light and plain (sky or wall): G.ink text of HUD-2 and place titles sits right on it (≥ 4.5 : 1); the
             place is told by big colour masses — the striped awning at the top edge, posts and wall colour at the sides;
   SHOP      31–100 % calm large forms: counter, shelves;
-  JOB       30–80 % plain wall and floor, nothing like a Match3 tile; 80–100 % the counter with bread.
+  JOB       10–24 %, x 52–88 %: a shelf of bread under the awning (round loaf, baton, two baguettes; the bread in
+            14–21 %) — the band every bakery screen leaves open, right of the HUD chips and the title (TOWN-A1c);
+            25–80 % plain wall and floor, nothing like a Match3 tile; 80–100 % the counter with bread (matte top:
+            the glossy one clipped to white).
 Decor on the shelves comes only from props.py builders on the per-place white list (PLACES[id]["decor"]).
 """
 import sys, os, math, argparse
@@ -81,6 +84,26 @@ def riverside(c):
     box("river", (0, 30, -0.35), (120, 60, 0.1), M(c["water"], rough=0.6, sss=0, coat=0.0, emit=0.2), bevel=0)
 
 
+def bread_shelf(board, crust, cut):
+    """Bakery only: a wall shelf of bread right under the awning, frame x 52–88 %, y 10–24 % — the one band every
+    bakery screen leaves open (TOWN-A1c). The camera looks up at it, so the cuts are on the front, not on top."""
+    y = WALL_Y - 0.32
+    box("bread_shelf", (1.475, y, 5.6), (2.55, 0.64, 0.1), board, bevel=0.03)
+    for x in (0.35, 2.6):
+        box("bread_bracket", (x, WALL_Y - 0.2, 5.41), (0.08, 0.4, 0.28), board, bevel=0.02)
+    for x, r, sx, sz, n in ((0.68, 0.35, 1.2, 0.95, 3), (1.72, 0.32, 1.7, 0.72, 4)):  # a round loaf and a long baton
+        zc = 5.65 + r * sz
+        sphere("shelf_loaf", (x, y, zc), r, (sx, 0.9, sz), crust)
+        for i in range(n):
+            sphere("shelf_cut", (x + (i - (n - 1) / 2) * 0.2, y - r * 0.85, zc + r * sz * 0.35), 0.05, (0.45, 0.4, 1.8), cut,
+                   rot=(0, R(30), 0), levels=1)
+    for x, a in ((2.46, -9), (2.64, 7)):  # two baguettes standing in the corner of the shelf; cuts: bread, not ears
+        sphere("baguette", (x, WALL_Y - 0.2, 6.15), 0.1, (1, 1, 5.2), crust, rot=(0, R(a), 0))
+        for t in (-0.26, 0.0, 0.26):
+            sphere("baguette_cut", (x + t * math.sin(R(a)), WALL_Y - 0.29, 6.15 + t * math.cos(R(a))), 0.04, (2.0, 0.4, 0.5),
+                   cut, rot=(0, R(a + 35), 0), levels=1)
+
+
 def build(p, c):
     wood = [material("plank%d" % i, mix(hexc(c["floor"][0]), hexc(c["floor"][1]), i / 3), rough=0.55, sss=0.1, coat=0.25) for i in range(4)]
     white = M("#FFFBF6", rough=0.4, sss=0.1, coat=0.3)
@@ -111,12 +134,13 @@ def build(p, c):
         box("counter_top", (0, -1.4, 1.19), (3.7, 1.0, 0.12), wood[1], bevel=0.03)
     else:  # JOB: a low counter along the bottom edge, the loaves whole in 86–100 % (under the order card they were cut)
         box("counter", (0, -5.1, 0.15), (6, 1.0, 0.3), front, bevel=0.06)
-        box("counter_top", (0, -5.1, 0.34), (6.2, 1.2, 0.08), wood[1], bevel=0.03)
+        box("counter_top", (0, -5.1, 0.34), (6.2, 1.2, 0.08), M(c["floor"][1], rough=0.7, sss=0.1, coat=0.0), bevel=0.03)
         crust, cut = M("#C9803F", rough=0.5, sss=0.3, coat=0.3), M("#F6D9A8", rough=0.6, sss=0.2, coat=0.1)
         for x, s in ((-0.8, 1.0), (0.1, 1.15), (0.9, 0.9)):
             sphere("loaf", (x, -5.2, 0.42), 0.26 * s, (1.4, 0.85, 0.6), crust)
             for d in (-0.13, 0.0, 0.13):
                 sphere("cut", (x + d * s, -5.22, 0.42 + 0.15 * s), 0.05 * s, (0.5, 2.0, 0.35), cut, rot=(0, 0, R(35)), levels=1)
+        bread_shelf(wood[2], crust, cut)
     for name, loc, s, rot in p["decor"]:
         put(name, loc, s, rot)
 
