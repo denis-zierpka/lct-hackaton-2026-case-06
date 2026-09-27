@@ -219,7 +219,7 @@
 | `broken` | List<String> = [] | Сломанные стартовые вещи (срез 2) |
 | `houseColor` | String? = null | Цвет дома (срез 2) |
 | `shiftsThisPeriod` | Int = 0 | Оплачиваемые смены недели, не больше `town.rules.shiftsPerWeek`; обнуляется в конце недели |
-| `jobShifts`, `records` | Map<String, Int> = {} | Оплачиваемые смены (уровень мастерства) и лучший счёт по работам |
+| `jobShifts`, `records` | Map<String, Int> = {} | Оплачиваемые смены (уровень мастерства) и лучший счёт по работам; у подноса `TRAY` — звёзды (`Town.bestStars`: число больше `shiftBonusMax` — наследие `Match3`, не рекорд) |
 | `events` | List<`EventState`> = [] | События: `id`, `status` (ACTIVE / DONE), `verdict`, `outcome` (индекс сработавшего исхода, −1 — закрыто без исхода), `period` и `day` прихода |
 | `stickers`, `visited` | List<String> = [] | Наклейки (события — за любой исход, места — при первом входе, заказ — за оплачиваемую смену) и посещённые места |
 | `seenPrices` | Map<String, `SeenPrice`> = {} | Холодильник: товар → (лавка, цена, неделя) — самая низкая цена недели |
@@ -234,13 +234,18 @@
 
 ### `content.json → town` (`TownContent`)
 
-Все разделы обязательны: `rules` (`TownRules`, 10 чисел без умолчаний), `places`, `shops`
+Все разделы обязательны: `rules` (`TownRules`, 11 полей без умолчаний, с TOWN-J1-0 — `riddleHint`), `places`, `shops`
 (`id`, `place`, `title`, `at` — «у реки», `sells` — товар и цена лавки), `items`, `homeItems`,
 `spots` (6 мест: `id`, `slot` — `floor`, `wall`, `table`), `goals`, `jobs`, `residents`, `events`,
 `stickers`, `quiz`, `parentBonusReasons`; `eventsOff` (по умолчанию пусто) — id событий, которые в этой
 сборке не приходят (сцены среза 2); `chatter` (по умолчанию пусто) — реплики питомца по нажатию `needFood`, `needCare`,
 `sad`, `calm` (`Town.petLine`). Проверяет `ContentValidationTest`. `Content.item(id)`
 ищет товар и в `items`, и в `town.items`.
+
+Работа `jobs[]` (TOWN-J1-0): `game` — `MATCH3`, `TAPS`, `CHANGE` или `TRAY`; у подноса `TRAY` — `menu` (изделия `id`,
+`title`, `emoji`), `steps` (ступени меню: `fromShift` — после скольких оплачиваемых смен, `kinds` — сколько первых
+изделий на витрине, `sizes` — размеры заказов покупателей, `intro` — реплика на первой смене ступени) и `demoSizes` —
+заказы демо-режима. У пекарни эти поля уже есть, но она остаётся `MATCH3` до среза 1а TOWN-J1.
 
 ## Прогресс и стадии
 

@@ -16,7 +16,7 @@ data class SeenPrice(val shop: String, val price: Int, val period: Int)
 data class DiaryLine(val period: Int, val day: Int, val text: String)
 
 /** Итог действия: состояние, одна строка ребёнку, «Почему?» до 3 строк, эффекты для анимаций, исходы событий, пришедшие события (§7.3, §8; TOWN-S1c §0). */
-data class TownOutcome(val state: GameState, val line: String = "", val why: List<String> = emptyList(), val effects: List<EventEffect> = emptyList(), val eventResults: List<EventResult> = emptyList(), val arrived: List<String> = emptyList())
+data class TownOutcome(val state: GameState, val line: String = "", val why: List<String> = emptyList(), val effects: List<EventEffect> = emptyList(), val eventResults: List<EventResult> = emptyList(), val arrived: List<String> = emptyList(), val pay: ShiftPay? = null)
 
 /** Итог одного сработавшего события внутри действия движка. */
 data class EventResult(val eventId: String, val verdict: Verdict, val line: String, val sticker: String? = null, val recovery: List<Recovery> = emptyList())

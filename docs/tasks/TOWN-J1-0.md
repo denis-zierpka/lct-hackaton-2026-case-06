@@ -376,3 +376,21 @@ STATUS: BLOCKED + один конкретный вопрос. Не изобре�
   неделю), пометка № 48 б в «Выбранном направлении», пины среза 0 — ссылкой на эту спеку. Отклонены:
   оговорка № 47 б ещё в трёх местах (она в §18, §5.2 и КОНТЕКСТ); итог TAPS «за три поручения» (строка
   концепции, неточность старая — вопрос к срезу 1б); номера строк красных тестов (однозначны).
+
+## Приёмка (оркестратор, 2026-09-28; BASE f4360b3, код кодера не закоммичен)
+| П. | Команда | Итог |
+|---|---|---|
+| 1 | `./gradlew testClassicDebugUnitTest` (XML удалены перед прогоном) | exit 0, не UP-TO-DATE; tests = 581, failed 0, skipped 0 |
+| 3 | `./gradlew testGameDebugUnitTest` | exit 0; 581 / 0 / 0 |
+| 4 | `assembleClassicDebug assembleGameDebug assembleGameRelease` | exit 0 |
+| 5 | `lintClassicDebug lintGameDebug` | exit 0; ошибок 0, предупреждений без сетевых 5 / 5 (база 5 / 5) |
+| 6 | `git diff --name-only f4360b3 -- app/src/test/ app/src/main/assets/ '*.gradle.kts' gradle/ gradle.properties`; `git status --porcelain -uall -- app/src/test app/src/main/assets app/src/game app/src/classic` | пусто; пусто |
+| 7 | `git status --porcelain -uall -- app/src/main`; `git diff --numstat` + `wc -l Tray.kt` | 4 пути allow (Tray.kt — `??`); вставки 121 + 19 + 1 + 90 = 231 ≤ 260 |
+| 8 | греп случайности и времени по `domain/` | пусто (exit 1) |
+| 9, 9б | `python tools/mutation_probe.py probes_all.json` — 20 мутантов кода (13 из п. 9 и 7 на ветки § 3–§ 4: загадка в первой смене, бомба у подноса, житель недели не навязан, рекорд с наследием, загадка не сброшена, intro в каждой смене, demoSizes не читаются) и 14 зондов контента, у каждого `expect` | SELF-CHECK 581 / 0; 34 из 34 CAUGHT ожидаемым тестом; RESTORE-CHECK 581 / 0; «ALL CAUGHT» |
+| 10 | эмулятор `finni`, 360 dp (1080 × 1920 / 480), release (`pkgFlags` без DEBUGGABLE), холодный старт 2,6 с, демо-профиль с нуля, шрифт 1,0; маршрут — промахов 0 | пекарня «6–10 за смену»; итог «6 за смену. ✉ +6 — придёт с новым конвертом», «Боря: 1 из 6 смен до уровня 2»; Марта «6 за три поручения», итог «6 за три поручения. ✉ +6 — …»; после трёх смен — «Смены на неделе закончились — новые с новым конвертом», «●●●», «Начать смену» `enabled=false` (касание раунд не открывает), «Загадка Бори» под кнопкой — прежняя схема. Лист до/после — `finny-pet/screenshots/town/j10_live.jpg` |
+Доки (греп по обоим `docs/`): ECONOMY (смены, № 47 б, TRAY, top, ShiftPay, riddleHint), TEST_CASES TC-28/32/41, BUILD_AND_DEMO шаги 6 и 9, DATA_MODEL (`records`, 11 полей rules, `jobs[]` подноса), ARCHITECTURE (`Tray`, `trayRound`), REQUIREMENTS_MATRIX (строка «Булочки в ряд» — имена переименованных тестов и № 47 б; строка «Поднос по заказу» — «в работе»), BACKLOG п. 1.
+Ревью (reviewer, без контекста кодера): **PASS**, находок нет; перепроверил п. 1–8 сам (`--rerun-tasks`: 581 / 0 / 0
+в обоих вариантах, сборка с release, lint 5 / 5, границы, греп), контракт — построчно, строки — побайтно, доки — по
+коду. Вне вердикта: макет `app/src/game/…/mock/MockShopJob.kt:186, 216` (debug, вход из раздела взрослого) держит
+строки «База 6 монет + до 4 за булочки» и «База 6 + 3 за булочки…» — править в срезе 1а вместе с экраном пекарни.

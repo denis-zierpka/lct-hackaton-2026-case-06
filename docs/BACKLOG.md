@@ -23,8 +23,9 @@
   [`PetSprites.id()`](../finny-pet/app/src/main/java/ru/finny/pet/PetSprites.kt) даёт запасной кадр (рыжий кот).
 - **Мини-игра — только после подтверждённого плана** (решение сеньора, ТЗ 2.8, спека MVP-T03) — правило
   выпуска 1.3.0. С TOWN-S1d в `game` оплачиваемые смены открыты и до плана, заработок уходит в следующий
-  конверт; игра «ради рекорда» без монет — только после плана ([`Town.shiftQuote`](../finny-pet/app/src/main/java/ru/finny/pet/domain/town/Town.kt),
-  решение владельца 4, GAME_CONCEPT §6.1).
+  конверт; после трёх оплачиваемых смен работа закрыта до нового конверта, игры «ради рекорда» нет
+  ([`Town.shiftQuote`](../finny-pet/app/src/main/java/ru/finny/pet/domain/town/Town.kt), решения владельца 4 и 47 б,
+  GAME_CONCEPT §5.2, §6.1).
 
 ## Закрыто прогоном MVP 7.1
 

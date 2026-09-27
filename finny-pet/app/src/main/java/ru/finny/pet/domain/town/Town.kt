@@ -32,7 +32,11 @@ data class Quote(
 data class ShiftQuote(
     val jobId: String, val open: Boolean, val paid: Boolean, val canPlay: Boolean,
     val level: Int, val base: Int, val levelBombs: Int, val shiftsLeft: Int, val line: String,
+    val top: Int,
 )
+
+/** Числа итога смены: «источник и сумма» (ТЗ 2.5.4, TOWN-J1-0 § 4). */
+data class ShiftPay(val base: Int, val bonus: Int, val total: Int)
 
 /** Кошелёк, касса, неделя и дом «Городка» (TOWN-S1a §3–§6). Чистый Kotlin. */
 class Town(internal val content: Content) {
@@ -589,28 +593,103 @@ class Town(internal val content: Content) {
     fun shiftQuote(s: GameState, jobId: String): ShiftQuote {
         val shiftsLeft = maxOf(0, town.rules.shiftsPerWeek - s.shiftsThisPeriod)
         val job = town.jobs.firstOrNull { it.id == jobId }
-            ?: return ShiftQuote(jobId, false, false, false, 0, 0, 0, shiftsLeft, CLOSED)
+            ?: return ShiftQuote(jobId, false, false, false, 0, 0, 0, shiftsLeft, CLOSED, 0)
         val place = town.places.firstOrNull { it.id == job.place }
         val open = opensByOk(job.opensBy, s) && (place == null || opensByOk(place.opensBy, s))
         val paid = open && shiftsLeft > 0
-        val canPlay = open && !s.asleep && (paid || (s.plan.confirmed && job.game != JobGame.TAPS))
+        // № 47 б: игра после лимита смен больше не идёт ни у одной работы
+        val canPlay = open && !s.asleep && paid
         val shifts = s.jobShifts[jobId] ?: 0
         val level = town.rules.jobLevelShifts.indexOfLast { it <= shifts }
         val base = job.baseByLevel.getOrElse(level) { 0 }
         val levelBombs = if (job.game == JobGame.MATCH3) town.rules.jobLevelBombs.getOrElse(level) { 0 } else 0
+        val top = if (job.game == JobGame.TAPS) base else base + town.rules.shiftBonusMax
         val line = when {
             !open -> CLOSED
             s.asleep -> NIGHT
-            paid -> if (job.game == JobGame.TAPS) {
-                "База $base за три поручения"
-            } else {
-                "База $base + до ${town.rules.shiftBonusMax} за результат"
-            }
-            canPlay -> "Смены на неделе закончились — можно играть ради рекорда"
-            job.game == JobGame.TAPS -> "Смены на неделе закончились — новые с новым конвертом"
-            else -> "Смены на неделе закончились. Ради рекорда — после раскладки"
+            paid -> if (job.game == JobGame.TAPS) "$base за три поручения" else "$base–$top за смену"
+            else -> LIMIT
         }
-        return ShiftQuote(jobId, open, paid, canPlay, level, base, levelBombs, shiftsLeft, line)
+        return ShiftQuote(jobId, open, paid, canPlay, level, base, levelBombs, shiftsLeft, line, top)
+    }
+
+    /** Житель недели — последний из приехавших к этой неделе (RoomScreen.kt:130; TOWN-J1-0 § 3). */
+    fun residentOfWeek(s: GameState): Resident? =
+        town.residents.lastOrNull { it.arrivesWeek != null && it.arrivesWeek <= s.period }
+
+    /** Рекорд звёзд подноса; отсекает наследие Match3 и значения не-TRAY работ (TOWN-J1-0 § 3). */
+    fun bestStars(s: GameState, jobId: String): Int? {
+        val job = town.jobs.firstOrNull { it.id == jobId } ?: return null
+        if (job.game != JobGame.TRAY) return null
+        val v = s.records[jobId] ?: return null
+        return v.takeIf { it in 0..town.rules.shiftBonusMax }
+    }
+
+    /** Ступень меню подноса по числу оплаченных смен на этой работе (TOWN-J1-0 § 1). */
+    private fun trayStep(job: Job, n: Int): TrayStep = job.steps.last { it.fromShift <= n }
+
+    /** Размеры заказов этой смены: demoSizes в демо, иначе — ступени (TOWN-J1-0 § 1, § 3). */
+    private fun traySizes(s: GameState, job: Job, n: Int): List<Int> =
+        if (s.demo && job.demoSizes != null) job.demoSizes else trayStep(job, n).sizes
+
+    /** Смесь seed, недели, сыгранных смен недели и мастерства — раскладка заказов (TOWN-J1-0 § 3). */
+    private fun traySeed(s: GameState, n: Int): Long {
+        var h = s.seed
+        h = h * 6364136223846793005L + s.period
+        h = h * 6364136223846793005L + s.shiftsThisPeriod
+        h = h * 6364136223846793005L + n
+        return h
+    }
+
+    /** k изделий из витрины: distinct = min(k, 1 + k/2) видов, каждый — хотя бы раз, по порядку меню. */
+    private fun trayItems(rnd: kotlin.random.Random, menuIds: List<String>, k: Int): List<String> {
+        val distinct = minOf(k, 1 + k / 2)
+        val chosenIdx = menuIds.indices.shuffled(rnd).take(distinct).sorted()
+        val counts = IntArray(distinct) { 1 }
+        var remaining = k - distinct
+        while (remaining > 0) {
+            counts[rnd.nextInt(distinct)]++
+            remaining--
+        }
+        val items = mutableListOf<String>()
+        chosenIdx.forEachIndexed { i, idx -> repeat(counts[i]) { items += menuIds[idx] } }
+        return items
+    }
+
+    /** Покупатели: из пула, без повтора подряд, житель недели — хотя бы в одном заказе. */
+    private fun trayOrders(rnd: kotlin.random.Random, pool: List<String>, sizes: List<Int>, menuIds: List<String>, wid: String?): List<TrayOrder> {
+        val customers = mutableListOf<String>()
+        sizes.forEach {
+            val cand = pool.filter { c -> c != customers.lastOrNull() }
+            customers += cand[rnd.nextInt(cand.size)]
+        }
+        if (wid != null && wid !in customers) customers[rnd.nextInt(customers.size)] = wid
+        return customers.zip(sizes).map { (c, k) -> TrayOrder(c, trayItems(rnd, menuIds, k)) }
+    }
+
+    /** Раунд подноса — только у оплачиваемой смены на TRAY-работе с валидной витриной (TOWN-J1-0 § 3). */
+    fun trayRound(s: GameState, jobId: String): TrayRound? {
+        val job = town.jobs.firstOrNull { it.id == jobId } ?: return null
+        if (job.game != JobGame.TRAY) return null
+        if (!shiftQuote(s, jobId).canPlay) return null
+        val pool = town.residents.filter { it.arrivesWeek != null && it.arrivesWeek <= s.period && it.id != job.resident }.map { it.id }
+        if (pool.size < 2) return null
+        val n = s.jobShifts[jobId] ?: 0
+        val step = trayStep(job, n)
+        val sizes = traySizes(s, job, n)
+        val kinds = minOf(step.kinds, job.menu.size)
+        if (sizes.any { k -> kinds < minOf(k, 1 + k / 2) }) return null
+        val menuIds = job.menu.take(step.kinds).map { it.id }
+        val w = residentOfWeek(s)
+        val wid = if (w != null && w.id != job.resident) w.id else null
+        val rnd = kotlin.random.Random(traySeed(s, n))
+        val orders = trayOrders(rnd, pool, sizes, menuIds, wid)
+        return TrayRound(
+            jobId = jobId, menu = menuIds, orders = orders,
+            pointer = (bestStars(s, jobId) ?: 0) == 0,
+            intro = if (n == step.fromShift) step.intro else null,
+            riddle = n >= 1 && nextQuestion(s) != null,
+        )
     }
 
     /** Когда открывается место или работа (§1): неделя (демо — сразу) или сбывшаяся мечта. */
@@ -620,10 +699,11 @@ class Town(internal val content: Content) {
         else -> true
     }
 
-    /** Конец смены: оплачиваемой или ради рекорда (§2). */
+    /** Конец смены — только оплачиваемой, после лимита работа отказывает (§2, № 47 б). */
     fun finishShift(s: GameState, jobId: String, score: Int, bombsUsed: Int): TownResult {
         val quote = shiftQuote(s, jobId)
         val job = town.jobs.firstOrNull { it.id == jobId }
+        val n = s.jobShifts[jobId] ?: 0
         refusal(
             (s.pet == null) to NO_PET,
             s.asleep to NIGHT,
@@ -633,25 +713,25 @@ class Town(internal val content: Content) {
             (job?.game != JobGame.MATCH3 && bombsUsed > 0) to BAD_SHIFT,
             (bombsUsed > quote.levelBombs + s.bombs) to BAD_SHIFT,
             (job?.game == JobGame.TAPS && score > job.tasks.size) to BAD_SHIFT,
+            (job?.game == JobGame.TRAY && score > traySizes(s, job, n).size) to BAD_SHIFT,
         )?.let { return it }
         job!!
-        val hasScore = job.game != JobGame.TAPS
+        val hasRecord = job.game != JobGame.TAPS
         val bonus = when (job.game) {
             JobGame.MATCH3 -> minOf(town.rules.shiftBonusMax, score / town.rules.shiftScorePerBonus)
             JobGame.TAPS -> 0
-            JobGame.CHANGE -> minOf(town.rules.shiftBonusMax, score)
+            JobGame.CHANGE, JobGame.TRAY -> minOf(town.rules.shiftBonusMax, score)
         }
         val prevRecord = s.records[jobId] ?: 0
-        val isNew = hasScore && score > prevRecord
+        val isNew = (job.game == JobGame.MATCH3 || job.game == JobGame.CHANGE) && score > prevRecord
         val bombSpent = maxOf(0, bombsUsed - quote.levelBombs)
         var st = s.copy(bombs = s.bombs - bombSpent)
-        if (job.game == JobGame.MATCH3) st = st.copy(riddleAsked = false)
-        if (hasScore) st = st.copy(records = st.records + (jobId to maxOf(prevRecord, score)))
-
-        if (!quote.paid) {
-            val line = "Счёт $score. Это игра ради рекорда." + (if (isNew) " Новый рекорд!" else "")
-            return done(st, line)
+        if (job.game == JobGame.MATCH3 || job.game == JobGame.TRAY) st = st.copy(riddleAsked = false)
+        if (hasRecord) {
+            val newRecord = if (job.game == JobGame.TRAY) maxOf(bestStars(s, jobId) ?: 0, score) else maxOf(prevRecord, score)
+            st = st.copy(records = st.records + (jobId to newRecord))
         }
+
         val total = quote.base + bonus
         st = st.copy(
             envelope = st.envelope + LedgerEntry("Смена: ${job.title}", total),
@@ -660,14 +740,13 @@ class Town(internal val content: Content) {
             diary = st.diary + DiaryLine(s.period, s.day, "Заработали $total: «${job.title}»"),
             stickers = st.stickers.plusNew(events.live.firstOrNull { it.kind == EventKind.JOB && it.params.job == jobId }?.sticker),
         )
-        val line = when (job.game) {
-            JobGame.TAPS -> "База ${quote.base} за три поручения. ✉ +$total — придёт с новым конвертом"
-            else -> if (bonus > 0) {
-                val what = if (job.game == JobGame.MATCH3) "булочки" else "сдачу"
-                "База ${quote.base} + $bonus за $what. ✉ +$total — придёт с новым конвертом"
-            } else {
-                "База ${quote.base}. ✉ +$total — придёт с новым конвертом"
+        val line = when {
+            job.game == JobGame.TAPS -> "${quote.base} за три поручения. ✉ +$total — придёт с новым конвертом"
+            bonus > 0 -> {
+                val what = when (job.game) { JobGame.MATCH3 -> "булочки"; JobGame.TRAY -> "★"; else -> "сдачу" }
+                "${quote.base} за смену + $bonus за $what. ✉ +$total — придёт с новым конвертом"
             }
+            else -> "${quote.base} за смену. ✉ +$total — придёт с новым конвертом"
         }
         val newShifts = st.jobShifts[jobId] ?: 0
         val levelBefore = quote.level
@@ -675,14 +754,19 @@ class Town(internal val content: Content) {
         val name = town.residents.first { it.id == job.resident }.name
         val why = mutableListOf<String>()
         why += when {
-            levelAfter > levelBefore -> "$name: новый уровень ${levelAfter + 1}! База теперь ${job.baseByLevel.getOrElse(levelAfter) { 0 }}"
+            levelAfter > levelBefore -> {
+                val base2 = job.baseByLevel.getOrElse(levelAfter) { 0 }
+                val top2 = if (job.game == JobGame.TAPS) base2 else base2 + town.rules.shiftBonusMax
+                val quote2 = if (job.game == JobGame.TAPS) "$base2 за три поручения" else "$base2–$top2 за смену"
+                "$name: новый уровень ${levelAfter + 1}! Теперь $quote2"
+            }
             levelAfter + 1 < town.rules.jobLevelShifts.size ->
                 "$name: $newShifts из ${town.rules.jobLevelShifts[levelAfter + 1]} смен до уровня ${levelAfter + 2}"
             else -> "$name: высший уровень мастерства"
         }
         why += "Карманные приходят каждую неделю, зарплата — когда поработаешь"
         if (isNew) why += "Новый рекорд!"
-        return done(st, line, why)
+        return TownResult.Done(TownOutcome(st, line, why, pay = ShiftPay(quote.base, bonus, total)))
     }
 
     /** Доступные загадки, отсортированные по спеке (§3). */
@@ -709,17 +793,17 @@ class Town(internal val content: Content) {
         )?.let { return it }
         q!!
         val correct = optionIndex == q.correct
+        val m = town.jobs.first { it.game == JobGame.MATCH3 || it.game == JobGame.TRAY }
         val st = s.copy(
             riddles = s.riddles + TaskResult(questionId, correct, 0, s.period),
             riddleAsked = true,
-            bombs = if (correct) s.bombs + content.rules.quizBombReward else s.bombs,
+            bombs = if (correct && m.game == JobGame.MATCH3) s.bombs + content.rules.quizBombReward else s.bombs,
         )
         val line = if (correct) "Верно! ${q.explanation}" else q.explanation
-        val why = if (correct) {
-            val m = town.jobs.first { it.game == JobGame.MATCH3 }.title
-            listOf("Бомбочка +${content.rules.quizBombReward} — для поля «$m»")
-        } else {
-            listOf("Вопрос вернётся позже")
+        val why = when {
+            !correct -> listOf("Вопрос вернётся позже")
+            m.game == JobGame.MATCH3 -> listOf("Бомбочка +${content.rules.quizBombReward} — для поля «${m.title}»")
+            else -> listOf("Подсказка Бори — на поднос")
         }
         return done(st, line, why)
     }
@@ -789,6 +873,7 @@ class Town(internal val content: Content) {
         const val NOT_HERE = "Этого товара здесь нет"
         const val CLOSED = "Эта работа пока закрыта"
         const val BAD_SHIFT = "Так закончить смену нельзя"
+        const val LIMIT = "Смены на неделе закончились — новые с новым конвертом"
         const val CANT_PAY = "Так оплатить нельзя"
         const val ABOVE_ZERO = "Выбери сумму больше нуля"
         const val NO_PLAN_SLEEP = "Сначала разложим монеты — потом спать"

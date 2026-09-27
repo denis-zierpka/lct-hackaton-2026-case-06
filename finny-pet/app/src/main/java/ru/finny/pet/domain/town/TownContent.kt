@@ -37,6 +37,8 @@ data class TownRules(
     val shiftScorePerBonus: Int, val changeCoins: List<Int>, val jobLevelShifts: List<Int>,
     val jobLevelBombs: List<Int>, val customGoalFromItemMin: Int, val freeFunMood: Int,
     val eventsPerDay: Int,
+    /** Сколько изделий подсказка Бори кладёт за раз на поднос (TOWN-J1-0 § 1, § 2). */
+    val riddleHint: Int,
 )
 
 /** Шаблон экрана места (§17.2). */
@@ -83,13 +85,25 @@ data class TownGoal(
     val unlocks: Unlocks = Unlocks(),
 )
 
-/** Вид работы: поле Match3, кнопки-поручения или касса со сдачей (§5.2). */
+/** Вид работы: поле Match3, кнопки-поручения, касса со сдачей или поднос по заказу (§5.2, TOWN-J1-0 § 1). */
 @Serializable
-enum class JobGame { MATCH3, TAPS, CHANGE }
+enum class JobGame { MATCH3, TAPS, CHANGE, TRAY }
 
 /** Размер поля мини-игры (§16.1). */
 @Serializable
 data class Board(val w: Int, val h: Int)
+
+/** Изделие пекарни (TOWN-J1-0 § 1). */
+@Serializable
+data class Pastry(val id: String, val title: String, val emoji: String)
+
+/**
+ * Ступень меню подноса: действует после стольких оплачиваемых смен на этой работе; kinds — сколько
+ * первых изделий меню на витрине; sizes — размер заказа каждого покупателя по порядку; intro —
+ * реплика жителя работы на первой смене ступени (TOWN-J1-0 § 1).
+ */
+@Serializable
+data class TrayStep(val fromShift: Int, val kinds: Int, val sizes: List<Int>, val intro: String? = null)
 
 /** Подработка у жителя: вид работы, база по уровню, поле и ходы, когда открывается (§5.2, §16.1). */
 @Serializable
@@ -97,6 +111,9 @@ data class Job(
     val id: String, val place: String, val resident: String, val title: String,
     val game: JobGame, val baseByLevel: List<Int>, val board: Board? = null, val moves: Int? = null,
     val demoMoves: Int? = null, val opensBy: OpensBy = OpensBy(), val tasks: List<String> = emptyList(),
+    /** Витрина, ступени и размеры демо-заказов подноса (TOWN-J1-0 § 1). */
+    val menu: List<Pastry> = emptyList(), val steps: List<TrayStep> = emptyList(),
+    val demoSizes: List<Int>? = null,
 )
 
 /** Внешность персонажа: вид, цвет, необязательный аксессуар (§16.1). */
