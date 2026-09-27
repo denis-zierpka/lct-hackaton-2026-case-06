@@ -252,21 +252,27 @@ def add_role_prop(kind, species, m_body):
         bpy.ops.mesh.primitive_cone_add(vertices=3, radius1=0.28, radius2=0, depth=0.04, location=(-0.62, -0.83, 0.61),
                                         rotation=(math.radians(-90), 0, 0))
         bpy.context.object.name = "bag_flap"; bpy.context.object.data.materials.append(paper)
-    elif kind == "ball":  # a ball tucked at the hip under the paw, stripes in accents (not the body's colour)
+    elif kind == "ball":  # a ball at the hip, the paw over it on the body's side inside its outline; stripes in accents (not
+        # the body's colour), the equator and a meridian, flattened into the ball so that its outline stays a circle
         smooth(sphere("ball", (-1.02, -0.3, 0.95), 0.34, (1, 1, 1), accent), 1)
-        for a in (-35, 35): ring("ball_stripe", (-1.02, -0.3, 0.95), 0.335, 0.045, (0, math.radians(90), math.radians(a)), gold)
-        hand((-1.25, -0.45, 1.0))
-    elif kind == "wrench":  # an open-end wrench in the paw: steel over a dark copy behind it, so it reads on a white card
+        for rot in ((0, 0, 0), (0, math.radians(90), math.radians(-35))): ring("ball_stripe", (-1.02, -0.3, 0.95), 0.3, 0.05, rot, gold, (1, 1, 1.3))
+        hand((-0.92, -0.58, 1.07))
+    elif kind == "wrench":  # an open-end wrench in the paw: steel over a dark copy set back behind it (its front never reaches
+        # the steel's, so only the edge shows and it reads on a white card); the handle ends inside the paw
         metal = material("steth_metal", hexc("#D5DCE6"), rough=0.2, sss=0.0, coat=0.8)
         bpy.ops.object.empty_add(location=(-0.88, -0.5, 0.9), rotation=(0, math.radians(-20), 0)); pivot = bpy.context.object; pivot.name = "wrench"
         jaw = [(0.2 * math.cos(math.radians(a)), 1.05 + 0.2 * math.sin(math.radians(a))) for a in (125, 200, 270, 340, 415)]
         for m, d in ((dark, 0.03), (metal, 0)):
-            parts += [box("wrench", (0, d, 0.43), (0.16 + 2 * d, 0.06, 1.0 + 2 * d), m, 0.03), curve("wrench", [(x, d, z) for x, z in jaw], 0.07 + d, m)]
+            parts += [box("wrench", (0, d, 0.5), (0.16 + 2 * d, 0.06, 0.86 + 2 * d), m, 0.03), curve("wrench", [(x, 3 * d, z) for x, z in jaw], 0.07 + d, m)]
         parts.append(hand((0, -0.12, 0.12)))
-    elif kind == "coin":  # a cashier's gold badge on the bib instead of the pocket: a disc, a dark edge, a raised rim
+    elif kind == "coin":  # a cashier's gold badge on the bib instead of the pocket, like the game's coin (ui_coin): a disc a
+        # third of the bib wide, a dark edge, a raised rim and a raised faceted star (a flat-shaded star pyramid)
         bpy.data.objects.remove(bpy.data.objects["apron_pocket"]); up = (math.radians(90), 0, 0)
-        drum("coin", (0, -0.95, 1.56), 0.2, 0.05, gold).rotation_euler = up
-        ring("coin_edge", (0, -0.95, 1.56), 0.2, 0.03, up, dark); ring("coin_rim", (0, -0.98, 1.56), 0.12, 0.02, up, gold)
+        drum("coin", (0, -0.95, 1.56), 0.23, 0.05, gold).rotation_euler = up
+        ring("coin_edge", (0, -0.95, 1.56), 0.23, 0.03, up, dark); ring("coin_rim", (0, -0.98, 1.56), 0.18, 0.02, up, gold)
+        star = [(r * math.sin(k * math.pi / 5), -0.97, 1.56 + r * math.cos(k * math.pi / 5)) for k in range(10) for r in [(0.14, 0.065)[k % 2]]]
+        me = bpy.data.meshes.new("coin_star"); me.from_pydata([*star, (0, -1.04, 1.56)], [], [(k, (k + 1) % 10, 10) for k in range(10)])
+        o = bpy.data.objects.new("coin_star", me); bpy.context.collection.objects.link(o); me.materials.append(gold)
     elif kind == "palette":  # an artist's palette in the paw: a flat oval with a dark edge, a thumb hole and four dabs of paint
         bpy.ops.object.empty_add(location=(-1.1, -0.55, 1.05), rotation=(math.radians(75), math.radians(-15), 0)); pivot = bpy.context.object; pivot.name = "palette"
         parts += [drum("palette", (0, 0, 0), 0.36, 0.05, white), ring("palette_edge", (0, 0, 0), 0.36, 0.022, (0, 0, 0), dark, (1.3, 1, 1)),
