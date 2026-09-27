@@ -1,14 +1,21 @@
 """Приёмочные проверки арта (TOWN-A1b и дальше): регрессия кадра дампом сцены, композиты «как увидит ребёнок»
 с контрастом текста на фоне, альфа-bbox спрайтов, палитра жителей. Запуск из корня репозитория:
 
-  python tools/art_check.py regress SRC_DIR OUT_DIR   дампы сцены room.py (room_port_day) и pet.py (bunny, cat, puppy ×
-                                                      stage 0, 2) генераторами из SRC_DIR -> OUT_DIR/*.json
+  python tools/art_check.py regress SRC_DIR OUT_DIR   дампы сцены room.py (room_port_day), pet.py (bunny, cat, puppy ×
+                                                      stage 0, 2), place.py (market, foma) и facade.py (market)
+                                                      генераторами из SRC_DIR -> OUT_DIR/*.json
   python tools/art_check.py diff A_DIR B_DIR          сравнить дампы; exit 1, если есть разница или нет файла
-  python tools/art_check.py bg BG.png OUT_DIR         композиты UI со снимков на фон места + контраст G.ink под текстом;
-                                                      exit 1, если среднее < 4,5 : 1, 10-й перцентиль < 3 : 1 или
-                                                      пересвет (R и G ≥ 250) в полосах 0–31 % / 80–100 % > 5 %
+  python tools/art_check.py bg BG OUT_DIR [--veil A]  композиты UI со снимков на фон места + контраст G.ink под текстом
+                                                      этого места (bg_<place>_port; иной файл — все тексты); exit 1,
+                                                      если среднее < 4,5 : 1, 10-й перцентиль < 3 : 1 или пересвет
+                                                      (R и G ≥ 250) в полосах 0–31 % / 80–100 % > 5 %
+  python tools/art_check.py bg - - --selfcheck        самопроверка маски: белые карточки над белым окном комнаты не
+                                                      уходят фону (≤ 50 px), а сырая маска их отдаёт (≥ 1000 px)
   python tools/art_check.py bbox PNG [PNG …] [--ref x0,y0,x1,y1] [--tol 3] [--margin 2]
   python tools/art_check.py palette                   RESIDENT_COLORS из pet.py против town.residents и палитры питомца
+  python tools/art_check.py which SHOT … [--expect N] [--bgdir D]  какой фон под снимком (360 × 640 или S23): по полосе
+                                                      статус-бара; D — фоны bg_*_port.webp, которых ещё нет в res
+  python tools/art_check.py tiles BG [--veil A]       ΔE плиток Match3 до фона места под подложкой поля (p5 ≥ 15)
 
 Дамп пишет этот же файл, запущенный внутри Blender ПОСЛЕ генератора: --python tools/art_check.py с env DUMP_OUT.
 Снимки для композитов — finny-pet/screenshots/emu_*.png (в .gitignore, лежат на машине команды).
@@ -18,12 +25,20 @@ import json, math, os, subprocess, sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FP = os.path.join(ROOT, "finny-pet")
 INK = (0x1C, 0x1D, 0x22)  # G.ink
-# Текст прямо на фоне (360 × 640 dp = 1080 × 1920 px): (снимок, подпись, x0, y0, x1, y1). Статус-бар — полоса 0–5 %.
-TEXT = [("emu_demo05a_market.png", "HUD-2 «Не разложено»", 20, 318, 500, 372),
-        ("emu_demo06b_order.png", "HUD-2 отделения", 25, 290, 525, 402),
-        ("emu_s1d3_job13.png", "заголовок «Пекарня» (1,3)", 20, 452, 385, 530)]
-SNAPS = ["emu_demo05a_market.png", "emu_demo05b_foma.png", "emu_demo06b_order.png", "emu_demo06c_order.png",
-         "emu_s1d3_job13.png", "emu_s1d3_round10.png"]
+# Текст прямо на фоне (360 × 640 dp = 1080 × 1920 px), замер по снимкам сборки BASE TOWN-A1c (emu_b_*, 2026-09-27;
+# тёмные пиксели ± 8 px): (снимок, подпись, x0, y0, x1, y1, места с этим текстом). Статус-бар — полоса 0–5 %, у всех.
+SHOPS = ("market", "foma")
+TEXT = [("emu_b_market10.png", "HUD-2 «Не разложено» (1,0)", 20, 317, 500, 375, SHOPS),
+        ("emu_b_market13.png", "HUD-2 «Не разложено» (1,3)", 22, 313, 621, 383, SHOPS),
+        ("emu_b_marketp10.png", "HUD-2 отделения (1,0)", 26, 289, 525, 405, SHOPS),
+        ("emu_b_marketp13.png", "HUD-2 отделения (1,3)", 84, 312, 512, 374, SHOPS),
+        ("emu_b_job10.png", "заголовок «Пекарня» (1,0)", 21, 448, 340, 522, ("bakery",)),
+        ("emu_b_job13.png", "заголовок «Пекарня» (1,3)", 22, 451, 384, 532, ("bakery",)),
+        ("emu_b_taps10.png", "заголовок «Помочь Марте» (1,0)", 21, 448, 553, 521, ("market",)),
+        ("emu_b_taps13.png", "заголовок «Помочь Марте» (1,3)", 22, 451, 627, 532, ("market",))]
+SNAPS = ["emu_b_market10.png", "emu_b_market13.png", "emu_b_marketp10.png", "emu_b_foma10.png", "emu_b_event10.png",
+         "emu_b_order10.png", "emu_b_taps10.png", "emu_b_taps13.png", "emu_b_tresult10.png", "emu_b_job10.png",
+         "emu_b_job13.png", "emu_b_round10.png", "emu_b_round13.png", "emu_b_result10.png"]
 VEIL = 0.18  # подложка поля Match3: White α 0,18 (MiniGameScreen.kt), фон под ней = фон·0,82 + белый·0,18
 S23 = (1.219, 118)  # S23 360 × 780 dp: фон ×1,219 (Crop по высоте), по бокам срезается по 118 px
 
@@ -52,9 +67,15 @@ def dump():
     for o in sorted(bpy.context.scene.objects, key=lambda o: o.name):
         e = {"type": o.type, "loc": r(o.matrix_world.translation), "rot": r(o.rotation_euler), "scale": r(o.scale),
              "dims": r(o.evaluated_get(dg).dimensions), "parent": o.parent.name if o.parent else None,
-             "mats": [mat(s.material) for s in o.material_slots], "shadow": getattr(o, "visible_shadow", None)}
+             "mats": [mat(s.material) for s in o.material_slots], "shadow": getattr(o, "visible_shadow", None),
+             # bevel and subdivision do not move the bbox: without them a changed bevel dumped «no change» (TOWN-A1c)
+             "mods": [{k: (round(v, 4) if isinstance(v, float) else v) for k in ("type", "width", "segments", "levels", "render_levels", "voxel_size")
+                       for v in [getattr(m, k, None)] if v is not None} for m in o.modifiers]}
+        if o.type == "CURVE":
+            e["curve"] = {"bevel": round(o.data.bevel_depth, 4), "res": o.data.bevel_resolution}
         if o.type == "LIGHT":
-            L = o.data; e["light"] = {"kind": L.type, "energy": round(L.energy, 4), "color": r(L.color), "size": round(getattr(L, "size", 0), 4)}
+            L = o.data; e["light"] = {"kind": L.type, "energy": round(L.energy, 4), "color": r(L.color), "size": round(getattr(L, "size", 0), 4),
+                                      "angle": round(getattr(L, "angle", 0), 4)}
         if o.type == "CAMERA":
             e["cam"] = {"lens": round(o.data.lens, 4), "kind": o.data.type, "ortho": round(o.data.ortho_scale, 4)}
         if o.type == "FONT":
@@ -78,6 +99,9 @@ def regress(src, out):
     runs += [(f"pet_{sp}_{st}", "pet.py", ["--species", sp, "--stage", str(st), "--size", "64", "--samples", "1",
                                            "--out", os.path.join(out, f"pet_{sp}_{st}.png")])
              for sp in ("bunny", "cat", "puppy") for st in (0, 2)]
+    # approved at gate № 38: the market and «У Фомы» backgrounds and the market facade (facade.py reads place.PLACES)
+    runs += [(f"place_{p}", "place.py", ["--place", p, "--out", os.path.join(out, f"place_{p}.png"), "--preview"]) for p in ("market", "foma")]
+    runs += [("facade_market", "facade.py", ["--place", "market", "--samples", "1", "--out", os.path.join(out, "facade_market.png")])]
     for name, script, args in runs:
         env = dict(os.environ, DUMP_OUT=os.path.join(out, name + ".json"))
         cmd = [blender(), "-b", "--factory-startup", "--python-exit-code", "1", "-P", os.path.join(src, script), "--python", me, "--"] + args
@@ -113,31 +137,68 @@ def lum(rgb):
     return c[..., 0] * 0.2126 + c[..., 1] * 0.7152 + c[..., 2] * 0.0722
 
 
-def bg(path, out):
+def ui_mask(S, room, clean=True):
+    """Where a snapshot shows the room (plain, m1, or under the Match3 underlay VEIL). A white card over the white window
+    of the room matches it too (the A1b leak): thin matches are opened away, small enclosed holes of the UI are filled
+    (large ones are background in a frame, e.g. the whole Match3 field). Returns (m1, mask); clean=False — the raw mask."""
+    from scipy import ndimage
+    import numpy as np
+    m1 = np.abs(S - room).max(axis=2) < 12
+    m2 = np.abs(S - (room * (1 - VEIL) + 255 * VEIL)).max(axis=2) < 12
+    if not clean:
+        return m1, m1 | m2
+    m = ndimage.binary_opening(m1 | m2, iterations=2)
+    holes, n = ndimage.label(ndimage.binary_fill_holes(~m) & m)
+    return m1, m & ~np.isin(holes, 1 + np.flatnonzero(ndimage.sum(np.ones_like(holes), holes, range(1, n + 1)) < 60000))
+
+
+# Snapshots whose white window of the room lies wholly under cards: every near-white pixel the mask gives away is a leak
+LEAK_SNAPS = ["emu_b_market10.png", "emu_b_marketp10.png", "emu_b_foma10.png", "emu_b_order10.png", "emu_b_job10.png",
+              "emu_b_event10.png"]
+
+
+def selfcheck(room):
+    """The mask on a magenta background: near-white snapshot pixels (min ≥ 245) given to the background must be ≤ 50 per
+    snapshot with the working mask and ≥ 1000 with the raw one (the check can go red: that is the A1b leak)."""
     import numpy as np
     from PIL import Image
-    from scipy import ndimage
+    bad = 0
+    for s in LEAK_SNAPS:
+        S = np.asarray(Image.open(os.path.join(FP, "screenshots", s)).convert("RGB")).astype(int)
+        white = S.min(axis=2) >= 245
+        n = int((white & ui_mask(S, room)[1]).sum()); raw = int((white & ui_mask(S, room, clean=False)[1]).sum())
+        ok = n <= 50 and raw >= 1000; bad += not ok
+        print(f"{s}: белых отдано фону {n} (≤ 50), сырой маской {raw} (≥ 1000)  {'OK' if ok else 'FAIL'}")
+    print("SELFCHECK OK" if not bad else "SELFCHECK FAIL")
+    return 1 if bad else 0
+
+
+def bg(path, out, *opt):
+    """opt: --veil A — alpha of the Match3 field underlay drawn on the composite (the snapshots carry VEIL);
+    --selfcheck — only the leak self-check of the mask (path and out are ignored)."""
+    import numpy as np
+    from PIL import Image
+    veil = float(opt[opt.index("--veil") + 1]) if "--veil" in opt else VEIL
+    room = np.asarray(Image.open(os.path.join(FP, "app/src/game/res/drawable-nodpi/room_port_day.webp")).convert("RGB")).astype(int)
+    if "--selfcheck" in opt:
+        return selfcheck(room)
     os.makedirs(out, exist_ok=True)
     B = np.asarray(Image.open(path).convert("RGB")).astype(int)
     if B.shape[:2] != (1920, 1080): print("фон не 1080 × 1920:", B.shape); return 1
-    room = np.asarray(Image.open(os.path.join(FP, "app/src/game/res/drawable-nodpi/room_port_day.webp")).convert("RGB")).astype(int)
     for s in SNAPS:
         S = np.asarray(Image.open(os.path.join(FP, "screenshots", s)).convert("RGB")).astype(int)
-        m1 = np.abs(S - room).max(axis=2) < 12
-        m2 = np.abs(S - (room * (1 - VEIL) + 255 * VEIL)).max(axis=2) < 12  # фон под подложкой поля Match3
-        # белое в карточке совпадает с белым окном комнаты: тонкие совпадения убрать, малые замкнутые дыры UI залить
-        # (большие — это фон в рамке, например поле Match3 целиком)
-        m = ndimage.binary_opening(m1 | m2, iterations=2)
-        holes, n = ndimage.label(ndimage.binary_fill_holes(~m) & m)
-        small = np.isin(holes, 1 + np.flatnonzero(ndimage.sum(np.ones_like(holes), holes, range(1, n + 1)) < 60000))
-        m &= ~small
-        C = np.where((m & ~m1)[..., None], B * (1 - VEIL) + 255 * VEIL, np.where(m[..., None], B, S))
+        m1, m = ui_mask(S, room)
+        C = np.where((m & ~m1)[..., None], B * (1 - veil) + 255 * veil, np.where(m[..., None], B, S))
         Image.fromarray(C.astype("uint8")).save(os.path.join(out, "comp_" + s))
     Lk = float(lum(INK))
     Lb = lum(B)
     fails = 0
     print(f"{'где':34} {'экран':8} {'среднее':>8} {'p10':>6}")
-    rows = [("статус-бар 0–5 %", 0, 0, 1080, 96)] + [(cap, x0, y0, x1, y1) for _, cap, x0, y0, x1, y1 in TEXT]
+    # a place background carries only its own texts (bg_<place>_port); any other file (room_port_day) — all of them
+    import re
+    pm = re.search(r"bg_(\w+?)_port", os.path.basename(path))
+    rows = [("статус-бар 0–5 %", 0, 0, 1080, 96)] + [(cap, x0, y0, x1, y1) for _, cap, x0, y0, x1, y1, places in TEXT
+                                                     if pm is None or pm.group(1) in places]
     for cap, x0, y0, x1, y1 in rows:
         for scr, (k, dx) in (("360×640", (1.0, 0)), ("S23", S23)):
             X0, X1 = max(0, round((x0 + dx) / k)), min(1080, round((x1 + dx) / k))
@@ -173,6 +234,68 @@ def bbox(args):
         if ref and bb: ok = ok and all(abs(bb[i] - ref[i]) <= tol for i in range(4))
         bad += not ok
         print(f"{os.path.basename(f)} {w}x{h} bbox {bb} углы α {corners} {'OK' if ok else 'FAIL'}")
+    return 1 if bad else 0
+
+
+def backdrops(extra=None):
+    """Full-screen backgrounds of the app: the room (day, evening) and the places, as (name, 1920 × 1080 × 3 int array).
+    extra — a directory with bg_*_port.webp that are not in res yet (they replace the ones of res with the same name)."""
+    import glob
+    import numpy as np
+    from PIL import Image
+    res = os.path.join(FP, "app/src/game/res/drawable-nodpi")
+    places = {os.path.basename(f): f for d in (res, extra) if d for f in sorted(glob.glob(os.path.join(d, "bg_*_port.webp")))}
+    files = [os.path.join(res, f"room_port_{t}.webp") for t in ("day", "evening")] + sorted(places.values())
+    return [(os.path.basename(f)[:-5], np.asarray(Image.open(f).convert("RGB")).astype(int)) for f in files]
+
+
+def which(args):
+    """Which background is under a screenshot: the status-bar band (0–4 % of the height — the only band where the
+    background shows on every screen) against every backdrop, fitted like ContentScale.Crop (360 × 640: 1:1; S23
+    1080 × 2340: ×1,219, 118 px cut at each side). Share of band pixels with max|Δ| < 12: the best ≥ 0,6 and the
+    second < 0,3, else «none» (a crossfade or a fade in progress). --expect NAME: exit 1 unless every shot is NAME."""
+    import numpy as np
+    from PIL import Image
+    expect = args[args.index("--expect") + 1] if "--expect" in args else None
+    shots = [a for a in args if a.lower().endswith((".png", ".jpg"))]
+    cands, bad = backdrops(args[args.index("--bgdir") + 1] if "--bgdir" in args else None), 0
+    for f in shots:
+        S = np.asarray(Image.open(f).convert("RGB")).astype(int); H, W = S.shape[:2]
+        k = max(W / 1080, H / 1920); band = round(H * 0.04)
+        dx, dy = round((1080 * k - W) / 2), round((1920 * k - H) / 2)
+        scores = []
+        for name, B in cands:
+            Bk = B if k == 1 else np.asarray(Image.fromarray(B.astype("uint8")).resize((round(1080 * k), round(1920 * k)), Image.BILINEAR)).astype(int)
+            scores.append((float((np.abs(S[:band] - Bk[dy:dy + band, dx:dx + W]).max(axis=2) < 12).mean()), name))
+        scores.sort(reverse=True)
+        (s1, n1), (s2, n2) = scores[0], scores[1]
+        got = n1 if s1 >= 0.6 and s2 < 0.3 else "none"
+        ok = expect is None or got == expect; bad += not ok
+        print(f"{os.path.basename(f)} {W}x{H}: {got}  ({n1} {s1:.2f}, {n2} {s2:.2f}){'' if ok else '  FAIL, expected ' + expect}")
+    return 1 if bad else 0
+
+
+def tiles(path, *opt):
+    """How far each Match3 tile is from the place background under the field underlay: ΔE76 between the tile's mean
+    colour (α > 200) and every background pixel of the field zone (x 3–97 %, y 25–80 %), 5th percentile ≥ 15: below the
+    palette's 20 (residents) — a tile is set apart from the background by its shading, rim and the underlay too; on the
+    BASE bakery 19,1–40,9, and the A1b judges read the tiles there."""
+    import glob
+    import numpy as np
+    from PIL import Image
+    veil = float(opt[opt.index("--veil") + 1]) if "--veil" in opt else VEIL
+    B = np.asarray(Image.open(path).convert("RGB")).astype(float)
+    zone = (B[round(1920 * .25):round(1920 * .80), round(1080 * .03):round(1080 * .97)] * (1 - veil) + 255 * veil).reshape(-1, 3)
+    labs = np.array([lab("#%02x%02x%02x" % tuple(int(v) for v in p)) for p in zone[::97]])  # a sample is enough for a percentile
+    bad = 0
+    for f in sorted(glob.glob(os.path.join(FP, "app/src/game/res/drawable-nodpi/tile_*.webp"))):
+        if "bomb" in f: continue  # the bomb is a button, not a board tile (Match3 has five kinds)
+        T = np.asarray(Image.open(f).convert("RGBA")).astype(float)
+        mean = T[T[..., 3] > 200][:, :3].mean(axis=0)
+        d = np.percentile(np.linalg.norm(labs - np.array(lab("#%02x%02x%02x" % tuple(int(v) for v in mean))), axis=1), 5)
+        ok = d >= 15; bad += not ok
+        print(f"{os.path.basename(f):16} ΔE p5 {d:5.1f}  {'OK' if ok else 'FAIL'}")
+    print("TILES OK" if not bad else "TILES FAIL")
     return 1 if bad else 0
 
 
@@ -214,4 +337,5 @@ if __name__ == "__main__":
     else:
         cmd, rest = sys.argv[1], sys.argv[2:]
         sys.exit({"regress": lambda: regress(*rest), "diff": lambda: diff(*rest), "bg": lambda: bg(*rest),
-                  "bbox": lambda: bbox(rest), "palette": palette}[cmd]())
+                  "bbox": lambda: bbox(rest), "palette": palette, "which": lambda: which(rest),
+                  "tiles": lambda: tiles(*rest)}[cmd]())
