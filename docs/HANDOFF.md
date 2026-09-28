@@ -115,7 +115,7 @@ scratch — путь длиннее 260 символов, `open` падает �
   MCP Blender подключён (N-панель → BlenderMCP → Connect); генераторы окно Blender не используют.
 - Эмулятор: AVD `finni`, запуск `"$LOCALAPPDATA/Android/Sdk/emulator/emulator.exe" -avd finni -no-snapshot-save -no-boot-anim -no-audio &`;
   урезанный для замера плавности — плюс `-cores 2 -memory 3072 -gpu swiftshader_indirect` (после перезагрузки урезанного —
-  ANR `systemui`, WORKFLOW № 40). С сессии 11 запущен ОБЫЧНЫЙ (4 ядра), в нём debug `feat/town` после TOWN-J1-1a2,
+  ANR `systemui`, WORKFLOW № 40). В конце сессии 11 эмулятор остановлен; запускать ОБЫЧНЫЙ (4 ядра), в образе — debug `feat/town` после TOWN-J1-1a2,
   профиль — демо недели 5 после маршрута; 1080 × 1920 / 480, шрифт 1,0, громкость 5. Замер A/B — установка APK путём `cygpath -w` и проверка флага
   сборки после установки (WORKFLOW № 33). Портрет: `tools/adbui.sh shell cmd window user-rotation lock 0`. 360 dp —
   `tools/adbui.sh wm360`, сброс — `wmreset`. Громкость медиа эмулятора — 5 (`mute` перед проверкой, `unmute 5` после).
