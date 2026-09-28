@@ -1,7 +1,7 @@
 ```
 TASK: TOWN-J1-1a — «Поднос по заказу» в игре: раунд и ViewModel, экран заказа в сцене, загадка значком «?», экран после лимита
 EPIC: TOWN-J1 (docs/tasks/TOWN-J1.md — концепция § 2 «Экраны», § 8 строка 1а, решения владельца № 40–48)
-BASE: <коммит оракула — вписать при коммите оракула>; старт — <коммит спеки и контента>
+BASE: e4bc44f (коммит оракула, 600 тестов; для кодера и ревьювера); старт — 8dd059c (спека, контент, маршрут)
 BRANCH: feat/town
 ЗАВИСИТ ОТ: TOWN-J1-0 (контракт Tray.kt, trayRound, № 47 б — сделан, ревью PASS)
 
@@ -405,7 +405,7 @@ demoMoves 5) и разобрать `ContentRepository.parse(modified.toString())
 
 ## ACCEPTANCE (команды 1–10 — из finny-pet/, 11–12а — из корня; оркестратор)
 1. ./gradlew testClassicDebugUnitTest --console=plain -> exit 0, не UP-TO-DATE
-2. tests = <число @Test на BASE>, failed 0, skipped 0 (скрипт пресета по XML)
+2. tests = 600 (число @Test на BASE e4bc44f), failed 0, skipped 0 (скрипт пресета по XML)
 3. ./gradlew testGameDebugUnitTest --console=plain -> exit 0, то же число
 4. ./gradlew assembleClassicDebug assembleGameDebug assembleGameRelease -> exit 0
 5. ./gradlew lintClassicDebug lintGameDebug -> ошибок 0, предупреждений без сетевых ≤ 5 / 5 (замер на BASE)
