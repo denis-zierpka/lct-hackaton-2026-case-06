@@ -63,8 +63,8 @@
    REQUIREMENTS_MATRIX).
 3. **A1d**: поправить `a1d_spec_r2.md` по списку проверки, закоммитить как `docs/tasks/TOWN-A1d1.md` (BASE) — вместе с
    нужными правками `art_check.py`/TOWN-A1 из «До спавна» спеки; `git worktree add -b pilot/a1d wt/a1d <BASE>`, коммит
-   профиля арт-кодера (как 8dbfd2d), `wt/a1d/.claude/task-scope.json` (генератор скоупа — `$TEMP/s12_scope.py`, вписать
-   a1d: allow `room.py`), попросить владельца открыть сессию в `wt\a1d` (режим auto) и вставить строку «Прочитай файл
+   профиля арт-кодера (как 8dbfd2d), `wt/a1d/.claude/task-scope.json` (литерал JSON из SCOPE [`TOWN-A1d1.md`](tasks/TOWN-A1d1.md); `s12_scope.py` a1d не
+   знает; регресс `art_check.py` — 21 дамп, с `room_port_evening`), попросить владельца открыть сессию в `wt\a1d` (режим auto) и вставить строку «Прочитай файл
    …\probe_msg_a1d.txt и выполни инструкцию из него» (образец — `$TEMP/s12/probe_msg_a1g.txt`, заменить id сессии
    оркестратора на новый: `get_session self`), затем задание кодеру сообщением (`SendMessage` на id её сессии).
 4. После ответов арта: круги 1b3-2 / A1g1-2 при ответах «б» (в тех же сессиях worktree — id ниже), слияние файлов пилота в
