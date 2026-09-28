@@ -2,7 +2,7 @@
 с контрастом текста на фоне, альфа-bbox спрайтов, палитра жителей. Запуск из корня репозитория:
 
   python tools/art_check.py regress SRC_DIR OUT_DIR   дампы сцены room.py (room_port_day), pet.py (bunny, cat, puppy ×
-                                                      stage 0, 2), place.py (market, foma, bakery), facade.py (market)
+                                                      stage 0, 2), place.py (market, foma, bakery), facade.py (7 фасадов по одному)
                                                       и props.py (tile_apple, goal_custom, ui_coin — по одному на
                                                       прогон) генераторами из SRC_DIR -> OUT_DIR/*.json
   python tools/art_check.py diff A_DIR B_DIR          сравнить дампы; exit 1, если есть разница или нет файла
@@ -106,7 +106,9 @@ def regress(src, out):
     # approved at gate № 38: the market and «У Фомы» backgrounds and the market facade (facade.py reads place.PLACES)
     # + the bakery (gate № 40): the 1b3 counter overlay is cut from this scene (TOWN-J1-1b3, pilot № 61 б)
     runs += [(f"place_{p}", "place.py", ["--place", p, "--out", os.path.join(out, f"place_{p}.png"), "--preview"]) for p in ("market", "foma", "bakery")]
-    runs += [("facade_market", "facade.py", ["--place", "market", "--samples", "1", "--out", os.path.join(out, "facade_market.png")])]
+    # all 7 facades, one per run (a run dumps its last scene only): the street generator A1g1 changes some (pilot № 61 б)
+    runs += [(f"facade_{f}", "facade.py", ["--place", f, "--samples", "1", "--out", os.path.join(out, f"facade_{f}.png")])
+             for f in ("home", "market", "foma", "bakery", "gate_park", "gate_forest", "gate_zoo")]
     # pastries go into props.py (1b3): three builders, one per run — render_prop resets the scene per prop, a joint run dumps the last only
     runs += [(f"props_{n}", "props.py", ["--only", n, "--samples", "1", "--out", os.path.join(out, f"props_{n}.png")]) for n in ("tile_apple", "goal_custom", "ui_coin")]
     for name, script, args in runs:

@@ -108,7 +108,7 @@ scratch — путь длиннее 260 символов, `open` падает �
   фон 1080 × 1920 × 160 сэмплов ≈ 35–40 с, `place.py -- --all` (3 места) ≈ 1 мин 40 с, житель ≈ 10 с. Всегда
   `-b --factory-startup --python-exit-code 1`; рендеры кодера — только вне репозитория. Кодер для Blender — Opus xhigh
   (Workflow `agent({agentType:'coder', model:'opus', effort:'xhigh'})`, с продолжением новым кодером при лимите ходов).
-  Приёмка арта — `python tools/art_check.py`: `regress`/`diff` (дамп сцены: room, 6 питомцев, place market/foma, facade market;
+  Приёмка арта — `python tools/art_check.py`: `regress`/`diff` (дамп сцены: room, 6 питомцев, place market/foma/bakery, 7 фасадов по одному, props tile_apple/goal_custom/ui_coin;
   с модификаторами и углом солнца), `bg` (композиты UI со снимков BASE `emu_b_*` на фон места, контраст по месту;
   `--selfcheck` — самопроверка маски; `--veil A`), `which` (какой фон под снимком 360 × 640 или S23), `tiles` (ΔE плиток
   Match3 до фона), `bbox`, `palette`. Снимки `emu_b_*` (BASE A1c) лежат только на этой машине (`.gitignore`).
