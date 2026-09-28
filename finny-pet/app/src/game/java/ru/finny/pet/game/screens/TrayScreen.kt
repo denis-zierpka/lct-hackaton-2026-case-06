@@ -214,20 +214,7 @@ fun TrayScreen(vm: GameViewModel, modifier: Modifier) {
                     .background(G.paperTint, RoundedCornerShape(16.dp)).padding(horizontal = 8.dp, vertical = 2.dp),
                 verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Row(
-                    Modifier.clearAndSetSemantics { contentDescription = "Обслужено ${r.results.size} из ${r.orders.size}, звёзд ${r.stars}" },
-                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    r.orders.indices.forEach { i ->
-                        when (r.results.getOrNull(i)) {
-                            true -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Star(24.dp); TText("+1", style = MaterialTheme.typography.bodyMedium, color = G.purpleDeep, maxLines = 1)
-                            }
-                            false -> Box(Modifier.size(16.dp).background(G.purpleDeep, CircleShape))
-                            null -> Box(Modifier.size(16.dp).border(2.dp, G.purpleDeep, CircleShape))
-                        }
-                    }
-                }
+                StarRow(r)
                 GameButton("Отдать", Modifier.weight(1f).bound("give"), ButtonStyle.PRIMARY, minHeight = 48.dp) { vm.trayGive() }
             }
         }
@@ -418,5 +405,25 @@ private fun TrayScene(vm: GameViewModel, r: TrayRound, host: String, shown: Int,
         }
 
         GameButton("Закончить", Modifier.align(Alignment.TopEnd).padding(8.dp).semantics { traversalIndex = -1f }, ButtonStyle.PAPER, minHeight = 48.dp) { vm.finishRound() }
+    }
+}
+
+/** TalkBack ряда звёзд подноса (раунд и итог, TOWN-J1-1b1). */
+internal fun starsText(r: TrayRound) = "Обслужено ${r.results.size} из ${r.orders.size}, звёзд ${r.stars}"
+/** ★ «+1» — с первого раза, ● — обслужен, ○ — ещё придёт (раунд) / не пришёл (итог); один узел TalkBack [starsText]. */
+@Composable internal fun StarRow(r: TrayRound) {
+    Row(
+        Modifier.clearAndSetSemantics { contentDescription = starsText(r) },
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        r.orders.indices.forEach { i ->
+            when (r.results.getOrNull(i)) {
+                true -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Star(24.dp); TText("+1", style = MaterialTheme.typography.bodyMedium, color = G.purpleDeep, maxLines = 1)
+                }
+                false -> Box(Modifier.size(16.dp).background(G.purpleDeep, CircleShape))
+                null -> Box(Modifier.size(16.dp).border(2.dp, G.purpleDeep, CircleShape))
+            }
+        }
     }
 }

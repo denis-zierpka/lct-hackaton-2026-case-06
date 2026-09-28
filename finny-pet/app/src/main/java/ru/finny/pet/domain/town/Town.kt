@@ -756,12 +756,12 @@ class Town(internal val content: Content) {
             stickers = st.stickers.plusNew(events.live.firstOrNull { it.kind == EventKind.JOB && it.params.job == jobId }?.sticker),
         )
         val line = when {
-            job.game == JobGame.TAPS -> "${quote.base} за три поручения. ✉ +$total — придёт с новым конвертом"
+            job.game == JobGame.TAPS -> "${quote.base} за три поручения — придёт с новым конвертом"
             bonus > 0 -> {
                 val what = when (job.game) { JobGame.MATCH3 -> "булочки"; JobGame.TRAY -> "★"; else -> "сдачу" }
-                "${quote.base} за смену + $bonus за $what. ✉ +$total — придёт с новым конвертом"
+                "${quote.base} за смену + $bonus за $what — придёт с новым конвертом"
             }
-            else -> "${quote.base} за смену. ✉ +$total — придёт с новым конвертом"
+            else -> "${quote.base} за смену — придёт с новым конвертом"
         }
         val newShifts = st.jobShifts[jobId] ?: 0
         val levelBefore = quote.level

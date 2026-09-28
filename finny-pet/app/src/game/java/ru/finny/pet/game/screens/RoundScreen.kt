@@ -2,12 +2,15 @@ package ru.finny.pet.game.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -15,18 +18,29 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.paneTitle
+import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.unit.dp
+import ru.finny.pet.domain.Face
+import ru.finny.pet.domain.town.Job
 import ru.finny.pet.domain.town.JobGame
 import ru.finny.pet.game.GameViewModel
+import ru.finny.pet.game.Line
+import ru.finny.pet.game.LocalAnimate
+import ru.finny.pet.game.LocalPetAction
 import ru.finny.pet.game.ui.ButtonStyle
 import ru.finny.pet.game.ui.G
 import ru.finny.pet.game.ui.GameButton
 import ru.finny.pet.game.ui.Hud1
 import ru.finny.pet.game.ui.Hud2
 import ru.finny.pet.game.ui.LocalParticles
-import ru.finny.pet.game.ui.Panel
+import ru.finny.pet.game.ui.PetSprite
 import ru.finny.pet.game.ui.ResidentPic
+import ru.finny.pet.game.ui.SpeechBubble
 import ru.finny.pet.game.ui.StatsCollapsed
 import ru.finny.pet.game.ui.TText
 import ru.finny.pet.game.ui.particleTarget
@@ -40,15 +54,7 @@ fun RoundScreen(vm: GameViewModel, jobId: String) {
         Hud1(vm, inPlace = true, inRound = true)
         Hud2 { StatsCollapsed(vm); MailChip(vm) }
         when {
-            result != null -> Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
-                Panel(Modifier.fillMaxWidth().padding(8.dp).testTag("job_result").particleTarget(LocalParticles.current, "job_result")) {
-                    vm.tc.residents.firstOrNull { it.id == job?.resident }?.let { ResidentPic(it, 72.dp, Modifier.align(Alignment.CenterHorizontally)) }
-                    TText("Спасибо за помощь!", style = MaterialTheme.typography.headlineSmall)
-                    TText(result.text)
-                    result.why.forEach { TText(it, style = MaterialTheme.typography.bodyMedium, color = G.inkSoft) }
-                    GameButton("Готово", Modifier.fillMaxWidth(), minHeight = 48.dp) { vm.closeRound() }
-                }
-            }
+            result != null -> ShiftResult(vm, job, result, Modifier.weight(1f))
             job?.game == JobGame.TRAY && vm.tray != null -> TrayScreen(vm, Modifier.weight(1f))
             vm.match != null -> MiniGameScreen(vm, Modifier.weight(1f))
             else -> Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -66,6 +72,58 @@ fun RoundScreen(vm: GameViewModel, jobId: String) {
                     GameButton("Закончить", minHeight = 48.dp) { vm.finishRound() }
                 }
             }
+        }
+    }
+}
+
+/** The shift result in the scene (TOWN-J1-1b1): the resident on the floor, the pet, a bubble with the pay; «Почему?» and «Готово» below. */
+@Composable
+private fun ShiftResult(vm: GameViewModel, job: Job?, result: Line, modifier: Modifier) {
+    val pay = vm.roundPay
+    val r = vm.tray?.takeIf { pay != null && job?.game == JobGame.TRAY }
+    val act = LocalPetAction.current
+    val desc = listOfNotNull(
+        if (pay != null) "${vm.residentName(job?.resident ?: "")}: спасибо!" else null,
+        r?.let(::starsText),
+        (pay?.let { "Заработали ${it.total}: " } ?: "") +
+            result.text.replace("за ★", if (pay?.bonus == 1) "за звезду" else "за звёзды"),
+        result.why.firstOrNull(),
+        *result.why.drop(1).toTypedArray(),
+    ).joinToString(" ") { dot(it) }
+    BoxWithConstraints(modifier.fillMaxWidth().padding(8.dp)) {
+        val floor = maxHeight - 64.dp // buttons row 61 dp (56 + edge 5) + gap 3
+        val f = (floor - 8.dp).coerceIn(160.dp, 232.dp) // the resident frame on the result ≤ 232 dp
+        val bx = 8.dp + f * 0.45f
+        val head = floor - f + f * 0.1f
+        vm.tc.residents.firstOrNull { it.id == job?.resident }?.let { ResidentPic(it, f, Modifier.offset(x = 8.dp - f * 0.3f, y = floor - f).clearAndSetSemantics {}) }
+        vm.state.pet?.let { pet -> PetSprite(
+            speciesId = pet.speciesId, colorId = pet.colorId, stage = vm.economy.stageIndex(pet.growth), face = Face.HAPPY, animate = LocalAnimate.current,
+            modifier = Modifier.offset(x = 8.dp, y = floor - 96.dp).clearAndSetSemantics {}, size = 96.dp, bounceKey = vm.bounce, action = act.action, actionKey = act.key, seen = act,
+        ) }
+        SpeechBubble(
+            Modifier.layout { m, c ->
+                val pl = m.measure(c)
+                val y = minOf(head.roundToPx(), (floor - 8.dp).roundToPx() - pl.height).coerceAtLeast(8.dp.roundToPx())
+                layout(pl.width, pl.height) { pl.place(bx.roundToPx(), y) }
+            }.width(maxWidth - bx).heightIn(max = floor - 16.dp).clearAndSetSemantics {
+                contentDescription = desc; testTag = "job_result"
+                paneTitle = if (pay != null) "${vm.residentName(job?.resident ?: "")}: спасибо! Заработали ${pay.total}" else result.text
+            },
+        ) {
+            if (pay != null) TText("Спасибо!", style = MaterialTheme.typography.titleMedium, color = G.ink, maxLines = 1)
+            r?.let { StarRow(it) }
+            pay?.let {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    TText("✉ +${it.total}", Modifier.particleTarget(LocalParticles.current, "job_result"), style = MaterialTheme.typography.headlineMedium, color = G.purple, maxLines = 1)
+                    TText("за смену", style = MaterialTheme.typography.bodyMedium, color = G.inkSoft, maxLines = 1)
+                }
+            }
+            TText(result.text, style = MaterialTheme.typography.bodyMedium, color = G.ink)
+            result.why.firstOrNull()?.let { TText(it, style = MaterialTheme.typography.bodyMedium, color = G.inkSoft) }
+        }
+        Row(Modifier.align(Alignment.BottomCenter).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (result.why.size > 1) GameButton("Почему?", Modifier.weight(1f), ButtonStyle.PAPER, minHeight = 56.dp) { result.why.drop(1).forEach { vm.say(it) } }
+            GameButton("Готово", Modifier.weight(1f), ButtonStyle.PRIMARY, minHeight = 56.dp) { vm.closeRound() }
         }
     }
 }

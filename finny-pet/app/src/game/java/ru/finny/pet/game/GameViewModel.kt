@@ -31,6 +31,7 @@ import ru.finny.pet.domain.town.Migration
 import ru.finny.pet.domain.town.PetLine
 import ru.finny.pet.domain.town.Quote
 import ru.finny.pet.domain.town.Recovery
+import ru.finny.pet.domain.town.ShiftPay
 import ru.finny.pet.domain.town.ShiftQuote
 import ru.finny.pet.domain.town.Source
 import ru.finny.pet.domain.town.Template
@@ -130,6 +131,8 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     /** The shift result on the Round screen (job_result); null while playing. */
     var roundResult: Line? by mutableStateOf(null)
         private set
+    /** Числа итога смены для сцены (TOWN-J1-1b1); null — в раунде и после отказа. */
+    var roundPay: ShiftPay? by mutableStateOf(null); private set
     // tray round (TOWN-J1-1a § 2): not saved to the profile
     var tray: TrayRound? by mutableStateOf(null); private set
     var trayMiss: Give? by mutableStateOf(null); private set
@@ -436,7 +439,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         val q = town.shiftQuote(state, jobId)
         val job = tc.jobs.firstOrNull { it.id == jobId }
         if (job == null || !q.canPlay) { say(q.line); sfx(Sound.FAIL); return }
-        roundResult = null
+        roundResult = null; roundPay = null
         taps.clear()
         match = null
         tray = null; trayMiss = null; trayThanks = null; trayCue = TrayCue.NONE; trayNote = ""; riddleOpen = null; riddleLine = null
@@ -488,8 +491,10 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
                 val o = r.outcome
                 commit(o.state)
                 roundResult = Line(o.line, o.why)
+                roundPay = o.pay
                 arrived(o.arrived)
                 sfx(Sound.SUCCESS)
+                bounce++
                 val earned = state.envelope.sumOf { it.amount } - before
                 if (earned > 0) emit(Effect.CoinsFrom("job_result", "mail", coinsFor(earned)))
             }
@@ -502,7 +507,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
 
     /** [Готово] after the shift: back to the job's place. */
     fun closeRound() {
-        roundResult = null
+        roundResult = null; roundPay = null
         tray = null
         if (screen is Screen.Round) stack.removeAt(stack.lastIndex)
         if (stack.isEmpty()) stack += Screen.Room

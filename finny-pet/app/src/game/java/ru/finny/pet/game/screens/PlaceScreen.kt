@@ -333,7 +333,7 @@ private fun JobPlace(vm: GameViewModel, place: Place) {
     }
 }
 
-private fun dot(t: String) = if (t.endsWith(".") || t.endsWith("!") || t.endsWith("?")) t else "$t."
+internal fun dot(t: String) = if (t.endsWith(".") || t.endsWith("!") || t.endsWith("?")) t else "$t."
 
 /** The order of a tray job in the scene: Borya behind the counter, a bubble with the pay and shifts, «Начать смену». */
 @Composable
