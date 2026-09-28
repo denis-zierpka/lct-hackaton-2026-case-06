@@ -16,7 +16,8 @@
 #   big        — 7 смен, демо выкл.: раунд с заказами из 3–4, облачко загадки при size − 1 верных (без строки пользы),
 #                ответ — «Этот поднос Боря оставил тебе», расхождение на заказе из 4 (1,0 и 1,3).
 # Касания — точным совпадением (кнопка витрины «Хлеб» — префикс слота «Хлеб на подносе»). Промах печатает «not found»:
-# лог проверять `grep -cE "not found|BACKUP"` → 0.
+# лог проверять `grep -cE "not found|BACKUP"` → 0. DUMP=1 — рядом со снимком сырой дамп emu_PREFIX_<экран>.xml для
+# `python tools/ui_measure.py <дамп> <метка> 3` (мишени < 48 dp, узлы за краем).
 set -u
 A="$(cd "$(dirname "$0")" && pwd)/adbui.sh"; P=${1:?PREFIX}; shift
 STATES=${*:-first riddle limit level2 big}
@@ -43,7 +44,8 @@ tapx() { local xy i; for i in 1 2 3 4 5 6; do xy=$("$A" ui | awk -F'\t' -v t="$1
 text_xy() { local xy i; for i in 1 2 3 4 5 6; do xy=$("$A" ui | awk -F'\t' -v t="$1" '$1==t {print $3, $4; exit}'); [ -n "$xy" ] && break; sleep 1; done; echo "$xy"; }  # TEXT node, not description
 has() { "$A" ui | grep -qF "$1" || echo "  not found: node «$1» on $2"; }
 probe() { "$A" ui | grep -o 'Обрезано: [0-9]*' | head -1; }
-shot() { sleep 0.5; "$A" shot ${P}_$1 >/dev/null; echo "$1: $(probe)"; }
+shot() { sleep 0.5; "$A" shot ${P}_$1 >/dev/null; echo "$1: $(probe)"
+  [ -n "${DUMP:-}" ] && { "$A" shell uiautomator dump /sdcard/ui.xml >/dev/null; "$A" exec-out cat /sdcard/ui.xml > "$ROOT/finny-pet/screenshots/emu_${P}_$1.xml"; }; }  # DUMP=1: raw dump for tools/ui_measure.py
 shot2() { "$A" font 1.0; sleep 1.5; shot ${1}10; "$A" font 1.3; sleep 2.5; shot ${1}13; "$A" font 1.0; sleep 1.5; }
 order() { "$A" ui | awk -F'\t' 'index($2, ". Заказ: ") > 0 { s = $2; sub(/^[^.]*\. Заказ: /, "", s); sub(/\. Ещё нужно: .*$/, "", s); print s; exit }'; }
 cap() { PYTHONIOENCODING=utf-8 $PY -c "import sys; s=sys.argv[1].strip(); print(s[:1].upper() + s[1:])" "$1"; }
