@@ -36,6 +36,11 @@
   применение → проверка): результат — `C:/Users/SINGUL~1/AppData/Local/Temp/claude/C--Users-Singularity-Documents-Claude-lct-hackaton-2026-case-06/22cbd09a-dedc-4c32-a035-a188b7f51eca/scratchpad/a1d_spec_r2.md`
   (+ `a1d_spec_r1.md`, черновики), список несоответствий проверки — в журнале
   `…\subagents\workflows\wf_ad73b6b0-88a\journal.jsonl` (последняя строка `type: result`). Не закоммичена; вопросы — с № 75.
+- Если workflow `a1d-spec` или `art-sheet` не успели закончиться до закрытия сессии 12 — их скрипты лежат в
+  `C:\Users\Singularity\.claude\projects\C--Users-Singularity-Documents-Claude-lct-hackaton-2026-case-06\22cbd09a-dedc-4c32-a035-a188b7f51eca\workflows\scripts\a1d-spec-wf_ad73b6b0-88a.js`
+  и `C:\Users\Singularity\.claude\projects\C--Users-Singularity-Documents-Claude-lct-hackaton-2026-case-06-finny-pet-screenshots\22cbd09a-dedc-4c32-a035-a188b7f51eca\workflows\scripts\art-sheet-wf_cd2e61db-999.js`:
+  прочитать и запустить заново inline (Workflow с `script`; аргументы — `args.scratch` / `args.t`). Листы арта
+  `pilot_art_1…5` уже собраны (закоммичены), судьи — в журнале `wf_cd2e61db-999`.
 
 ## Дальше
 
