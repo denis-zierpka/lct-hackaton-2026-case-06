@@ -20,6 +20,10 @@
   python tools/art_check.py residents [--selfcheck]   id town.residents = ветки residentRes в TownUi.kt = res_*.webp в
                                                       game/res, else -> null (TOWN-A1f); --selfcheck — 4 мутанта дают
                                                       MISMATCH
+  python tools/art_check.py pastries [--selfcheck]    id меню работ TRAY (town.jobs) = ветки pastryRes в TownUi.kt =
+                                                      pastry_*.webp в game/res, else -> null (TOWN-J1-1b4); --selfcheck —
+                                                      эталон из content.json и 10 мутантов, каждый со своей причиной
+                                                      (TownUi.kt не читает)
 
 Дамп пишет этот же файл, запущенный внутри Blender ПОСЛЕ генератора: --python tools/art_check.py с env DUMP_OUT.
 Снимки для композитов — finny-pet/screenshots/emu_*.png (в .gitignore, лежат на машине команды).
@@ -341,25 +345,32 @@ def palette():
     return 1 if bad else 0
 
 
+def when_check(fn, prefix, ids, files, text):
+    """id = ветки (id слева во всех парах `"<id>" -> R.drawable.<prefix><x>`, x ≠ id — «чужой ресурс») в
+    `fun <fn>(id: String): Int? = when (id) {…\n}` = файлы, последняя ветка else -> null (общий разбор residents и pastries). Печатает строку с причинами, возвращает (ok, строка)."""
+    import re
+    body = re.search(r"fun %s\(id: String\): Int\? = when \(id\) \{(.*?)\n\}" % re.escape(fn), text, re.S)
+    # commented-out branches are not branches; an unknown id must fall back to the default picture (else -> null)
+    code = re.sub(r"//[^\n]*|/\*.*?\*/", "", body.group(1), flags=re.S) if body else ""
+    pairs = re.findall(r'"(\w+)"\s*->\s*R\.drawable\.%s(\w+)' % re.escape(prefix), code)
+    br = {a for a, b in pairs}; bad = [(a, b) for a, b in pairs if a != b]  # br — все ветки: иначе not bad следует из ids == br и len
+    dup = sorted({a for a in br if pairs.count((a, a)) > 1})  # len(pairs) == len(ids) catches it; the reason is printed here
+    tail = bool(re.search(r"\n\s*else\s*->\s*null\s*$", code))
+    ok = bool(ids) and ids == br == files and not bad and len(pairs) == len(ids) and tail
+    line = (f"id {len(ids)}, ветки {len(br)}, файлы {len(files)}, чужой ресурс {bad}, else -> null {tail}; нет ветки "
+            f"{sorted(ids - br)}, нет файла {sorted(ids - files)}, лишние {sorted((br | files) - ids)}, дубли {dup} -> "
+            f"{'MATCH %d' % len(ids) if ok else 'MISMATCH'}")
+    print(line)
+    return ok, line
+
+
 def residents(args):
     """id town.residents = ветки `"<id>" -> R.drawable.res_<id>` в residentRes (TownUi.kt) = файлы res_*.webp (TOWN-A1f)."""
     import re
     src = open(os.path.join(FP, "app/src/game/java/ru/finny/pet/game/ui/TownUi.kt"), encoding="utf-8").read()
     ids = {r["id"] for r in json.load(open(os.path.join(FP, "app/src/main/assets/content/content.json"), encoding="utf-8"))["town"]["residents"]}
     files = {f[4:-5] for f in os.listdir(os.path.join(FP, "app/src/game/res/drawable-nodpi")) if f.startswith("res_") and f.endswith(".webp")}
-
-    def check(text):
-        body = re.search(r"fun residentRes\(id: String\): Int\? = when \(id\) \{(.*?)\n\}", text, re.S)
-        # commented-out branches are not branches; an unknown id must fall back to the pet frame (else -> null)
-        code = re.sub(r"//[^\n]*|/\*.*?\*/", "", body.group(1), flags=re.S) if body else ""
-        pairs = re.findall(r'"(\w+)"\s*->\s*R\.drawable\.res_(\w+)', code)
-        br = {a for a, b in pairs if a == b}; bad = [(a, b) for a, b in pairs if a != b]
-        tail = bool(re.search(r"\n\s*else\s*->\s*null\s*$", code))
-        ok = bool(ids) and ids == br == files and not bad and len(pairs) == len(ids) and tail
-        print(f"id {len(ids)}, ветки {len(br)}, файлы {len(files)}, чужой ресурс {bad}, else -> null {tail}; нет ветки "
-              f"{sorted(ids - br)}, нет файла {sorted(ids - files)}, лишние {sorted((br | files) - ids)} -> "
-              f"{'MATCH %d' % len(ids) if ok else 'MISMATCH'}")
-        return ok
+    check = lambda text: when_check("residentRes", "res_", ids, files, text)[0]
     if "--selfcheck" in args:  # мутанты обязаны дать MISMATCH: без ветки Марты, Марта с ресурсом Фомы, ветка в /* */,
         # неизвестный житель рисуется Мартой
         m = [re.sub(r'\n\s*"marta"\s*->\s*R\.drawable\.res_marta', "", src, count=1),
@@ -371,6 +382,40 @@ def residents(args):
     return 0 if check(src) else 1
 
 
+def pastries(args):
+    """id меню работ TRAY (town.jobs) = ветки `"<id>" -> R.drawable.pastry_<id>` в pastryRes (TownUi.kt) = файлы
+    pastry_*.webp (TOWN-J1-1b4). --selfcheck не читает TownUi.kt: эталон § 1 спеки из id content.json -> MATCH,
+    10 мутантов -> MISMATCH, каждый со своей причиной в строке вывода."""
+    jobs = json.load(open(os.path.join(FP, "app/src/main/assets/content/content.json"), encoding="utf-8"))["town"]["jobs"]
+    menu = list(dict.fromkeys(p["id"] for j in jobs if j.get("game") == "TRAY" for p in j.get("menu", [])))
+    ids = set(menu)
+    check = lambda i, f, text: when_check("pastryRes", "pastry_", i, f, text)
+    if "--selfcheck" not in args:
+        src = open(os.path.join(FP, "app/src/game/java/ru/finny/pet/game/ui/TownUi.kt"), encoding="utf-8").read()
+        files = {f[7:-5] for f in os.listdir(os.path.join(FP, "app/src/game/res/drawable-nodpi")) if f.startswith("pastry_") and f.endswith(".webp")}
+        return 0 if check(ids, files, src)[0] else 1
+    ref = lambda m: ("fun pastryRes(id: String): Int? = when (id) {\n" + "".join(f'    "{i}" -> R.drawable.pastry_{i}\n' for i in m)
+                     + "    else -> null\n}\n")
+    R0, C = ref(menu), '"croissant" -> R.drawable.pastry_croissant'
+    L = f"    {C}\n"
+    cases = [(ids, ids, R0, "-> MATCH %d" % len(ids)),                                                   # 0 эталон
+             (ids, ids, R0.replace(L, ""), "нет ветки ['croissant']"),                                   # 1
+             (ids, ids, R0.replace(C, '"croissant" -> R.drawable.pastry_bread'), "чужой ресурс [('croissant', 'bread')]"),
+             (ids, ids, R0.replace(C, f"/* {C} */"), "нет ветки ['croissant']"),                         # 3
+             (ids, ids, R0.replace(C, f"// {C}"), "нет ветки ['croissant']"),                            # 4
+             (ids, ids, R0.replace("else -> null", "else -> R.drawable.pastry_bread"), "else -> null False"),
+             (ids, ids - {"cupcake"}, R0, "нет файла ['cupcake']"),                                      # 6
+             (ids | {"eclair"}, ids, R0, "нет ветки ['eclair']"),                                        # 7
+             (ids, ids, R0.replace(L, L + L), "дубли ['croissant']"),                                    # 8
+             (set(), set(), ref([]), "id 0,"),                                                           # 9: конъюнкт bool(ids)
+             (ids, ids, R0.replace('"bread" -> R.drawable.pastry_bread', C), "нет ветки ['bread']")]     # 10: ids == br
+    fail = []
+    for n, (i, f, text, why) in enumerate(cases):
+        ok, line = check(i, f, text)
+        if ok != (n == 0) or why not in line: fail.append(n)
+    print("SELFCHECK OK" if not fail else f"SELFCHECK FAIL {fail}"); return 1 if fail else 0
+
+
 if __name__ == "__main__":
     if os.environ.get("DUMP_OUT") and "bpy" in sys.modules:  # внутри Blender после генератора
         dump()
@@ -378,4 +423,5 @@ if __name__ == "__main__":
         cmd, rest = sys.argv[1], sys.argv[2:]
         sys.exit({"regress": lambda: regress(*rest), "diff": lambda: diff(*rest), "bg": lambda: bg(*rest),
                   "bbox": lambda: bbox(rest), "palette": palette, "which": lambda: which(rest),
-                  "tiles": lambda: tiles(*rest), "residents": lambda: residents(rest)}[cmd]())
+                  "tiles": lambda: tiles(*rest), "residents": lambda: residents(rest),
+                  "pastries": lambda: pastries(rest)}[cmd]())
