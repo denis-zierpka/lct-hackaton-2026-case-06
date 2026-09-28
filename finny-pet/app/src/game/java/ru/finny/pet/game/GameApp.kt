@@ -161,7 +161,7 @@ fun GameApp(vm: GameViewModel = viewModel()) {
                     if (from != null && particles.targetOf(e.toTarget) != null) particles.coins(from, e.toTarget, e.count)
                 }
                 Effect.Confetti -> particles.targetOf("center")?.let { particles.confetti(it) }
-                Effect.Hearts -> particles.targetOf("pet")?.let { particles.hearts(it) }
+                is Effect.Hearts -> particles.targetOf(e.target)?.let { particles.hearts(it) }
                 is Effect.PetAction -> {
                     petAction.action = e.action; petAction.key++
                     if (e.action == PetAct.EAT) sfx.play(Sound.MUNCH) else if (e.action == PetAct.WASH) sfx.play(Sound.SPLASH)

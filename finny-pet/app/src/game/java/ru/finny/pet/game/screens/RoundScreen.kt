@@ -17,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import ru.finny.pet.domain.town.JobGame
 import ru.finny.pet.game.GameViewModel
 import ru.finny.pet.game.ui.ButtonStyle
 import ru.finny.pet.game.ui.G
@@ -48,6 +49,7 @@ fun RoundScreen(vm: GameViewModel, jobId: String) {
                     GameButton("Готово", Modifier.fillMaxWidth(), minHeight = 48.dp) { vm.closeRound() }
                 }
             }
+            job?.game == JobGame.TRAY && vm.tray != null -> TrayScreen(vm, Modifier.weight(1f))
             vm.match != null -> MiniGameScreen(vm, Modifier.weight(1f))
             else -> Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 // dark, not white on the light place background (TOWN-A1c) (правка №14, ТЗ 3.6)

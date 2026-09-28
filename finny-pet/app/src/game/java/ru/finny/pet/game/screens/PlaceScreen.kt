@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.IntrinsicSize
@@ -16,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -35,6 +37,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
@@ -47,6 +50,7 @@ import androidx.compose.ui.text.style.Hyphens
 import androidx.compose.ui.text.style.LineBreak
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.max
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import ru.finny.pet.R
@@ -77,6 +81,7 @@ import ru.finny.pet.game.ui.Panel
 import ru.finny.pet.game.ui.PetSprite
 import ru.finny.pet.game.ui.Pic
 import ru.finny.pet.game.ui.ResidentPic
+import ru.finny.pet.game.ui.SpeechBubble
 import ru.finny.pet.game.ui.STATS
 import ru.finny.pet.game.ui.StatsCollapsed
 import ru.finny.pet.game.ui.TText
@@ -303,15 +308,78 @@ private fun PayPanel(vm: GameViewModel, itemId: String, shopId: String, modifier
 @Composable
 private fun JobPlace(vm: GameViewModel, place: Place) {
     val job = vm.tc.jobs.firstOrNull { it.place == place.id }
+    val order = job?.let { j -> vm.ordersAt(place.id).firstOrNull { it.params.job == j.id } }
     Column(Modifier.fillMaxSize()) {
         Hud1(vm, inPlace = true)
         Hud2 { StatsCollapsed(vm); MailChip(vm) }
-        Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        // tray job: the order is a scene; place events push it down, never squeeze it below 360 dp (TOWN-J1-1a § 3)
+        if (job?.game == JobGame.TRAY) BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
+            val h = maxHeight
+            var e by remember { mutableIntStateOf(0) }
+            val eDp = with(LocalDensity.current) { e.toDp() }
+            Column(Modifier.verticalScroll(rememberScrollState()).padding(8.dp)) {
+                Column(Modifier.onSizeChanged { e = it.height }.padding(bottom = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TText(place.title, style = MaterialTheme.typography.headlineSmall, color = G.ink)
+                    PlaceEvents(vm, place.id)
+                }
+                TrayJobScene(vm, job, order, Modifier.height(max(h - 16.dp - eDp, 360.dp)))
+            }
+        } else Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             // dark, not white on the light place background (TOWN-A1c) (правка №14, ТЗ 3.6)
             TText(place.title, style = MaterialTheme.typography.headlineSmall, color = G.ink)
             PlaceEvents(vm, place.id)
-            if (job != null) OrderCard(vm, job, vm.ordersAt(place.id).firstOrNull { it.params.job == job.id })
+            if (job != null) OrderCard(vm, job, order)
         }
+    }
+}
+
+private fun dot(t: String) = if (t.endsWith(".") || t.endsWith("!") || t.endsWith("?")) t else "$t."
+
+/** The order of a tray job in the scene: Borya behind the counter, a bubble with the pay and shifts, «Начать смену». */
+@Composable
+private fun TrayJobScene(vm: GameViewModel, job: Job, order: EventDef?, modifier: Modifier) {
+    val q = vm.shiftQuote(job.id)
+    val resident = vm.tc.residents.firstOrNull { it.id == job.resident }
+    val text = order?.intro ?: resident?.lines?.firstOrNull() ?: job.title
+    val intro = vm.trayIntro(job.id)
+    val max = vm.tc.rules.shiftsPerWeek
+    val n = vm.state.shiftsThisPeriod.coerceIn(0, max)
+    val desc = if (q.canPlay) "Заказ: ${dot(text)}" + (intro?.let { " ${dot(it)}" } ?: "") + " Оплата от ${q.base} до ${q.top} монет. Смены: $n из $max"
+    else "${dot(q.line)} Смены: $n из $max"
+    BoxWithConstraints(modifier.fillMaxWidth()) {
+        val f = (maxHeight - 72.dp - 72.dp + 56.dp - 8.dp).coerceIn(160.dp, 264.dp)
+        val counterTop = maxHeight - 72.dp - if (q.canPlay) 72.dp else 8.dp
+        if (resident != null) ResidentPic(resident, f, Modifier.offset(x = 8.dp - f * 0.3f, y = counterTop + 56.dp - f))
+        Counter(Modifier.offset(y = counterTop).fillMaxWidth().height(72.dp))
+        val bx = 8.dp + f * 0.45f
+        // at Borya's head (frame top + 0.1·F), lifted so its bottom stays 4 dp above the counter, never above y 8
+        val head = counterTop + 56.dp - f + f * 0.1f
+        SpeechBubble(
+            Modifier.layout { m, c ->
+                val pl = m.measure(c)
+                val y = minOf(head.roundToPx(), (counterTop - 4.dp).roundToPx() - pl.height).coerceAtLeast(8.dp.roundToPx())
+                layout(pl.width, pl.height) { pl.place(bx.roundToPx(), y) }
+            }.width(maxWidth - bx).heightIn(max = counterTop - 12.dp).clearAndSetSemantics { contentDescription = desc },
+        ) {
+            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (q.canPlay) {
+                    TText(text, style = MaterialTheme.typography.titleMedium, color = G.ink)
+                    if (intro != null) TText(intro, style = MaterialTheme.typography.bodyLarge, color = G.purple)
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        TText("${q.base}–${q.top}", style = MaterialTheme.typography.headlineMedium, color = G.purple, maxLines = 1)
+                        Image(painterResource(R.drawable.ui_coin), null, Modifier.size(32.dp))
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TText("Смены", maxLines = 1)
+                        ShiftTokens(vm, label = false)
+                    }
+                } else {
+                    TText(q.line)
+                    ShiftTokens(vm, label = false)
+                }
+            }
+        }
+        if (q.canPlay) GameButton("Начать смену", Modifier.align(Alignment.BottomCenter).fillMaxWidth(), ButtonStyle.PRIMARY, minHeight = 56.dp) { vm.startRound(job.id) }
     }
 }
 
@@ -362,7 +430,7 @@ private fun OrderCard(vm: GameViewModel, job: Job, order: EventDef?) {
         }
         TText(q.line)
         ShiftTokens(vm)
-        GameButton("Начать смену", Modifier.fillMaxWidth(), enabled = q.canPlay, minHeight = 48.dp) { vm.startRound(job.id) }
+        if (q.canPlay) GameButton("Начать смену", Modifier.fillMaxWidth(), minHeight = 48.dp) { vm.startRound(job.id) }
         if (job.game == JobGame.MATCH3) Riddle(vm)
     }
 }

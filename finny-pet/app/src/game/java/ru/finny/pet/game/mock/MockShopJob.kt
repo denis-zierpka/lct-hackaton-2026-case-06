@@ -9,9 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -183,15 +181,9 @@ internal fun MockJob() {
                         Image(painterResource(R.drawable.pet_puppy_green_0_happy), "Боря", Modifier.size(72.dp))
                         MockText("Пекарне нужен помощник!", body, Modifier.weight(1f), maxLines = 3)
                     }
-                    MockText("База 6 монет + до 4 за булочки", body, maxLines = 2)
+                    MockText("6–10 за смену", body, maxLines = 2)
                     MockText("Смены на неделе: ●●○ 2 из 3", body, maxLines = 2)
                     GameButton("Начать смену", Modifier.fillMaxWidth(), minHeight = 48.dp) { step = 1 }
-                    MockText("Загадка Бори: ответишь — бомбочка", body, maxLines = 3)
-                    // one size for both answers: same width, height of the taller one
-                    Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        GameButton("Ответить", Modifier.weight(1f).fillMaxHeight(), ButtonStyle.PAPER, minHeight = 48.dp) {}
-                        GameButton("Нет, спасибо", Modifier.weight(1f).fillMaxHeight(), ButtonStyle.PAPER, minHeight = 48.dp) {}
-                    }
                 }
             }
             1 -> {
@@ -213,7 +205,7 @@ internal fun MockJob() {
                 Panel(Modifier.fillMaxWidth().padding(8.dp).testTag("job_result")) {
                     Image(painterResource(R.drawable.pet_puppy_green_0_happy), "Боря", Modifier.size(72.dp).align(Alignment.CenterHorizontally))
                     MockText("Спасибо, помощник!", MaterialTheme.typography.headlineSmall, maxLines = 2)
-                    MockText("База 6 + 3 за булочки. ✉ +9 — придёт с новым конвертом", body, maxLines = 4)
+                    MockText("6 за смену + 3 за ★. ✉ +9 — придёт с новым конвертом", body, maxLines = 4)
                     MockText("Смен у Бори: 4 / 6 до уровня 2", body, maxLines = 2)
                     GameButton("Готово", Modifier.fillMaxWidth(), minHeight = 48.dp) { m.go(MockScreen.HOME) }
                 }

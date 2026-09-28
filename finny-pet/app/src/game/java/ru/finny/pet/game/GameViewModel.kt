@@ -25,6 +25,7 @@ import ru.finny.pet.domain.ShopItem
 import ru.finny.pet.domain.Turn
 import ru.finny.pet.domain.town.EventDef
 import ru.finny.pet.domain.town.EventResult
+import ru.finny.pet.domain.town.Give
 import ru.finny.pet.domain.town.JobGame
 import ru.finny.pet.domain.town.Migration
 import ru.finny.pet.domain.town.PetLine
@@ -37,6 +38,8 @@ import ru.finny.pet.domain.town.Town
 import ru.finny.pet.domain.town.TownContent
 import ru.finny.pet.domain.town.TownOutcome
 import ru.finny.pet.domain.town.TownResult
+import ru.finny.pet.domain.town.Tray
+import ru.finny.pet.domain.town.TrayRound
 import ru.finny.pet.domain.town.Trigger
 import ru.finny.pet.domain.town.petLine
 import ru.finny.pet.game.audio.Sound
@@ -72,11 +75,16 @@ sealed interface Effect {
     /** Coins fly from one named target to another; played only when both are on the screen (§F). */
     data class CoinsFrom(val fromTarget: String, val toTarget: String, val count: Int) : Effect
     data object Confetti : Effect
-    data object Hearts : Effect
+    data class Hearts(val target: String = "pet") : Effect
     data class PetAction(val action: PetAct) : Effect
 }
 
 enum class PetAct { EAT, WASH, PLAY, HOP, SLEEP }
+
+/** Покупатель, которому только что отдали верный поднос: «Спасибо!» на THANKS_MS, потом следующий. */
+data class TrayThanks(val customer: String, val star: Boolean)
+/** Статичная подсказка подноса: SHORT — «Отдать» при неполном (пустые слоты), FULL — касание при полном. */
+enum class TrayCue { NONE, SHORT, FULL }
 
 /** Thin glue: UI events → Town → persisted state + effects. All rules live in domain/town (TOWN-S1d §B). */
 class GameViewModel(app: Application) : AndroidViewModel(app) {
@@ -122,6 +130,15 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     /** The shift result on the Round screen (job_result); null while playing. */
     var roundResult: Line? by mutableStateOf(null)
         private set
+    // tray round (TOWN-J1-1a § 2): not saved to the profile
+    var tray: TrayRound? by mutableStateOf(null); private set
+    var trayMiss: Give? by mutableStateOf(null); private set
+    var trayThanks: TrayThanks? by mutableStateOf(null); private set
+    var trayCue: TrayCue by mutableStateOf(TrayCue.NONE); private set
+    var trayNote: String by mutableStateOf(""); private set
+    var trayWobble: Int by mutableIntStateOf(0); private set
+    var riddleOpen: QuizQuestion? by mutableStateOf(null); private set
+    var riddleLine: Line? by mutableStateOf(null); private set
 
     val effects = MutableSharedFlow<Effect>(extraBufferCapacity = 32)
     /** Lives with the view model, so the room replays only actions it has not shown yet (also after rotation). */
@@ -302,7 +319,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
 
     fun petTapped() {
         petLine = town.petLine(state, petTaps++).takeIf { it.text.isNotBlank() }
-        sfx(Sound.POP); emit(Effect.Hearts)
+        sfx(Sound.POP); emit(Effect.Hearts())
     }
     fun closePetLine() { petLine = null }
 
@@ -422,12 +439,17 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         roundResult = null
         taps.clear()
         match = null
+        tray = null; trayMiss = null; trayThanks = null; trayCue = TrayCue.NONE; trayNote = ""; riddleOpen = null; riddleLine = null
         if (job.game == JobGame.MATCH3) {
             val b = job.board ?: return
             val moves = (if (state.demo) job.demoMoves ?: job.moves else job.moves) ?: return
             match = Match3.newGame(b.w, b.h, moves, state.bombs + q.levelBombs, seed = System.nanoTime())
             matchBombsUsed = 0
             matchOver = false
+        } else if (job.game == JobGame.TRAY) {
+            val r = town.trayRound(state, jobId) ?: run { sfx(Sound.FAIL); return }
+            tray = r
+            trayNote = orderNote(r)
         } else {
             taps.addAll(List(job.tasks.size) { false })
         }
@@ -453,7 +475,11 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         val jobId = (screen as? Screen.Round)?.jobId ?: return
         if (roundResult != null) return
         val job = tc.jobs.firstOrNull { it.id == jobId } ?: return
-        val score = if (job.game == JobGame.MATCH3) match?.score ?: 0 else taps.count { it }
+        val score = when (job.game) {
+            JobGame.MATCH3 -> match?.score ?: 0
+            JobGame.TRAY -> tray?.stars ?: 0
+            else -> taps.count { it }
+        }
         val bombs = if (job.game == JobGame.MATCH3) matchBombsUsed else 0
         val before = state.envelope.sumOf { it.amount }
         lines.clear()
@@ -471,16 +497,101 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         }
         match = null
         matchOver = false
+        trayMiss = null; trayThanks = null; trayCue = TrayCue.NONE; riddleOpen = null; riddleLine = null
     }
 
     /** [Готово] after the shift: back to the job's place. */
     fun closeRound() {
         roundResult = null
+        tray = null
         if (screen is Screen.Round) stack.removeAt(stack.lastIndex)
         if (stack.isEmpty()) stack += Screen.Room
     }
 
     fun nextQuestion(): QuizQuestion? = town.nextQuestion(state)
+
+    // ---------- tray round (TOWN-J1-1a § 2) ----------
+
+    fun residentName(id: String): String = tc.residents.firstOrNull { it.id == id }?.name ?: id
+    fun pastryTitle(id: String): String = tc.jobs.firstOrNull { it.id == tray?.jobId }?.menu?.firstOrNull { it.id == id }?.title ?: id
+    fun trayList(ids: List<String>): String = ids.map { pastryTitle(it).lowercase() }.joinToString(", ")
+    fun trayIntro(jobId: String): String? = town.trayRound(state, jobId)?.intro
+
+    fun trayText(r: TrayRound): String {
+        if (r.done) return "На подносе пусто"
+        val size = r.orders[r.index].items.size
+        return when (r.tray.size) {
+            0 -> "На подносе пусто. Свободно $size"
+            size -> "На подносе: ${trayList(r.tray)}. Поднос полный"
+            else -> "На подносе: ${trayList(r.tray)}. Свободно ${size - r.tray.size}"
+        }
+    }
+
+    private fun orderNote(r: TrayRound): String = r.orders[r.index].let { "${residentName(it.customer)}. Заказ: ${trayList(it.items)}" }
+
+    /** A tap during «Спасибо!» only ends the pause: the new customer's order is not on screen yet. */
+    private fun trayPaused(): Boolean {
+        if (trayThanks == null) return false
+        sfx(Sound.TAP); trayThanksDone(); return true
+    }
+
+    fun trayPut(pastry: String) {
+        val r = tray ?: return
+        if (trayPaused() || r.done) return
+        val n = Tray.put(r, pastry)
+        if (n == r) { trayCue = TrayCue.FULL; trayWobble++; sfx(Sound.POP); trayNote = "Поднос полный" }
+        else { tray = n; trayCue = TrayCue.NONE; sfx(Sound.TAP); trayNote = trayText(n) }
+    }
+
+    fun trayTake(slot: Int) {
+        val r = tray ?: return
+        if (trayPaused() || r.done) return
+        val n = Tray.take(r, slot)
+        if (n != r) { tray = n; trayCue = TrayCue.NONE; sfx(Sound.TAP); trayNote = trayText(n) }
+    }
+
+    fun trayGive() {
+        val r = tray ?: return
+        if (trayPaused()) return
+        if (r.done) { finishRound(); return }
+        val o = r.orders[r.index]
+        val g = Tray.give(r)
+        when {
+            !g.accepted -> { trayCue = TrayCue.SHORT; sfx(Sound.POP); trayNote = "Поднос ещё не полный: свободно ${o.items.size - r.tray.size}" }
+            g.served -> {
+                tray = g.round; trayMiss = null; trayCue = TrayCue.NONE; trayThanks = TrayThanks(o.customer, g.star)
+                sfx(Sound.SUCCESS); emit(Effect.Hearts("customer"))
+                trayNote = "${residentName(o.customer)}: спасибо!" + if (g.star) " Звезда" else ""
+            }
+            else -> { tray = g.round; trayMiss = g; trayCue = TrayCue.NONE; sfx(Sound.POP); trayNote = "Ещё нужно: ${trayList(g.missing)}" }
+        }
+    }
+
+    fun trayThanksDone() {
+        trayThanks ?: return
+        trayThanks = null
+        val r = tray ?: return
+        if (r.done) finishRound() else trayNote = orderNote(r)
+    }
+
+    fun trayRiddle(): QuizQuestion? = tray?.let { town.riddleInRound(state, it) }
+    fun openRiddle() { riddleOpen = trayRiddle(); riddleLine = null }
+    fun closeRiddle() { riddleOpen = null; riddleLine = null }
+
+    fun trayAnswer(i: Int) {
+        val r = tray ?: return
+        val q = riddleOpen ?: return
+        val a = town.answerInRound(state, r, q.id, i)
+        when (val res = a.result) {
+            is TownResult.Done -> {
+                commit(res.outcome.state)
+                if (a.round != r) { tray = a.round; trayCue = TrayCue.NONE; trayNote = trayText(a.round) }
+                sfx(if (state.riddles.lastOrNull()?.correct == true) Sound.SUCCESS else Sound.POP)
+                riddleLine = Line(res.outcome.line, res.outcome.why)
+            }
+            is TownResult.Refused -> { sfx(Sound.FAIL); riddleLine = Line(res.line) }
+        }
+    }
 
     fun answerRiddle(questionId: String, i: Int) {
         val bombs = state.bombs
