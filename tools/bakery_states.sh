@@ -4,7 +4,7 @@
 # Профиль: бэкап (проверка `[ -s ]` и json.load; прежний бэкап с тем же PREFIX — отказ) → на каждое состояние подмена
 # state.json → снимки при шрифте 1,0 и 1,3 → возврат бэкапа и `cmp` (и при обрыве — trap). На S23 громкость и шрифт
 # сохранить и вернуть самому (HANDOFF, «Окружение»).
-#   tools/bakery_states.sh PREFIX [first|riddle[:QID]|limit|level2|big|levelup|zero|diary ...]   (по умолчанию — first riddle limit level2 big)
+#   tools/bakery_states.sh PREFIX [first|riddle[:QID]|limit|level2|big|levelup|levelwhy|zero|diary ...]   (по умолчанию — first riddle limit level2 big)
 #   first      — 0 смен пекарни: экран заказа первой смены;
 #   riddle:QID — 1 смена, загадка QID первая в очереди (вопросы до неё в town.quiz — отмечены решёнными): экран заказа с
 #                новинкой, раунд, первый покупатель, облачко загадки — строка пользы, «Не сейчас», ПОСЛЕДНИЙ вариант и
@@ -128,6 +128,12 @@ for st in $STATES; do case $st in
   levelup) state 5 0 keep; open_bakery; tapx "Начать смену" 2.5
           for c in 1 2 3 4; do put_list "$(order)"; tapx "Отдать" 2.2; done               # 4 customers, all right the first time
           has "Заработали 10: 6 за смену + 4 за звёзды" levelup; has "новый уровень 2" levelup; shot2 levelup; tapx "Готово" 1 ;;
+  levelwhy) state 5 0 keep; open_bakery; tapx "Начать смену" 2.5                     # levelup + «Почему?» → the pet's line (1,0 and 1,3)
+          for c in 1 2 3 4; do put_list "$(order)"; tapx "Отдать" 2.2; done
+          shot2 levelup; tapx "Почему?" 1.2
+          [ -n "$(text_xy "Карманные приходят каждую неделю, зарплата — когда поработаешь")" ] || echo "  not found: LINE on why"
+          shot2 levelwhy; xy=$(text_xy "Карманные приходят каждую неделю, зарплата — когда поработаешь"); [ -n "$xy" ] && "$A" shell input tap $xy; sleep 0.8
+          tapx "Готово" 1 ;;
   zero)   state 1 0 keep; open_bakery; tapx "Начать смену" 2.5
           for c in 1 2 3 4; do                                                           # a full tray with one item outside the order
             o=$(order); x=$(outside | head -1); [ -z "$o" ] || [ -z "$x" ] && echo "  not found: order or outside item on zero"
