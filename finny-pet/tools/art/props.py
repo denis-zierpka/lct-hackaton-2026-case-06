@@ -1,4 +1,4 @@
-"""Toy-style 3D props for the Finny game flavour: shop items, goals, match-3 tiles, UI coin.
+"""Toy-style 3D props for the Finny game flavour: shop items, goals, match-3 tiles, UI coin, bakery pastries.
 
 All:  Blender -b -P tools/art/props.py -- --all /abs/outdir [--samples 96]
 One:  Blender -b -P tools/art/props.py -- --only tile_apple [--out /abs/file.png]
@@ -327,6 +327,85 @@ def tile_bomb():
     curve("smile", [(-0.12, -0.53, 0.48), (0, -0.56, 0.43), (0.12, -0.53, 0.48)], 0.02, M("#FFFFFF", sss=0.0))
 
 
+# ---------------------------------------------------------------- bakery pastries (TOWN-J1-1b3, ids of the job_bakery menu)
+# Told apart by silhouette first; the four crusts step in tone (baguette light, croissant amber, bread brown, pretzel
+# dark). Bread and baguette are not the background's shelf (place.py bread_shelf: round loaf, baton, upright baguettes).
+
+def pastry_croissant():
+    """Crescent of rolled ridges, horns towards the camera (like 🥐): a tapered core, fat in the middle, and bands."""
+    core, band = M("#D3822A", rough=0.45, coat=0.4), M("#EDA744", rough=0.45, coat=0.4)
+    rc = lambda s: 0.28 * (1 - 0.75 * s)  # core radius at s = 0 (middle) … 1 (tip), as curve(taper=True) draws it
+    at = lambda a, s: (0.62 * math.cos(R(a)), 0.62 * math.sin(R(a)) - 0.2, rc(s))
+    for side in (1, -1):
+        curve("croissant", [at(90 + side * 23 * k, k / 5) for k in range(6)], 0.28, core, taper=True)
+        sphere("tip", at(90 + side * 115, 1), rc(1), mat=core)  # rounds the flat cap of the curve
+    for s in (-0.68, -0.34, 0.0, 0.34, 0.68):
+        a = 90 + 115 * s
+        sphere("ridge", at(a, abs(s)), rc(abs(s)), (1.2, 0.85, 1.1), band, (0, 0, R(a)))
+
+
+def pastry_bread():
+    """Tin loaf «кирпичик»: lighter brick sides, a darker domed top, three slashes across it."""
+    side, top, cut = M("#B9793C", rough=0.6, coat=0.1), M("#A05E28", rough=0.6, coat=0.1), M("#D9A560", rough=0.7, coat=0.0)
+    box("loaf", (0, 0, 0.3), (1.5, 0.82, 0.6), side, bevel=0.1)
+    sphere("dome", (0, 0, 0.55), 0.5, (1.52, 0.84, 0.56), top)
+    for x in (-0.44, 0.0, 0.44):
+        sphere("cut", (x, 0, 0.8 - 0.25 * x * x), 0.06, (1.3, 4.6, 0.5), cut, rot=(0, 0, R(40)), levels=1)
+
+
+def pastry_baguette():
+    """Long thin loaf lying diagonally, oblique slashes along its top (the shelf's stand upright)."""
+    crust, cut = M("#E2B56E", rough=0.5, coat=0.2), M("#FFF0CF", rough=0.6, coat=0.0)
+    under = M("#865024", rough=0.7, coat=0.0)  # № 66 б: the darker hearth-baked crust shows along the rim and the tips
+    a = R(35)
+    sphere("baguette", (0, 0, 0.2), 0.2, (6.5, 1.0, 0.95), under, (0, 0, a))
+    # the light top crust: a smaller loaf lifted 0.045 up-front (40° off vertical), only its cap breaks through
+    sphere("crust", (0.0166, -0.0237, 0.2345), 0.2, (6.3, 0.9, 0.855), crust, (0, 0, a))
+    for t in (-0.8, -0.4, 0.0, 0.4, 0.8):
+        z = 0.2 + 0.19 * math.sqrt(1 - (t / 1.3) ** 2)
+        sphere("cut", (t * math.cos(a), t * math.sin(a), z), 0.055, (3.6, 0.8, 0.5), cut, (0, 0, a + R(40)), levels=1)
+
+
+def pastry_pretzel():
+    """Pretzel loop: a belly at the front, arms twisted in the middle, three see-through holes; coarse salt."""
+    dough = M("#6B3417", rough=0.3, coat=0.7)
+    pts = [(-0.44, -0.47, 0.12), (0.0, 0.08, 0.2), (0.3, 0.38, 0.14), (0.62, 0.46, 0.14), (0.88, 0.1, 0.14),
+           (0.66, -0.36, 0.14), (0.0, -0.56, 0.14), (-0.66, -0.36, 0.14), (-0.88, 0.1, 0.14), (-0.62, 0.46, 0.14),
+           (-0.3, 0.38, 0.14), (0.0, 0.02, 0.1), (0.44, -0.47, 0.12)]  # the ends sink into the belly
+    curve("pretzel", pts, 0.13, dough)
+    salt = M("#FFFFFF", rough=0.4, sss=0.0, coat=0.2); rnd = random.Random(5)
+    for x, y, z in pts[2:11:2] + [(0.52, 0.32, 0.14), (-0.52, 0.32, 0.14), (-0.25, -0.5, 0.14), (0.25, -0.5, 0.14)]:
+        box("salt", (x, y, z + 0.125), (0.05, 0.05, 0.04), salt, rot=(0, 0, rnd.uniform(0, 3)), bevel=0.01)
+
+
+def pastry_donut():
+    """Ring with pink glaze and sprinkles, the hole seen from above."""
+    torus("donut", (0, 0, 0.24), 0.5, 0.24, M("#E6A866", rough=0.5, coat=0.2))
+    torus("glaze", (0, 0, 0.32), 0.5, 0.245, M("#FF7FAF", rough=0.25, coat=0.8), scale=(1, 1, 0.72))
+    rnd = random.Random(9); cols = ("yellow", "mint", "blue", "#FFFFFF", "lav")
+    for i in range(16):
+        a = i * 2 * math.pi / 16 + rnd.uniform(-0.15, 0.15); r = 0.5 + rnd.uniform(-0.12, 0.12)
+        capsule("sprinkle", (r * math.cos(a), r * math.sin(a), 0.49), 0.025, 0.12, M(cols[i % 5], sss=0.0),
+                (R(90), 0, rnd.uniform(0, 3)))
+
+
+def pastry_cupcake():
+    """Pleated paper cup under a swirl of cream with a cherry: the only tall one."""
+    stripes = M("#3D78B0", sss=0.0), M("#6FA0CC", sss=0.0)  # № 66 б: darker than the palette blue / sky
+    cylinder("cup_base", (0, 0, 0.02), 0.38, 0.04, stripes[0])
+    for i in range(18):
+        a = i * 2 * math.pi / 18
+        box("pleat", (0.45 * math.cos(a), 0.45 * math.sin(a), 0.3), (0.035, 0.17, 0.6), stripes[i % 2],
+            rot=(0, R(13), a), bevel=0.012)
+    cream, roll = M("#F9B8D3", rough=0.35, coat=0.4), M("#E77FA9", rough=0.35, coat=0.4)  # № 66 б: deeper pink rolls
+    for z, r, rr in ((0.66, 0.4, 0.17), (0.88, 0.28, 0.15), (1.06, 0.15, 0.12)):
+        torus("cream", (0, 0, z), r, rr, roll)
+        sphere("cream_core", (0, 0, z), r, (1, 1, rr / r), cream)
+    sphere("cream_tip", (0, 0, 1.17), 0.1, (1, 1, 1.2), cream)
+    sphere("cherry", (0, 0, 1.36), 0.12, (1, 1, 1), M("red", rough=0.2, coat=0.9))
+    curve("cherry_stem", [(0, 0, 1.46), (0.05, 0, 1.56), (0.13, 0.02, 1.62)], 0.016, M("green"))
+
+
 PROPS = {
     "item_food_basic": item_food_basic, "item_food_lunch": item_food_lunch, "item_care_shampoo": item_care_shampoo,
     "item_care_brush": item_care_brush, "item_care_vitamins": item_care_vitamins, "item_fun_ball": item_fun_ball,
@@ -335,12 +414,15 @@ PROPS = {
     "goal_custom": goal_custom,
     "tile_coin": tile_coin, "tile_apple": tile_apple, "tile_gift": tile_gift, "tile_piggy": tile_piggy, "tile_star": tile_star,
     "tile_bomb": tile_bomb, "ui_coin": ui_coin,
+    "pastry_croissant": pastry_croissant, "pastry_bread": pastry_bread, "pastry_baguette": pastry_baguette,
+    "pastry_pretzel": pastry_pretzel, "pastry_donut": pastry_donut, "pastry_cupcake": pastry_cupcake,
 }
 # per-prop framing: (size px, fill fraction, azimuth deg (0 = straight from -Y, + = camera to the left), elevation deg)
 VIEWS = {name: (512, 0.9, 32, 24) for name in PROPS}
 VIEWS.update({n: (256, 0.96, 22, 38) for n in PROPS if n.startswith("tile_")})
 VIEWS.update({"ui_coin": (256, 0.92, 0, 0), "item_care_brush": (512, 0.9, 32, 40), "goal_paints": (512, 0.9, 28, 42),
               "goal_lego": (512, 0.9, 34, 32), "item_food_basic": (512, 0.9, 30, 36), "tile_coin": (256, 0.96, 10, 30)})
+VIEWS.update({n: (256, 0.9, 22, 38) for n in PROPS if n.startswith("pastry_")})  # from above: the holes show
 
 
 def fit_camera(scene, fill, azim, elev, lens=60):
