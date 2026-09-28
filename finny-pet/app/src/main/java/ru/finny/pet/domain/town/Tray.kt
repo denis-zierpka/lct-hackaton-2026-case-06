@@ -26,6 +26,9 @@ data class Give(
     val missing: List<String>, val extra: List<String>,
 )
 
+/** Ответ на загадку Бори в раунде подноса: исход Town и раунд после него (TOWN-J1-1a § 1). */
+data class TrayAnswer(val result: TownResult, val round: TrayRound)
+
 /** Механика подноса: укладка, снятие, отдача и подсказка Бори (TOWN-J1-0 § 2). Чистый Kotlin. */
 object Tray {
 
@@ -55,6 +58,13 @@ object Tray {
         extra.forEach { kept.remove(it) }
         val round = r.copy(tray = kept, missed = true)
         return Give(round, true, false, false, missing, extra)
+    }
+
+    /** Изделия текущего заказа без пары на подносе (мультимножество, порядок o.items); r.done → пусто (TOWN-J1-1a § 1). */
+    fun missing(r: TrayRound): List<String> {
+        if (r.done) return emptyList()
+        val order = r.orders[r.index].items
+        return missAndExtra(order, r.tray).first
     }
 
     fun hint(r: TrayRound, n: Int): TrayRound {

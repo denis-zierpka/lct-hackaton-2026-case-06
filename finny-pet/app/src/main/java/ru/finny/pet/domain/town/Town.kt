@@ -692,6 +692,21 @@ class Town(internal val content: Content) {
         )
     }
 
+    /** Загадка Бори в раунде подноса — значок «?» (не в первой смене, после первого покупателя, TOWN-J1-1a § 1). */
+    fun riddleInRound(s: GameState, r: TrayRound): QuizQuestion? =
+        if (r.riddle && r.index >= 1 && !r.done) nextQuestion(s) else null
+
+    /** Ответ на загадку в раунде: верный кладёт подсказку на поднос, а не бомбочку (TOWN-J1-1a § 1). */
+    fun answerInRound(s: GameState, r: TrayRound, questionId: String, optionIndex: Int): TrayAnswer {
+        if (riddleInRound(s, r)?.id != questionId) return TrayAnswer(TownResult.Refused(NO_RIDDLE), r)
+        val res = answerQuestion(s, questionId, optionIndex)
+        val correct = (res as? TownResult.Done)?.outcome?.state?.riddles?.lastOrNull()?.correct == true
+        if (res !is TownResult.Done || !correct) return TrayAnswer(res, r)
+        val h = Tray.hint(r, town.rules.riddleHint)
+        if (h != r) return TrayAnswer(res, h)
+        return TrayAnswer(TownResult.Done(res.outcome.copy(why = listOf(HINT_IDLE))), r)
+    }
+
     /** Когда открывается место или работа (§1): неделя (демо — сразу) или сбывшаяся мечта. */
     private fun opensByOk(o: OpensBy, s: GameState): Boolean = when {
         o.week != null -> s.demo || s.period >= o.week
@@ -877,5 +892,7 @@ class Town(internal val content: Content) {
         const val CANT_PAY = "Так оплатить нельзя"
         const val ABOVE_ZERO = "Выбери сумму больше нуля"
         const val NO_PLAN_SLEEP = "Сначала разложим монеты — потом спать"
+        const val NO_RIDDLE = "Загадки сейчас нет"
+        const val HINT_IDLE = "Этот поднос Боря оставил тебе"
     }
 }
