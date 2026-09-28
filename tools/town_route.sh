@@ -12,6 +12,7 @@ set -u
 P=${1:?PREFIX}
 A="$(cd "$(dirname "$0")" && pwd)/adbui.sh"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+command -v cygpath >/dev/null 2>&1 && ROOT="$(cygpath -m "$ROOT")"   # Windows Python does not open /c/…
 find_xy() { "$A" ui | awk -F'\t' -v p="$1" 'index($1,p)==1 || index($2,p)==1 {print $3, $4; exit}'; }
 tp() {  # tap the first node whose text or description starts with $1; a slow device draws late — retry up to ~9 s
   local xy i
