@@ -1234,19 +1234,13 @@
         "id": "job_bakery",
         "place": "bakery",
         "resident": "borya",
-        "title": "Булочки в ряд",
-        "game": "MATCH3",
+        "title": "Помочь Боре",
+        "game": "TRAY",
         "baseByLevel": [
           6,
           7,
           8
         ],
-        "board": {
-          "w": 6,
-          "h": 6
-        },
-        "moves": 15,
-        "demoMoves": 5,
         "_todo": "Меню, ступени и demoSizes — заглушки, подобрать плейтестом (TOWN-J1, концепция § 5 п. 4)",
         "menu": [
           { "id": "croissant", "title": "Круассан", "emoji": "🥐" },
@@ -1358,7 +1352,7 @@
         "arrivesWeek": 1,
         "place": "bakery",
         "lines": [
-          "Булочки сами себя не разложат!"
+          "Помоги Боре в пекарне!"
         ]
       },
       {
@@ -2194,7 +2188,7 @@
         "requires": [
           "afterPlan || week>=2"
         ],
-        "intro": "Пекарне нужен помощник! Боря платит за работу.",
+        "intro": "Помоги Боре в пекарне!",
         "params": {
           "job": "job_bakery"
         },
