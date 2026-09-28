@@ -37,7 +37,7 @@ fun RoundScreen(vm: GameViewModel, jobId: String) {
     val job = vm.tc.jobs.firstOrNull { it.id == jobId }
     val result = vm.roundResult
     Column(Modifier.fillMaxSize()) {
-        Hud1(vm, inPlace = true)
+        Hud1(vm, inPlace = true, inRound = true)
         Hud2 { StatsCollapsed(vm); MailChip(vm) }
         when {
             result != null -> Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {

@@ -888,7 +888,7 @@ class Town(internal val content: Content) {
         const val NOT_HERE = "Этого товара здесь нет"
         const val CLOSED = "Эта работа пока закрыта"
         const val BAD_SHIFT = "Так закончить смену нельзя"
-        const val LIMIT = "Смены на неделе закончились — новые с новым конвертом"
+        const val LIMIT = "Смены на неделе закончились — приходи на новой неделе"
         const val CANT_PAY = "Так оплатить нельзя"
         const val ABOVE_ZERO = "Выбери сумму больше нуля"
         const val NO_PLAN_SLEEP = "Сначала разложим монеты — потом спать"

@@ -253,9 +253,9 @@ fun TrayScreen(vm: GameViewModel, modifier: Modifier) {
             val bubbleTop = maxHeight - 8.dp - with(density) { bubbleH.toDp() }
             val line = vm.riddleLine
             val face = RoundedCornerShape(24.dp)
-            // height by content, up to 64 dp below the top (under «Закончить»); scroll inside only past that
+            // потолок 8 dp от верха — «Закончить» под открытой загадкой недоступна, модальность её и так закрывает
             Bubble(
-                Modifier.align(Alignment.BottomCenter).padding(8.dp).fillMaxWidth().heightIn(max = (maxHeight - 64.dp - 8.dp).coerceAtLeast(48.dp))
+                Modifier.align(Alignment.BottomCenter).padding(8.dp).fillMaxWidth().heightIn(max = (maxHeight - 16.dp).coerceAtLeast(48.dp))
                     .onSizeChanged { bubbleH = it.height }
                     .pointerInput(Unit) { detectTapGestures {} }.semantics { paneTitle = "Загадка Бори" },
                 radius = 20.dp, shadow = 8.dp, pad = 14.dp, tailUp = true, tailX = askX - 8.dp - 11.dp,
@@ -271,6 +271,8 @@ fun TrayScreen(vm: GameViewModel, modifier: Modifier) {
                                 contentAlignment = Alignment.Center,
                             ) { TText("Не сейчас", style = MaterialTheme.typography.bodyLarge, color = G.purple) }
                         }
+                        // строка пользы — только когда подсказке правда есть что класть на поднос (решение № 55 б)
+                        if (Tray.hint(r, vm.tc.rules.riddleHint) != r) TText("Отгадаешь — Боря поможет с подносом", style = MaterialTheme.typography.bodyMedium, color = G.inkSoft)
                         TText(riddle.question)
                         riddle.options.forEachIndexed { i, o ->
                             Box(

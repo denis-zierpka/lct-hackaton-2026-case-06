@@ -348,7 +348,8 @@ private fun TrayJobScene(vm: GameViewModel, job: Job, order: EventDef?, modifier
     else "${dot(q.line)} Смены: $n из $max"
     BoxWithConstraints(modifier.fillMaxWidth()) {
         val f = (maxHeight - 72.dp - 72.dp + 56.dp - 8.dp).coerceIn(160.dp, 264.dp)
-        val counterTop = maxHeight - 72.dp - if (q.canPlay) 72.dp else 8.dp
+        // «Домой» после лимита стоит на месте «Начать смену» — раскладка сцены одна для обоих состояний (№ 59 б)
+        val counterTop = maxHeight - 72.dp - 72.dp
         if (resident != null) ResidentPic(resident, f, Modifier.offset(x = 8.dp - f * 0.3f, y = counterTop + 56.dp - f))
         Counter(Modifier.offset(y = counterTop).fillMaxWidth().height(72.dp))
         val bx = 8.dp + f * 0.45f
@@ -380,6 +381,7 @@ private fun TrayJobScene(vm: GameViewModel, job: Job, order: EventDef?, modifier
             }
         }
         if (q.canPlay) GameButton("Начать смену", Modifier.align(Alignment.BottomCenter).fillMaxWidth(), ButtonStyle.PRIMARY, minHeight = 56.dp) { vm.startRound(job.id) }
+        else GameButton("Домой", Modifier.align(Alignment.BottomCenter).fillMaxWidth(), ButtonStyle.PRIMARY, minHeight = 56.dp) { vm.home() }
     }
 }
 

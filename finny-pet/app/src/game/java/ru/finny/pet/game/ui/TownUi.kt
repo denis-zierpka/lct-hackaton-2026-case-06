@@ -164,9 +164,10 @@ fun Target(desc: String, w: Dp, h: Dp, modifier: Modifier = Modifier, color: Col
     )
 }
 
-/** HUD-1: [⌂] wallet (tap — the jars sheet), piggy bank with the dream, «?», [🔑] at home only. */
+/** HUD-1: [⌂] wallet (tap — the jars sheet), piggy bank with the dream, «?», [🔑] at home only.
+ * inRound = true (a job round): no «?» — it led out of the shift; the piggy chip is not clickable — same reason. */
 @Composable
-fun Hud1(vm: GameViewModel, inPlace: Boolean, onHome: () -> Unit = vm::home) {
+fun Hud1(vm: GameViewModel, inPlace: Boolean, onHome: () -> Unit = vm::home, inRound: Boolean = false) {
     val s = vm.state
     val particles = LocalParticles.current
     val num = MaterialTheme.typography.titleMedium
@@ -195,14 +196,15 @@ fun Hud1(vm: GameViewModel, inPlace: Boolean, onHome: () -> Unit = vm::home) {
                 }
             }
         }
-        Box(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.CenterStart) { PiggyChip(vm, big) }
-        IconBox(R.drawable.ui_bubble_q, "Подсказка") { vm.navigate(Screen.Intro) }
+        Box(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.CenterStart) { PiggyChip(vm, big, clickable = !inRound) }
+        // № 56 б: в раунде «Подсказка» уводила из смены — её нет ни у одной работы
+        if (!inRound) IconBox(R.drawable.ui_bubble_q, "Подсказка") { vm.navigate(Screen.Intro) }
         if (!inPlace) IconBox(R.drawable.ui_lock, "Взрослым") { vm.navigate(Screen.Parent) }
     }
 }
 
 @Composable
-private fun PiggyChip(vm: GameViewModel, big: Boolean) {
+private fun PiggyChip(vm: GameViewModel, big: Boolean, clickable: Boolean = true) {
     val s = vm.state
     val goal = s.goal
     val particles = LocalParticles.current
@@ -211,8 +213,10 @@ private fun PiggyChip(vm: GameViewModel, big: Boolean) {
     val etaText = eta?.let { "≈$it✉" }
     // «примерно конвертов: N» — grammatically correct for any N (R5), not «примерно N конвертов»
     val desc = if (goal != null) "Копилка: мечта «${goal.title}», ${s.savings} из ${goal.price}" + (eta?.let { ", примерно конвертов: $it" } ?: "") else "Копилка ${s.savings}. Выбери мечту"
+    val base = if (big) Modifier.fillMaxHeight() else Modifier.heightIn(min = 48.dp)
     Row(
-        (if (big) Modifier.fillMaxHeight() else Modifier.heightIn(min = 48.dp)).chip().clickable(role = Role.Button) { vm.navigate(Screen.Savings) }
+        // № 56 б: в раунде копилка не кликабельна — второй путь наружу из смены (копилка → ⌂ → без finishRound)
+        (if (clickable) base.chip().clickable(role = Role.Button) { vm.navigate(Screen.Savings) } else base.chip())
             .clearAndSetSemantics { contentDescription = desc }.padding(horizontal = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
