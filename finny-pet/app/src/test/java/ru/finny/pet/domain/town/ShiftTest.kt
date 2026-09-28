@@ -81,7 +81,7 @@ class ShiftTest {
     private val badShift = "Так закончить смену нельзя"
 
     /** Одна строка после лимита смен для всех работ (TOWN-J1-0 § 4, решение № 47 б). */
-    private val limitLine = "Смены на неделе закончились — новые с новым конвертом"
+    private val limitLine = "Смены на неделе закончились — приходи на новой неделе"
 
     /** Граничный счётчик мастерства: 15 настоящих смен — это пять недель игры. */
     private fun withShifts(s: GameState, jobId: String, n: Int): GameState =
@@ -304,7 +304,7 @@ class ShiftTest {
         repeat(3) { spent = town.finishShift(spent, "job_bakery", 0, 0).s1aState() }
         assertEquals(
             "четвёртая смена у Марты",
-            "Смены на неделе закончились — новые с новым конвертом",
+            "Смены на неделе закончились — приходи на новой неделе",
             town.finishShift(spent, "job_market", 3, 0).s1aRefusal(),
         )
         assertEquals("состояние после отказов", S1aStand.planned(40, 20, 30), s)
