@@ -12,12 +12,19 @@
 # узлом, касание закрывает, «Готово»); снимки итогов result, why, tresult, result2 — при 1,0 и 1,3.
 # С TOWN-J1-1b2: окно комнаты — «Окно: улица, машет <житель недели>» (недели 1–5), «Дневник» — «лучшая смена» Бори.
 # DUMP=1 — рядом со снимком shot2 сырой дамп emu_PREFIX_<экран>{10,13}.xml для `python tools/ui_measure.py <дамп> <метка> 3`.
+# С TOWN-J1-1b1-2: итоги result, tresult (Марта — без --counter), result2 — безусловно, независимо от DUMP: сырой дамп
+# $TEMP/PREFIX_<кадр>_geom.xml и `tools/result_geom.py` с плотностью D из `wm density` (последнее число / 160), --big при
+# 1,3, --counter у пекарни; why — --line, `tools/line_close.py` (✕) и `line_close.py --nodes`. Лог:
+# `grep -cE "not found|gate not passed|GEOM FAIL|CLOSE FAIL"` → 0, `grep -c "GEOM OK"` → 8, `grep -c "CLOSE OK"` → 2.
 #   tools/town_route.sh PREFIX
 set -u
 P=${1:?PREFIX}
 A="$(cd "$(dirname "$0")" && pwd)/adbui.sh"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-command -v cygpath >/dev/null 2>&1 && ROOT="$(cygpath -m "$ROOT")"   # Windows Python does not open /c/…
+T="${TEMP:-/tmp}"
+command -v cygpath >/dev/null 2>&1 && { ROOT="$(cygpath -m "$ROOT")"; T="$(cygpath -m "$T")"; }   # Windows Python does not open /c/…
+D=$("$A" shell wm density | grep -oE '[0-9]+' | tail -1 | awk '{print $1 / 160}')   # px per dp for the probes
+[ -n "$D" ] || { echo "  not found: wm density"; exit 1; }
 find_xy() { "$A" ui | awk -F'\t' -v p="$1" 'index($1,p)==1 || index($2,p)==1 {print $3, $4; exit}'; }
 tp() {  # tap the first node whose text or description starts with $1; a slow device draws late — retry up to ~9 s
   local xy i
@@ -44,6 +51,18 @@ dump() { [ -n "${DUMP:-}" ] && { "$A" shell uiautomator dump /sdcard/ui.xml >/de
 shot2() {
   "$A" font 1.0; sleep 1.5; "$A" shot ${P}_${1}10 >/dev/null; echo "${1}10: $(probe)"; dump ${1}10
   "$A" font 1.3; sleep 2.2; "$A" shot ${P}_${1}13 >/dev/null; echo "${1}13: $(probe)"; dump ${1}13
+  "$A" font 1.0; sleep 1.5
+}
+geom() {  # $1 — frame (after its shot), rest — result_geom.py flags; the raw dump always, apart from DUMP; with --line also line_close.py
+  local f="$T/${P}_$1_geom.xml"; "$A" shell uiautomator dump /sdcard/ui.xml >/dev/null; "$A" exec-out cat /sdcard/ui.xml > "$f"
+  echo "$1: $(python "$ROOT/tools/result_geom.py" "$f" "$D" "${@:2}")"
+  case " $* " in *" --line "*) echo "$1: $(python "$ROOT/tools/line_close.py" "$ROOT/finny-pet/screenshots/emu_${P}_$1.png" "$f" "$D")"
+    echo "$1: $(python "$ROOT/tools/line_close.py" "$ROOT/finny-pet/screenshots/emu_${P}_$1.png" "$f" "$D" --nodes)" ;; esac
+}
+shotg() {  # shot2 + geom at 1,0 and 1,3 (--big): $1 — screen, rest — flags
+  local s=$1; shift
+  "$A" font 1.0; sleep 1.5; "$A" shot ${P}_${s}10 >/dev/null; echo "${s}10: $(probe)"; dump ${s}10; geom ${s}10 "$@"
+  "$A" font 1.3; sleep 2.2; "$A" shot ${P}_${s}13 >/dev/null; echo "${s}13: $(probe)"; dump ${s}13; geom ${s}13 --big "$@"
   "$A" font 1.0; sleep 1.5
 }
 swipe_up() { for i in $(seq ${1:-3}); do "$A" shell input swipe 540 1450 540 450 300; done; sleep 1; }  # from mid-screen: at y ≈ 1737 (360 × 640) sits the debug button «Макеты „Городка“»
@@ -126,15 +145,15 @@ o=$(order); first=$(cap "${o%%,*}"); other=$(outside | head -1)         # custom
 [ -z "$other" ] && echo "  not found: showcase item outside the order"
 tapx "$first" 0.4; tapx "$other" 0.4; tapx "Отдать" 1.2; has "Ещё нужно: " wrong; shot2 wrong   # ✓ and dashed circles
 put_all "$(need)"; tapx "Отдать" 0; "$A" shot ${P}_thanks >/dev/null; echo "thanks: shot"; sleep 1.5   # «Спасибо!» at once, 1.0
-serve 2.0; serve 2.5; has "Заработали " result; has "Почему?" result; no_hud_hint "Готово" result; shot2 result   # customers 3, 4 → the result scene
-tapx "Почему?" 1.2; [ -n "$(text_xy "Карманные приходят каждую неделю, зарплата — когда поработаешь")" ] || echo "  not found: LINE on why"; shot2 why; tp "Карманные" 0.8; tapx "Готово" 1.5
+serve 2.0; serve 2.5; has "Заработали " result; has "Почему?" result; no_hud_hint "Готово" result; shotg result --counter   # customers 3, 4 → the result scene
+tapx "Почему?" 1.2; [ -n "$(text_xy "Карманные приходят каждую неделю, зарплата — когда поработаешь")" ] || echo "  not found: LINE on why"; shotg why --line; tp "Карманные" 0.8; tapx "Готово" 1.5
 tp "Домой"; plan; shot1 jars
 tp "Домой"; tp "Лавки"; tp "Рынок у реки"; shot2 marketp
 # the order card sits below the fold; a font change recreates the screen and loses the scroll — scroll after each
 swipe_up 4; shot1 order10; "$A" font 1.3; sleep 2.2; swipe_up 4; shot1 order13; "$A" font 1.0; sleep 1.5; swipe_up 4
 tp "Начать смену" 2; no_hud_hint "Закончить" taps; shot2 taps              # shift 2 of the week — Marta
 tp "Разложить яблоки" 0.4; tp "Подмести у прилавка" 0.4; tp "Отнести ящик" 0.4; tp "Закончить" 2; no_hud_hint "Готово" tresult
-has "Заработали 6: 6 за три поручения — придёт с новым конвертом" tresult; has "Почему?" tresult; shot2 tresult
+has "Заработали 6: 6 за три поручения — придёт с новым конвертом" tresult; has "Почему?" tresult; shotg tresult
 tp "Готово"
 # ---- bakery, shift 2 (3rd of the week): the new item in the order bubble, «?», the riddle on a full tray of extras
 tp "Домой"; tp "Дверь: на улицу"; "$A" shell input swipe 900 586 200 586 300; sleep 1
@@ -147,7 +166,7 @@ riddle_fits riddle10; shot1 riddle10; "$A" font 1.3; sleep 2.2; riddle_fits ridd
 ans=$(riddle_answer); [ -z "$ans" ] && echo "  not found: riddle question"
 tapx "$ans" 1.2; has "Дальше" answer; shot1 answer                       # «Верно! …», «Подсказка Бори — на поднос»
 tapx "Дальше" 1.0; shot1 hint                                            # an extra came off the end, a needed item is on the tray
-tapx "Закончить" 2; has "Заработали " result2; has "Почему?" result2; no_hud_hint "Готово" result2; shot2 result2; tapx "Готово" 1.5
+tapx "Закончить" 2; has "Заработали " result2; has "Почему?" result2; no_hud_hint "Готово" result2; shotg result2 --counter; tapx "Готово" 1.5
 has "Смены на неделе закончились — приходи на новой неделе" limit; shot2 limit   # bakery after the limit: ●●●, «Домой» (№ 54 б, 59 б)
 xy=$(text_xy "Домой"); [ -z "$xy" ] && echo "  not found: button «Домой» on limit" || { "$A" shell input tap $xy; sleep 2; }
 "$A" ui | grep -q "Окно: улица" || { echo "  not found: room after «Домой»"; tp "Домой"; }
