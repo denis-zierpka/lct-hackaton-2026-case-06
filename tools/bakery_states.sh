@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Экраны пекарни на подменённых состояниях профиля (TOWN-J1-1a, 1a2): быстрые снимки без полного маршрута town_route.sh.
+# Экраны пекарни на подменённых состояниях профиля (TOWN-J1-1a, 1a2, 1b1): быстрые снимки без полного маршрута town_route.sh.
 # Из корня; устройство — ANDROID_SERIAL (эмулятор после `tools/adbui.sh wm360` или S23); сборка — ТОЛЬКО debug (run-as).
 # Профиль: бэкап (проверка `[ -s ]` и json.load; прежний бэкап с тем же PREFIX — отказ) → на каждое состояние подмена
 # state.json → снимки при шрифте 1,0 и 1,3 → возврат бэкапа и `cmp` (и при обрыве — trap). На S23 громкость и шрифт
 # сохранить и вернуть самому (HANDOFF, «Окружение»).
-#   tools/bakery_states.sh PREFIX [first|riddle[:QID]|limit|level2|big ...]   (по умолчанию — first riddle limit level2 big)
+#   tools/bakery_states.sh PREFIX [first|riddle[:QID]|limit|level2|big|levelup|zero ...]   (по умолчанию — first riddle limit level2 big)
 #   first      — 0 смен пекарни: экран заказа первой смены;
 #   riddle:QID — 1 смена, загадка QID первая в очереди (вопросы до неё в town.quiz — отмечены решёнными): экран заказа с
 #                новинкой, раунд, первый покупатель, облачко загадки — строка пользы, «Не сейчас», ПОСЛЕДНИЙ вариант и
@@ -15,6 +15,10 @@
 #   level2     — 7 смен: «Большие заказы!», 7–11;
 #   big        — 7 смен, демо выкл.: раунд с заказами из 3–4, облачко загадки при size − 1 верных (без строки пользы),
 #                ответ — «Этот поднос Боря оставил тебе», расхождение на заказе из 4 (1,0 и 1,3).
+#   levelup    — 5 смен: смена из 4 верных отдач → итог в сцене, худший случай высоты облачка (4★ и «новый уровень 2»:
+#                «Заработали 10: 6 за смену + 4 за звёзды»), TOWN-J1-1b1 п. 11 б;
+#   zero       — 1 смена: каждому покупателю сначала полный поднос с изделием вне заказа, затем недостающее → итог 0★
+#                («Заработали 6: 6 за смену — придёт с новым конвертом», ряд ●●●●).
 # Касания — точным совпадением (кнопка витрины «Хлеб» — префикс слота «Хлеб на подносе»). Промах печатает «not found»:
 # лог проверять `grep -cE "not found|BACKUP"` → 0. DUMP=1 — рядом со снимком сырой дамп emu_PREFIX_<экран>.xml для
 # `python tools/ui_measure.py <дамп> <метка> 3` (мишени < 48 dp, узлы за краем).
@@ -50,6 +54,7 @@ shot2() { "$A" font 1.0; sleep 1.5; shot ${1}10; "$A" font 1.3; sleep 2.5; shot 
 order() { "$A" ui | awk -F'\t' 'index($2, ". Заказ: ") > 0 { s = $2; sub(/^[^.]*\. Заказ: /, "", s); sub(/\. Ещё нужно: .*$/, "", s); print s; exit }'; }
 cap() { PYTHONIOENCODING=utf-8 $PY -c "import sys; s=sys.argv[1].strip(); print(s[:1].upper() + s[1:])" "$1"; }
 low() { PYTHONIOENCODING=utf-8 $PY -c "import sys; print(sys.argv[1].strip().lower())" "$1"; }
+need() { "$A" ui | awk -F'\t' 'index($2, ". Ещё нужно: ") > 0 { s = $2; sub(/^.*\. Ещё нужно: /, "", s); print s; exit }'; }
 put_list() { local it; IFS=',' read -ra its <<< "$1"; for it in "${its[@]}"; do tapx "$(cap "$it")" 0.4; done; }
 TITLES="$(PYTHONIOENCODING=utf-8 $PY -c "import json; print(' '.join(p['title'] for j in json.load(open(r'$ROOT/finny-pet/app/src/main/assets/content/content.json', encoding='utf-8'))['town']['jobs'] if j.get('game') == 'TRAY' for p in j['menu']))")"
 outside() { local o m d; o=",$(order | sed 's/, /,/g'),"; d=$("$A" ui); for m in $TITLES; do printf '%s\n' "$d" | awk -F'\t' -v t="$m" '$2==t {f=1} END {exit !f}' || continue; case "$o" in *",$(low "$m"),"*) ;; *) echo "$m" ;; esac; done; }
@@ -70,8 +75,8 @@ riddle_fits() {  # $1 — screen label: the last option is on screen and the bub
   "$A" shell uiautomator dump /sdcard/ui.xml >/dev/null; "$A" exec-out cat /sdcard/ui.xml > "$T/${P}_raw.xml"
   grep -q 'scrollable="true"' "$T/${P}_raw.xml" && echo "  not found: riddle bubble without scrolling on $1"
 }
-state() {  # jobShifts shiftsThisPeriod demo(keep|false) [target quiz id]
-  PYTHONIOENCODING=utf-8 $PY - "$B" "$T/${P}_test.json" "$1" "$2" "$3" "${4:-}" "$ROOT" <<'PY'
+state() {  # jobShifts shiftsThisPeriod demo(keep|false) [target quiz id] [records.job_bakery]
+  PYTHONIOENCODING=utf-8 $PY - "$B" "$T/${P}_test.json" "$1" "$2" "$3" "${4:-}" "$ROOT" "${5:-}" <<'PY'
 import json, sys
 s = json.load(open(sys.argv[1], encoding="utf-8"))
 s.setdefault("jobShifts", {})["job_bakery"] = int(sys.argv[3]); s["shiftsThisPeriod"] = int(sys.argv[4])
@@ -80,6 +85,7 @@ if sys.argv[5] == "false": s["demo"] = False
 if sys.argv[6]:
     ids = [q["id"] for q in json.load(open(sys.argv[7] + "/finny-pet/app/src/main/assets/content/content.json", encoding="utf-8"))["town"]["quiz"]]
     s["riddles"] = [{"taskId": q, "correct": True, "reward": 0, "period": s.get("period", 1)} for q in ids[:ids.index(sys.argv[6])]]
+if sys.argv[8]: s.setdefault("records", {})["job_bakery"] = int(sys.argv[8])
 json.dump(s, open(sys.argv[2], "w", encoding="utf-8"), ensure_ascii=False)
 PY
   "$A" shell am force-stop --user 0 ru.finny.pet
@@ -113,6 +119,16 @@ for st in $STATES; do case $st in
           o=$(order); n=$(echo "$o" | awk -F', ' '{print NF}'); tapx "$(cap "${o%%,*}")" 0.4  # customer 3: one right + outside
           for m in $(outside | head -$((n - 1))); do tapx "$m" 0.4; done; tapx "Отдать" 1.2; has "Ещё нужно: " big_wrong; shot2 big_wrong
           tapx "Закончить" 2; tapx "Готово" 1 ;;
+  levelup) state 5 0 keep; open_bakery; tapx "Начать смену" 2.5
+          for c in 1 2 3 4; do put_list "$(order)"; tapx "Отдать" 2.2; done               # 4 customers, all right the first time
+          has "Заработали 10: 6 за смену + 4 за звёзды" levelup; has "новый уровень 2" levelup; shot2 levelup; tapx "Готово" 1 ;;
+  zero)   state 1 0 keep; open_bakery; tapx "Начать смену" 2.5
+          for c in 1 2 3 4; do                                                           # a full tray with one item outside the order
+            o=$(order); x=$(outside | head -1); [ -z "$o" ] || [ -z "$x" ] && echo "  not found: order or outside item on zero"
+            case "$o" in *", "*) put_list "${o%, *}" ;; esac; tapx "$x" 0.4
+            tapx "Отдать" 1.2; has "Ещё нужно: " zero_wrong$c; put_list "$(need)"; tapx "Отдать" 2.2
+          done
+          has "Заработали 6: 6 за смену — придёт с новым конвертом" zero; shot2 zero; tapx "Готово" 1 ;;
   *) echo "  not found: unknown state $st" ;;
 esac; done
 echo "done $P"

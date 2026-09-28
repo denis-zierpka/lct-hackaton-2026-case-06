@@ -8,6 +8,9 @@
 # Неделя 1 (3 смены): пекарня 1 (указатель, отдача с расхождением, «Спасибо!», итог) → Марта → пекарня 2 (новинка в
 # облачке заказа, «?», загадка на полном подносе из лишних, подсказка) → после лимита — пекарня («Домой» → комната) и рынок.
 # С TOWN-J1-1a2: в раунде нет HUD «Подсказка», в облачке загадки — строка пользы, строка лимита — «…приходи на новой неделе».
+# С TOWN-J1-1b1: итог смены — сцена (узел «Заработали …» в облачке, «Почему?» → строка питомца «Карманные…» текстовым
+# узлом, касание закрывает, «Готово»); снимки итогов result, why, tresult, result2 — при 1,0 и 1,3.
+# DUMP=1 — рядом со снимком shot2 сырой дамп emu_PREFIX_<экран>{10,13}.xml для `python tools/ui_measure.py <дамп> <метка> 3`.
 #   tools/town_route.sh PREFIX
 set -u
 P=${1:?PREFIX}
@@ -36,9 +39,10 @@ no_hud_hint() {  # № 56 б: no HUD «Подсказка» on a round or its re
 }
 probe() { "$A" ui | grep -o 'Обрезано: [0-9]*' | head -1; }
 shot1() { sleep 0.5; "$A" shot ${P}_$1 >/dev/null; echo "$1: $(probe)"; }
+dump() { [ -n "${DUMP:-}" ] && { "$A" shell uiautomator dump /sdcard/ui.xml >/dev/null; "$A" exec-out cat /sdcard/ui.xml > "$ROOT/finny-pet/screenshots/emu_${P}_$1.xml"; }; }  # DUMP=1: raw dump for tools/ui_measure.py
 shot2() {
-  "$A" font 1.0; sleep 1.5; "$A" shot ${P}_${1}10 >/dev/null; echo "${1}10: $(probe)"
-  "$A" font 1.3; sleep 2.2; "$A" shot ${P}_${1}13 >/dev/null; echo "${1}13: $(probe)"
+  "$A" font 1.0; sleep 1.5; "$A" shot ${P}_${1}10 >/dev/null; echo "${1}10: $(probe)"; dump ${1}10
+  "$A" font 1.3; sleep 2.2; "$A" shot ${P}_${1}13 >/dev/null; echo "${1}13: $(probe)"; dump ${1}13
   "$A" font 1.0; sleep 1.5
 }
 swipe_up() { for i in $(seq ${1:-3}); do "$A" shell input swipe 540 1450 540 450 300; done; sleep 1; }  # from mid-screen: at y ≈ 1737 (360 × 640) sits the debug button «Макеты „Городка“»
@@ -121,14 +125,15 @@ o=$(order); first=$(cap "${o%%,*}"); other=$(outside | head -1)         # custom
 [ -z "$other" ] && echo "  not found: showcase item outside the order"
 tapx "$first" 0.4; tapx "$other" 0.4; tapx "Отдать" 1.2; has "Ещё нужно: " wrong; shot2 wrong   # ✓ and dashed circles
 put_all "$(need)"; tapx "Отдать" 0; "$A" shot ${P}_thanks >/dev/null; echo "thanks: shot"; sleep 1.5   # «Спасибо!» at once, 1.0
-serve 2.0; serve 2.5; has "Спасибо за помощь" result; no_hud_hint "Готово" result; shot2 result   # customers 3, 4 → the result card
-tapx "Готово" 1.5
+serve 2.0; serve 2.5; has "Заработали " result; has "Почему?" result; no_hud_hint "Готово" result; shot2 result   # customers 3, 4 → the result scene
+tapx "Почему?" 1.2; [ -n "$(text_xy "Карманные приходят каждую неделю, зарплата — когда поработаешь")" ] || echo "  not found: LINE on why"; shot2 why; tp "Карманные" 0.8; tapx "Готово" 1.5
 tp "Домой"; plan; shot1 jars
 tp "Домой"; tp "Лавки"; tp "Рынок у реки"; shot2 marketp
 # the order card sits below the fold; a font change recreates the screen and loses the scroll — scroll after each
 swipe_up 4; shot1 order10; "$A" font 1.3; sleep 2.2; swipe_up 4; shot1 order13; "$A" font 1.0; sleep 1.5; swipe_up 4
 tp "Начать смену" 2; no_hud_hint "Закончить" taps; shot2 taps              # shift 2 of the week — Marta
-tp "Разложить яблоки" 0.4; tp "Подмести у прилавка" 0.4; tp "Отнести ящик" 0.4; tp "Закончить" 2; no_hud_hint "Готово" tresult; shot2 tresult
+tp "Разложить яблоки" 0.4; tp "Подмести у прилавка" 0.4; tp "Отнести ящик" 0.4; tp "Закончить" 2; no_hud_hint "Готово" tresult
+has "Заработали 6: 6 за три поручения — придёт с новым конвертом" tresult; has "Почему?" tresult; shot2 tresult
 tp "Готово"
 # ---- bakery, shift 2 (3rd of the week): the new item in the order bubble, «?», the riddle on a full tray of extras
 tp "Домой"; tp "Дверь: на улицу"; "$A" shell input swipe 900 586 200 586 300; sleep 1
@@ -141,7 +146,7 @@ riddle_fits riddle10; shot1 riddle10; "$A" font 1.3; sleep 2.2; riddle_fits ridd
 ans=$(riddle_answer); [ -z "$ans" ] && echo "  not found: riddle question"
 tapx "$ans" 1.2; has "Дальше" answer; shot1 answer                       # «Верно! …», «Подсказка Бори — на поднос»
 tapx "Дальше" 1.0; shot1 hint                                            # an extra came off the end, a needed item is on the tray
-tapx "Закончить" 2; shot1 result2; tapx "Готово" 1.5
+tapx "Закончить" 2; has "Заработали " result2; has "Почему?" result2; no_hud_hint "Готово" result2; shot2 result2; tapx "Готово" 1.5
 has "Смены на неделе закончились — приходи на новой неделе" limit; shot2 limit   # bakery after the limit: ●●●, «Домой» (№ 54 б, 59 б)
 xy=$(text_xy "Домой"); [ -z "$xy" ] && echo "  not found: button «Домой» on limit" || { "$A" shell input tap $xy; sleep 2; }
 "$A" ui | grep -q "Окно: улица" || { echo "  not found: room after «Домой»"; tp "Домой"; }
