@@ -2,9 +2,11 @@ package ru.finny.pet.domain.town
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import ru.finny.pet.domain.Content
 import ru.finny.pet.domain.GameState
 import ru.finny.pet.domain.LedgerEntry
 import ru.finny.pet.domain.TaskResult
@@ -20,6 +22,31 @@ internal object S1bStand {
     val content = S1aStand.content
     val town = S1aStand.town
     val economy = S1aStand.economy
+
+    /**
+     * Копия контента до среза 1а: у пекарни поле «три в ряд» (TOWN-J1-1a, правило переноса пинов).
+     * В content.json пекарня — «Помочь Боре» на подносах, поэтому ветка MATCH3 (счёт за булочки,
+     * бомбы уровня, бомбочка за загадку, «Новый рекорд!») проверяется здесь. Числа поля — последние
+     * значения записи до среза 1а (коммит d4a06c9); других литералов Match3 в оракуле нет.
+     */
+    val content3: Content = content.let { base ->
+        val t = base.town ?: error("content.json: нет ключа town")
+        val jobs = t.jobs.map {
+            if (it.id != "job_bakery") {
+                it
+            } else {
+                it.copy(
+                    game = JobGame.MATCH3, title = "Булочки в ряд",
+                    board = Board(6, 6), moves = 15, demoMoves = 5,
+                )
+            }
+        }
+        base.copy(town = t.copy(jobs = jobs))
+    }
+
+    /** Движок на копии с полем «три в ряд». */
+    val town3 = Town(content3)
+
     val quizIds: List<String> get() = content.town!!.quiz.map { it.id }
 
     fun explanation(id: String): String = content.town!!.quiz.first { it.id == id }.explanation
@@ -43,6 +70,9 @@ internal object S1bStand {
 class ShiftTest {
 
     private val town = S1bStand.town
+
+    /** Движок копии контента с полем «три в ряд» — ветка MATCH3 (TOWN-J1-1a, правило переноса пинов). */
+    private val town3 = S1bStand.town3
     private val economy = S1bStand.economy
     private val payLater = "придёт с новым конвертом"
     private val wage = "Карманные приходят каждую неделю, зарплата — когда поработаешь"
@@ -202,7 +232,11 @@ class ShiftTest {
 
         assertEquals("ночная загадка", "q_budget_1", town.nextQuestion(sleeping)?.id)
         val riddle = town.answerQuestion(sleeping, "q_budget_1", 0)
-        assertEquals("бомбочка ночью", 1, riddle.s1aState().bombs)
+        assertEquals("ответ на ночную загадку не записан", 1, riddle.s1aState().riddles.size)
+        assertTrue("ночная загадка не отмечена как заданная", riddle.s1aState().riddleAsked)
+        assertEquals("подсказка подноса ночью", listOf("Подсказка Бори — на поднос"), riddle.s1aOutcome().why)
+        // ветка поля «три в ряд» — на копии контента до среза 1а, состояние то же самое
+        assertEquals("бомбочка ночью", 1, town3.answerQuestion(sleeping, "q_budget_1", 0).s1aState().bombs)
         assertEquals("бонус взрослого ночью", 1, town.parentBonus(sleeping, 0).s1aState().parentBonusesThisPeriod)
     }
 
@@ -280,17 +314,29 @@ class ShiftTest {
     fun `смену нельзя закончить с чужими числами`() {
         val s = S1aStand.planned(40, 20, 30)
         assertEquals("счёт меньше нуля", badShift, town.finishShift(s, "job_bakery", -1, 0).s1aRefusal())
-        assertEquals("бомбы меньше нуля", badShift, town.finishShift(s, "job_bakery", 10, -1).s1aRefusal())
+        assertEquals("бомбы меньше нуля", badShift, town.finishShift(s, "job_bakery", 2, -1).s1aRefusal())
         assertEquals("бомба у кнопочной работы", badShift, town.finishShift(s, "job_market", 3, 1).s1aRefusal())
         assertEquals("бомба у кассы", badShift, town.finishShift(s, "job_kassa", 3, 1).s1aRefusal())
-        assertEquals("бомб больше, чем есть", badShift, town.finishShift(s, "job_bakery", 10, 1).s1aRefusal())
+        assertEquals("бомба у работы на подносах", badShift, town.finishShift(s, "job_bakery", 2, 1).s1aRefusal())
         assertEquals("поручений всего три", badShift, town.finishShift(s, "job_market", 4, 0).s1aRefusal())
         assertEquals("все три поручения", 6, town.finishShift(s, "job_market", 3, 0).s1aState().envelope.first().amount)
 
+        // граничный счётчик бомбочек: две в кладовке — на поднос их всё равно не потратить
+        val withBombs = s.copy(bombs = 2)
+        assertEquals("бомбы кладовки на подносе", badShift, town.finishShift(withBombs, "job_bakery", 2, 2).s1aRefusal())
+        assertEquals("кладовка тронута отказом", 2, withBombs.bombs)
+    }
+
+    @Test
+    fun `бомбы смены на поле три в ряд тратятся из кладовки`() {
+        val s = S1aStand.planned(40, 20, 30)
+        assertEquals("бомб больше, чем есть", badShift, town3.finishShift(s, "job_bakery", 10, 1).s1aRefusal())
+
         // граничный счётчик бомбочек: две в кладовке, у уровня 0 своих нет
         val withBombs = s.copy(bombs = 2)
-        assertEquals("ровно все бомбы", 0, town.finishShift(withBombs, "job_bakery", 10, 2).s1aState().bombs)
-        assertEquals("на одну бомбу больше", badShift, town.finishShift(withBombs, "job_bakery", 10, 3).s1aRefusal())
+        assertEquals("своих бомб у уровня 0 нет", 0, town3.shiftQuote(withBombs, "job_bakery").levelBombs)
+        assertEquals("ровно все бомбы", 0, town3.finishShift(withBombs, "job_bakery", 10, 2).s1aState().bombs)
+        assertEquals("на одну бомбу больше", badShift, town3.finishShift(withBombs, "job_bakery", 10, 3).s1aRefusal())
     }
 
     // ---------- §2. Оплачиваемая смена ----------
@@ -298,10 +344,10 @@ class ShiftTest {
     @Test
     fun `смена в пекарне кладёт зарплату в конверт а кошелёк и банки не трогает`() {
         val s = S1aStand.planned(50, 20, 30)
-        val r = town.finishShift(s, "job_bakery", 60, 0)
+        val r = town.finishShift(s, "job_bakery", 2, 0)
         val after = r.s1aOutcome().state
 
-        assertEquals("зарплата в конверте", listOf(LedgerEntry("Смена: Булочки в ряд", 8)), after.envelope)
+        assertEquals("зарплата в конверте", listOf(LedgerEntry("Смена: Помочь Боре", 8)), after.envelope)
         assertEquals("кошелёк изменился", s.balance, after.balance)
         assertEquals("копилка изменилась", s.savings, after.savings)
         assertEquals("банка «Нужное» изменилась", s.jarNeed, after.jarNeed)
@@ -310,14 +356,34 @@ class ShiftTest {
         assertEquals("питомец изменился", s.pet, after.pet)
         assertEquals("смен за неделю", 1, after.shiftsThisPeriod)
         assertEquals("мастерство", 1, after.jobShifts["job_bakery"])
-        assertEquals("рекорд поля", 60, after.records["job_bakery"])
+        assertEquals("рекорд звёзд", 2, after.records["job_bakery"])
         assertFalse("загадка не открылась концом смены", after.riddleAsked)
 
         val diary = after.diary.last()
-        assertEquals("строка дневника", "Заработали 8: «Булочки в ряд»", diary.text)
+        assertEquals("строка дневника", "Заработали 8: «Помочь Боре»", diary.text)
         assertEquals("неделя строки дневника", s.period, diary.period)
         assertEquals("день строки дневника", s.day, diary.day)
 
+        assertEquals("строка", "6 за смену + 2 за ★. ✉ +8 — $payLater", r.s1aOutcome().line)
+        assertEquals("числа итога", ShiftPay(6, 2, 8), r.s1aOutcome().pay)
+        assertEquals(
+            "«Почему?»",
+            listOf("Боря: 1 из 6 смен до уровня 2", wage),
+            r.s1aOutcome().why,
+        )
+        assertS1aInvariants("после оплачиваемой смены", after)
+    }
+
+    @Test
+    fun `смена на поле три в ряд платит за булочки и хвалит новым рекордом`() {
+        val s = S1aStand.planned(50, 20, 30)
+        val r = town3.finishShift(s, "job_bakery", 60, 0)
+        val after = r.s1aState()
+
+        assertEquals("зарплата в конверте", listOf(LedgerEntry("Смена: Булочки в ряд", 8)), after.envelope)
+        assertEquals("кошелёк изменился", s.balance, after.balance)
+        assertEquals("рекорд поля", 60, after.records["job_bakery"])
+        assertEquals("строка дневника", "Заработали 8: «Булочки в ряд»", after.diary.last().text)
         assertEquals("строка", "6 за смену + 2 за булочки. ✉ +8 — $payLater", r.s1aOutcome().line)
         assertEquals("числа итога", ShiftPay(6, 2, 8), r.s1aOutcome().pay)
         assertEquals(
@@ -325,18 +391,18 @@ class ShiftTest {
             listOf("Боря: 1 из 6 смен до уровня 2", wage, "Новый рекорд!"),
             r.s1aOutcome().why,
         )
-        assertS1aInvariants("после оплачиваемой смены", after)
+        assertS1aInvariants("после смены на поле", after)
     }
 
     @Test
     fun `зарплата приходит со следующим конвертом и штампу «По плану» не мешает`() {
-        val s = town.finishShift(S1aStand.planned(50, 20, 30), "job_bakery", 60, 0).s1aState()
+        val s = town.finishShift(S1aStand.planned(50, 20, 30), "job_bakery", 2, 0).s1aState()
         assertEquals("кошелёк до конца недели", 70, s.balance)
 
         val ended = town.endWeek(s).s1aState()
         assertEquals("кошелёк после конверта", 70 + S1aStand.allowance + 8, ended.balance)
         assertEquals("конверт не опустел", emptyList<LedgerEntry>(), ended.envelope)
-        assertEquals("зарплата в журнале", LedgerEntry("Смена: Булочки в ряд", 8), ended.ledger.last())
+        assertEquals("зарплата в журнале", LedgerEntry("Смена: Помочь Боре", 8), ended.ledger.last())
         val summary = ended.history.last()
         assertEquals("зарплата в итоге недели", 8, summary.shiftEarned)
         assertTrue("зарплата сняла штамп «По плану»", summary.planKept)
@@ -356,22 +422,27 @@ class ShiftTest {
         assertEquals("числа итога кнопочной работы", ShiftPay(6, 0, 6), taps.s1aOutcome().pay)
         assertNull("кнопочная работа пишет рекорд", taps.s1aState().records["job_market"])
 
-        val m3 = town.finishShift(s, "job_bakery", 0, 0)
-        assertEquals("зарплата за смену", listOf(LedgerEntry("Смена: Булочки в ряд", 6)), m3.s1aState().envelope)
-        assertEquals("строка", "6 за смену. ✉ +6 — $payLater", m3.s1aOutcome().line)
-        assertEquals("числа итога без надбавки", ShiftPay(6, 0, 6), m3.s1aOutcome().pay)
-        assertEquals("рекорд поля", 0, m3.s1aState().records["job_bakery"])
+        val tray = town.finishShift(s, "job_bakery", 0, 0)
+        assertEquals("зарплата за смену", listOf(LedgerEntry("Смена: Помочь Боре", 6)), tray.s1aState().envelope)
+        assertEquals("строка", "6 за смену. ✉ +6 — $payLater", tray.s1aOutcome().line)
+        assertEquals("числа итога без надбавки", ShiftPay(6, 0, 6), tray.s1aOutcome().pay)
+        assertEquals("рекорд звёзд", 0, tray.s1aState().records["job_bakery"])
         assertEquals(
             "«Почему?» без рекорда",
             listOf("Боря: 1 из 6 смен до уровня 2", wage),
-            m3.s1aOutcome().why,
+            tray.s1aOutcome().why,
         )
+
+        val m3 = town3.finishShift(s, "job_bakery", 0, 0)
+        assertEquals("зарплата за смену на поле", listOf(LedgerEntry("Смена: Булочки в ряд", 6)), m3.s1aState().envelope)
+        assertEquals("строка смены на поле", "6 за смену. ✉ +6 — $payLater", m3.s1aOutcome().line)
+        assertEquals("рекорд поля", 0, m3.s1aState().records["job_bakery"])
     }
 
     @Test
-    fun `надбавка в пекарне растёт через каждые тридцать булочек и упирается в потолок`() {
+    fun `надбавка на поле три в ряд растёт через каждые тридцать булочек и упирается в потолок`() {
         val s = S1aStand.planned(40, 20, 30)
-        fun total(score: Int) = town.finishShift(s, "job_bakery", score, 0).s1aState().envelope.first().amount
+        fun total(score: Int) = town3.finishShift(s, "job_bakery", score, 0).s1aState().envelope.first().amount
 
         assertEquals("счёт 29 — надбавки ещё нет", 6, total(29))
         assertEquals("счёт 30 — первая надбавка", 7, total(30))
@@ -380,8 +451,9 @@ class ShiftTest {
         assertEquals(
             "строка с надбавкой",
             "6 за смену + 1 за булочки. ✉ +7 — $payLater",
-            town.finishShift(s, "job_bakery", 30, 0).s1aOutcome().line,
+            town3.finishShift(s, "job_bakery", 30, 0).s1aOutcome().line,
         )
+        assertEquals("числа итога поля", ShiftPay(6, 1, 7), town3.finishShift(s, "job_bakery", 30, 0).s1aOutcome().pay)
     }
 
     @Test
@@ -406,15 +478,21 @@ class ShiftTest {
         val market = town.finishShift(s, "job_market", 3, 0)
         val kassa = town.finishShift(s, "job_kassa", 3, 0)
 
-        assertEquals("пекарня", "6 за смену. ✉ +6 — $payLater", bakery.s1aOutcome().line)
+        val m3 = town3.finishShift(s, "job_bakery", 3, 0)
+
+        assertEquals("пекарня", "6 за смену + 3 за ★. ✉ +9 — $payLater", bakery.s1aOutcome().line)
         assertEquals("рынок", "6 за три поручения. ✉ +6 — $payLater", market.s1aOutcome().line)
         assertEquals("касса", "6 за смену + 3 за сдачу. ✉ +9 — $payLater", kassa.s1aOutcome().line)
+        assertEquals("поле три в ряд", "6 за смену. ✉ +6 — $payLater", m3.s1aOutcome().line)
+        assertNotEquals("поднос и касса платят одной строкой", kassa.s1aOutcome().line, bakery.s1aOutcome().line)
+        assertNotEquals("поднос и поле платят одной строкой", m3.s1aOutcome().line, bakery.s1aOutcome().line)
         assertEquals("житель пекарни", "Боря: 1 из 6 смен до уровня 2", bakery.s1aOutcome().why.first())
         assertEquals("житель рынка", "Марта: 1 из 6 смен до уровня 2", market.s1aOutcome().why.first())
         assertEquals("житель кассы", "Кеша: 1 из 6 смен до уровня 2", kassa.s1aOutcome().why.first())
-        assertEquals("конверт пекарни", "Смена: Булочки в ряд", bakery.s1aState().envelope.first().text)
+        assertEquals("конверт пекарни", "Смена: Помочь Боре", bakery.s1aState().envelope.first().text)
         assertEquals("конверт рынка", "Смена: Помочь Марте", market.s1aState().envelope.first().text)
         assertEquals("конверт кассы", "Смена: Касса", kassa.s1aState().envelope.first().text)
+        assertEquals("конверт поля", "Смена: Булочки в ряд", m3.s1aState().envelope.first().text)
     }
 
     // ---------- §2. Уровни и бомбы ----------
@@ -432,7 +510,9 @@ class ShiftTest {
         assertEquals("мастерство", 6, after.jobShifts["job_bakery"])
         assertEquals("уровень после смены", 1, town.shiftQuote(after, "job_bakery").level)
         assertEquals("база после смены", 7, town.shiftQuote(after, "job_bakery").base)
-        assertEquals("бомбы уровня после смены", 1, town.shiftQuote(after, "job_bakery").levelBombs)
+        // бомбы уровня остались только у поля «три в ряд» (TOWN-J1-0 § 4), у подноса их нет
+        assertEquals("бомбы уровня у подноса", 0, town.shiftQuote(after, "job_bakery").levelBombs)
+        assertEquals("бомбы уровня у поля", 1, town3.shiftQuote(after, "job_bakery").levelBombs)
         assertEquals("верх диапазона после смены", 11, town.shiftQuote(after, "job_bakery").top)
         assertEquals("строка", "6 за смену. ✉ +6 — $payLater", r.s1aOutcome().line)
         assertEquals("первая строка «Почему?»", "Боря: новый уровень 2! Теперь 7–11 за смену", r.s1aOutcome().why.first())
@@ -470,21 +550,22 @@ class ShiftTest {
 
     @Test
     fun `сначала тратятся бомбы уровня потом накопленные а надбавка держит потолок`() {
+        // ветка MATCH3 целиком: бомбы и счёт за булочки — на копии контента с полем «три в ряд»
         // граничные счётчики: второй уровень даёт свою бомбу, три лежат в кладовке
         val s = withShifts(S1aStand.planned(40, 20, 30), "job_bakery", 6).copy(bombs = 3)
-        assertEquals("бомбы уровня", 1, town.shiftQuote(s, "job_bakery").levelBombs)
+        assertEquals("бомбы уровня", 1, town3.shiftQuote(s, "job_bakery").levelBombs)
 
-        val one = town.finishShift(s, "job_bakery", 1000, 1).s1aState()
+        val one = town3.finishShift(s, "job_bakery", 1000, 1).s1aState()
         assertEquals("первой тратится бомба уровня", 3, one.bombs)
 
-        val r = town.finishShift(s, "job_bakery", 1000, 3)
+        val r = town3.finishShift(s, "job_bakery", 1000, 3)
         val after = r.s1aState()
         assertEquals("накопленные бомбы", 1, after.bombs)
         assertEquals("надбавка выше потолка", 11, after.envelope.first().amount)
         assertEquals("строка", "7 за смену + 4 за булочки. ✉ +11 — $payLater", r.s1aOutcome().line)
 
-        assertEquals("все бомбы сразу", 0, town.finishShift(s, "job_bakery", 1000, 4).s1aState().bombs)
-        assertEquals("на одну бомбу больше", badShift, town.finishShift(s, "job_bakery", 1000, 5).s1aRefusal())
+        assertEquals("все бомбы сразу", 0, town3.finishShift(s, "job_bakery", 1000, 4).s1aState().bombs)
+        assertEquals("на одну бомбу больше", badShift, town3.finishShift(s, "job_bakery", 1000, 5).s1aRefusal())
     }
 
     // ---------- §2. После лимита смен (решение № 47 б) ----------
@@ -505,16 +586,18 @@ class ShiftTest {
         // новый конверт возвращает смены и оплату
         val fresh = S1bStand.nextWeek(s)
         assertTrue("новая неделя не платит за смену", town.shiftQuote(fresh, "job_bakery").paid)
-        val worked = town.finishShift(fresh, "job_bakery", 200, 0)
-        assertEquals("зарплата первой смены новой недели", 10, worked.s1aState().envelope.first().amount)
-        assertEquals("рекорд первой смены новой недели", 200, worked.s1aState().records["job_bakery"])
+        val stars = S1bStand.content.town!!.rules.shiftBonusMax
+        val worked = town.finishShift(fresh, "job_bakery", stars, 0)
+        assertEquals("зарплата первой смены новой недели", 6 + stars, worked.s1aState().envelope.first().amount)
+        assertEquals("рекорд первой смены новой недели", stars, worked.s1aState().records["job_bakery"])
     }
 
     @Test
     fun `новый рекорд в оплачиваемой смене виден в «Почему?»`() {
+        // «Новый рекорд!» остался у поля «три в ряд» и у кассы (TOWN-J1-0 § 4) — проверка на копии
         var s = S1aStand.planned(40, 20, 30)
-        s = town.finishShift(s, "job_bakery", 90, 0).s1aState()
-        val weaker = town.finishShift(s, "job_bakery", 60, 0)
+        s = town3.finishShift(s, "job_bakery", 90, 0).s1aState()
+        val weaker = town3.finishShift(s, "job_bakery", 60, 0)
         assertEquals("рекорд просел", 90, weaker.s1aState().records["job_bakery"])
         assertEquals(
             "«Почему?» с чужим рекордом",
@@ -522,7 +605,7 @@ class ShiftTest {
             weaker.s1aOutcome().why,
         )
 
-        val better = town.finishShift(s, "job_bakery", 91, 0)
+        val better = town3.finishShift(s, "job_bakery", 91, 0)
         assertEquals("рекорд", 91, better.s1aState().records["job_bakery"])
         assertEquals(
             "«Почему?» с рекордом",
@@ -535,10 +618,11 @@ class ShiftTest {
 
     @Test
     fun `верная загадка даёт бомбочку и молчит до конца смены в пекарне`() {
+        // бомбочка и «для поля» — ветка MATCH3 (TOWN-J1-0 § 4): вся проверка на копии контента
         val s = S1aStand.profile()
-        assertEquals("первая загадка", "q_budget_1", town.nextQuestion(s)?.id)
+        assertEquals("первая загадка", "q_budget_1", town3.nextQuestion(s)?.id)
 
-        val r = town.answerQuestion(s, "q_budget_1", 0)
+        val r = town3.answerQuestion(s, "q_budget_1", 0)
         val after = r.s1aState()
         assertEquals("бомбочка за верный ответ", 1, after.bombs)
         assertEquals("ответ записан", listOf(TaskResult("q_budget_1", true, 0, 1)), after.riddles)
@@ -549,16 +633,16 @@ class ShiftTest {
         assertEquals("строка", "Верно! ${S1bStand.explanation("q_budget_1")}", r.s1aOutcome().line)
         assertEquals("«Почему?»", listOf("Бомбочка +1 — для поля «Булочки в ряд»"), r.s1aOutcome().why)
 
-        assertNull("вторая загадка за один заказ", town.nextQuestion(after))
+        assertNull("вторая загадка за один заказ", town3.nextQuestion(after))
         assertEquals(
             "второй ответ за один заказ",
             "Следующая загадка — после смены",
-            town.answerQuestion(after, "q_budget_2", 0).s1aRefusal(),
+            town3.answerQuestion(after, "q_budget_2", 0).s1aRefusal(),
         )
 
-        val worked = town.finishShift(after, "job_bakery", 30, 0).s1aState()
+        val worked = town3.finishShift(after, "job_bakery", 30, 0).s1aState()
         assertFalse("конец смены в пекарне не открыл загадку", worked.riddleAsked)
-        assertEquals("следующая загадка", "q_budget_2", town.nextQuestion(worked)?.id)
+        assertEquals("следующая загадка", "q_budget_2", town3.nextQuestion(worked)?.id)
     }
 
     @Test
@@ -571,31 +655,32 @@ class ShiftTest {
 
     @Test
     fun `после лимита смена загадку не открывает и бомбы не тратит`() {
+        // бомбочки живут у поля «три в ряд» (TOWN-J1-0 § 4) — вся проверка на копии контента
         var s = S1aStand.planned(40, 20, 30)
-        s = town.answerQuestion(s, "q_budget_1", 0).s1aState()
+        s = town3.answerQuestion(s, "q_budget_1", 0).s1aState()
         assertTrue("загадка не задана", s.riddleAsked)
         assertEquals("бомбочка за верный ответ", 1, s.bombs)
-        assertNull("загадка ещё доступна", town.nextQuestion(s))
+        assertNull("загадка ещё доступна", town3.nextQuestion(s))
 
         // граничный счётчик: три смены недели уже сыграны
         val spent = s.copy(shiftsThisPeriod = 3)
-        assertFalse("смена ещё оплачивается", town.shiftQuote(spent, "job_bakery").paid)
-        assertEquals("своих бомб у первого уровня нет", 0, town.shiftQuote(spent, "job_bakery").levelBombs)
+        assertFalse("смена ещё оплачивается", town3.shiftQuote(spent, "job_bakery").paid)
+        assertEquals("своих бомб у первого уровня нет", 0, town3.shiftQuote(spent, "job_bakery").levelBombs)
 
-        assertEquals("смена после лимита", limitLine, town.finishShift(spent, "job_bakery", 60, 1).s1aRefusal())
+        assertEquals("смена после лимита", limitLine, town3.finishShift(spent, "job_bakery", 60, 1).s1aRefusal())
         assertEquals(
             "отказ после лимита идёт раньше проверки бомб",
             limitLine,
-            town.finishShift(spent, "job_bakery", 60, 2).s1aRefusal(),
+            town3.finishShift(spent, "job_bakery", 60, 2).s1aRefusal(),
         )
-        assertNull("загадка открылась без смены", town.nextQuestion(spent))
+        assertNull("загадка открылась без смены", town3.nextQuestion(spent))
 
         // загадку открывает только оплачиваемая смена — она приходит с новым конвертом
         val fresh = S1bStand.nextWeek(spent)
-        val after = town.finishShift(fresh, "job_bakery", 60, 1).s1aState()
+        val after = town3.finishShift(fresh, "job_bakery", 60, 1).s1aState()
         assertFalse("оплачиваемая смена не сбросила загадку", after.riddleAsked)
         assertEquals("накопленная бомбочка не списана", 0, after.bombs)
-        assertEquals("следующая загадка", "q_budget_2", town.nextQuestion(after)?.id)
+        assertEquals("следующая загадка", "q_budget_2", town3.nextQuestion(after)?.id)
     }
 
     @Test
@@ -610,7 +695,7 @@ class ShiftTest {
         assertTrue("утро новой недели открыло загадку", morning.riddleAsked)
         assertNull("загадка нашлась утром новой недели", town.nextQuestion(morning))
 
-        val worked = town.finishShift(morning, "job_bakery", 30, 0).s1aState()
+        val worked = town.finishShift(morning, "job_bakery", 2, 0).s1aState()
         assertEquals("загадку открывает только смена в пекарне", "q_budget_2", town.nextQuestion(worked)?.id)
     }
 
@@ -624,11 +709,11 @@ class ShiftTest {
         assertEquals("строка", S1bStand.explanation("q_budget_1"), r.s1aOutcome().line)
         assertEquals("«Почему?»", listOf("Вопрос вернётся позже"), r.s1aOutcome().why)
 
-        val worked = town.finishShift(after, "job_bakery", 30, 0).s1aState()
+        val worked = town.finishShift(after, "job_bakery", 2, 0).s1aState()
         assertEquals("неверный вопрос задан снова", "q_budget_2", town.nextQuestion(worked)?.id)
 
         // у второго вопроса верный ответ — 1, значит 0 снова неверный
-        val again = town.finishShift(town.answerQuestion(worked, "q_budget_2", 0).s1aState(), "job_bakery", 30, 0).s1aState()
+        val again = town.finishShift(town.answerQuestion(worked, "q_budget_2", 0).s1aState(), "job_bakery", 2, 0).s1aState()
         assertEquals("третья загадка", "q_budget_3", town.nextQuestion(again)?.id)
     }
 
@@ -671,7 +756,8 @@ class ShiftTest {
         val r = town.answerQuestion(old, ids.first(), 0)
         assertEquals("ответ на загадку записан", 1, r.s1aState().riddles.size)
         assertEquals("викторина 1.3.0 изменилась", old.quizResults, r.s1aState().quizResults)
-        assertEquals("бомбочка за загадку", 1, r.s1aState().bombs)
+        assertEquals("подсказка подноса вместо бомбочки", 0, r.s1aState().bombs)
+        assertEquals("бомбочка за загадку", 1, town3.answerQuestion(old, ids.first(), 0).s1aState().bombs)
     }
 
     @Test
@@ -772,10 +858,14 @@ class ShiftTest {
                 add(town.shiftQuote(sleeping, it).line)
                 add(town.shiftQuote(S1aStand.profile().copy(shiftsThisPeriod = 3), it).line)
             }
-            addAll(town.finishShift(s, "job_bakery", 60, 0).s1aTexts())
+            addAll(town.finishShift(s, "job_bakery", 2, 0).s1aTexts())
             addAll(town.finishShift(s, "job_bakery", 0, 0).s1aTexts())
-            addAll(town.finishShift(level, "job_bakery", 1000, 2).s1aTexts())
+            addAll(town.finishShift(level, "job_bakery", 4, 0).s1aTexts())
             addAll(town.finishShift(withShifts(s, "job_bakery", 15), "job_bakery", 0, 0).s1aTexts())
+            // строки ветки MATCH3 — на копии контента с полем «три в ряд»
+            addAll(town3.finishShift(s, "job_bakery", 60, 0).s1aTexts())
+            addAll(town3.finishShift(level, "job_bakery", 1000, 2).s1aTexts())
+            addAll(town3.answerQuestion(s, "q_budget_1", 0).s1aTexts())
             addAll(town.finishShift(s, "job_market", 3, 0).s1aTexts())
             addAll(town.finishShift(s, "job_kassa", 3, 0).s1aTexts())
             addAll(town.finishShift(spent, "job_bakery", 200, 0).s1aTexts())

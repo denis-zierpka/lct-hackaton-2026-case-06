@@ -810,9 +810,10 @@ class EventCatalogTest {
         val s = S1cStand.profile()
         assertFalse("монеты ещё не разложены", s.plan.confirmed)
         assertTrue("заказа на доске пока нет", town.orders(s).isEmpty())
-        val after = town.finishShift(s, "job_bakery", 60, 0).s1aState()
+        // счёт смены на подносах — звёзды покупателей, их не больше длины sizes (TOWN-J1-0 § 4)
+        val after = town.finishShift(s, "job_bakery", 2, 0).s1aState()
         assertEquals(listOf("st_job_bakery"), after.stickers)
-        val again = town.finishShift(after, "job_bakery", 60, 0).s1aState()
+        val again = town.finishShift(after, "job_bakery", 2, 0).s1aState()
         assertEquals("наклейка не задваивается", listOf("st_job_bakery"), again.stickers)
     }
 

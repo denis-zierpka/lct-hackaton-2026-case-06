@@ -621,13 +621,27 @@ class ContentValidationTest {
         assertTrue("нет ни одной работы MATCH3 или TRAY — «Загадке Бори» некуда класть подсказку", m.isNotEmpty())
     }
 
+    /**
+     * Правило поля применяется к content.json (после среза 1а работ MATCH3 там нет) и к тестовой
+     * копии S1bStand.content3 — чтобы у правила был предмет до чистки Match3 в срезе 2.
+     */
     @Test
-    fun `у каждой работы MATCH3 есть поле шесть на шесть и ходы`() =
-        town.jobs.filter { it.game == JobGame.MATCH3 }.forEach {
-            assertEquals("работа «${it.id}»: board", Board(6, 6), it.board)
-            assertNotNull("работа «${it.id}»: нет moves", it.moves)
-            assertNotNull("работа «${it.id}»: нет demoMoves", it.demoMoves)
+    fun `у каждой работы MATCH3 есть поле шесть на шесть и ходы`() {
+        val contents = listOf(
+            "content.json" to town,
+            "копия с полем «три в ряд»" to (S1bStand.content3.town ?: error("нет town в копии")),
+        )
+        var checked = 0
+        contents.forEach { (where, t) ->
+            t.jobs.filter { it.game == JobGame.MATCH3 }.forEach {
+                checked++
+                assertEquals("$where, работа «${it.id}»: board", Board(6, 6), it.board)
+                assertNotNull("$where, работа «${it.id}»: нет moves", it.moves)
+                assertNotNull("$where, работа «${it.id}»: нет demoMoves", it.demoMoves)
+            }
         }
+        assertTrue("ни одной работы MATCH3 — правило поля проверяется вхолостую", checked > 0)
+    }
 
     @Test
     fun `работа TAPS имеет ровно три задания`() {
@@ -647,12 +661,10 @@ class ContentValidationTest {
     // ---------- 19б. Поднос по заказу (TOWN-J1-0 § 5) ----------
 
     /**
-     * Правила подноса применяются к двум контентам: к настоящему content.json (у пекарни есть
-     * menu и steps, game — MATCH3 до среза 1а) и к копии с TRAY из TrayTest (J1Stand).
+     * Правила подноса применяются к настоящему content.json: срезом 1а пекарня стала TRAY, у неё
+     * есть menu и steps. Список оставлен списком — правила ждут любую работу с подносом.
      */
-    private val trayContents: List<Pair<String, TownContent>> by lazy {
-        listOf("content.json" to town, "копия с пекарней на подносах" to (J1Stand.content.town ?: error("нет town в копии")))
-    }
+    private val trayContents: List<Pair<String, TownContent>> by lazy { listOf("content.json" to town) }
 
     /** Работы, к которым применяются правила § 5: с непустыми ступенями и все TRAY. */
     private fun trayJobs(t: TownContent): List<Job> =
@@ -672,7 +684,7 @@ class ContentValidationTest {
             assertTrue("$where: ни одной работы с ступенями подноса", trayJobs(t).isNotEmpty())
         }
         assertTrue(
-            "в копии нет работы TRAY — правила TRAY проверяются вхолостую",
+            "в контенте нет работы TRAY — правила TRAY проверяются вхолостую",
             trayContents.any { (_, t) -> t.jobs.any { it.game == JobGame.TRAY } },
         )
     }

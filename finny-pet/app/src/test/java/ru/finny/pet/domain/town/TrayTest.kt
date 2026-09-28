@@ -10,13 +10,15 @@ import org.junit.Test
 import ru.finny.pet.domain.Content
 import ru.finny.pet.domain.GameState
 import ru.finny.pet.domain.LedgerEntry
+import ru.finny.pet.domain.TaskResult
 
 /**
- * Оракул мини-игры «Поднос по заказу» (docs/tasks/TOWN-J1-0.md, CONTRACT § 1–§ 4).
- * В content.json пекарня остаётся MATCH3 до среза 1а, поэтому TRAY проверяется на копии контента
- * (J1Stand.content): у job_bakery game = TRAY и сняты поля Match3, всё остальное — из настоящего
- * content.json. Числа меню, ступеней и demoSizes в тестах не дублируются: они читаются из копии.
- * Состояния строятся настоящим путём игрока (S1aStand.profile / planned, Town.finishShift);
+ * Оракул мини-игры «Поднос по заказу» (docs/tasks/TOWN-J1-0.md § 1–§ 4, TOWN-J1-1a.md § 1).
+ * Срезом 1а пекарня в content.json стала «Помочь Боре» на подносах (game = TRAY, полей Match3 нет),
+ * поэтому раунд, оплата и загадка в раунде проверяются на настоящем контенте (J1Stand.content).
+ * Ветка поля «три в ряд» живёт на копии S1bStand.content3. Числа меню, ступеней и demoSizes в тестах
+ * не дублируются: они читаются из контента.
+ * Состояния строятся настоящим путём игрока (S1aStand.profile / planned, Town.finishShift, Tray.*);
  * граничные счётчики (seed, period, shiftsThisPeriod, jobShifts, records, riddles) задаются copy
  * с комментарием, почему настоящий путь сюда не годится.
  */
@@ -28,15 +30,13 @@ internal object J1Stand {
         return base.copy(town = t.copy(jobs = t.jobs.map { if (it.id == BAKERY) f(it) else it }))
     }
 
-    /** Копия контента среза 0: пекарня на подносах. */
-    val content: Content = withBakery(S1aStand.content) {
-        it.copy(game = JobGame.TRAY, board = null, moves = null, demoMoves = null)
-    }
+    /** Настоящий контент среза 1а: пекарня на подносах. */
+    val content: Content = S1aStand.content
 
-    /** Вторая копия: потолок надбавки 2 при тех же sizes — валидатор § 5 к ней не применяется. */
+    /** Копия: потолок надбавки 2 при тех же sizes — валидатор § 5 к ней не применяется. */
     val capped: Content = content.town!!.let { t -> content.copy(town = t.copy(rules = t.rules.copy(shiftBonusMax = 2))) }
 
-    /** Третья копия: пекарь — Ася, она же житель недели 5 (жителя работы не зовут в покупатели). */
+    /** Вторая копия: пекарь — Ася, она же житель недели 5 (жителя работы не зовут в покупатели). */
     val bakerAsya: Content = withBakery(content) { it.copy(resident = "asya") }
 
     val town = Town(content)
@@ -70,6 +70,12 @@ class TrayTest {
     private val wage = "Карманные приходят каждую неделю, зарплата — когда поработаешь"
     private val badShift = "Так закончить смену нельзя"
     private val limit = "Смены на неделе закончились — новые с новым конвертом"
+
+    /** Строки загадки в раунде (TOWN-J1-1a § 1). */
+    private val noRiddle = "Загадки сейчас нет"
+    private val hintIdle = "Этот поднос Боря оставил тебе"
+    private val hintWhy = "Подсказка Бори — на поднос"
+    private val laterWhy = "Вопрос вернётся позже"
 
     /**
      * Граничные счётчики: настоящий путь до 8 смен в пекарне на неделе 6 — это шесть недель игры
@@ -109,7 +115,7 @@ class TrayTest {
         fun stars(v: Int?, engine: Town = town, jobId: String = bakery): Int? =
             engine.bestStars(if (v == null) s else s.copy(records = mapOf(jobId to v)), jobId)
 
-        assertNull("рекорд звёзд у работы Match3", stars(2, engine = S1aStand.town))
+        assertNull("рекорд звёзд у работы Match3", stars(2, engine = S1bStand.town3))
         assertNull("рекорд без записи в профиле", stars(null))
         assertNull("рекорд неизвестной работы", stars(2, jobId = "job_которой_нет"))
         assertNull("рекорд кнопочной работы", stars(2, jobId = "job_market"))
@@ -126,7 +132,7 @@ class TrayTest {
     fun `раунд собирается только у оплачиваемой смены`() {
         val s = S1aStand.planned(40, 20, 30)
         assertNotNull("у оплачиваемой смены нет раунда", town.trayRound(s, bakery))
-        assertNull("раунд у работы Match3", S1aStand.town.trayRound(s, bakery))
+        assertNull("раунд у работы Match3", S1bStand.town3.trayRound(s, bakery))
         assertNull("раунд у кнопочной работы", town.trayRound(s, "job_market"))
         assertNull("раунд у неизвестной работы", town.trayRound(s, "job_которой_нет"))
         assertNull("раунд у закрытой работы", town.trayRound(s, "job_courier"))
@@ -193,6 +199,37 @@ class TrayTest {
         assertEquals("размеры заказов в демо", demoSizes, r.orders.map { it.items.size })
         assertEquals("витрина в демо", J1Stand.showcase(n), r.menu)
         assertEquals("реплика ступени в демо", step.intro, r.intro)
+    }
+
+    @Test
+    fun `новый демо-профиль начинает с первой ступени и доходит до лимита смен`() {
+        // настоящий первый запуск: питомец создан, монеты ещё не разложены, смен в пекарне нет
+        val fresh = S1aStand.profile(demo = true)
+        assertNull("у нового профиля уже есть смены в пекарне", fresh.jobShifts[bakery])
+        assertFalse("монеты у нового профиля уже разложены", fresh.plan.confirmed)
+
+        val first = town.trayRound(fresh, bakery) ?: error("у нового демо-профиля нет раунда в пекарне")
+        assertEquals("витрина первой смены", J1Stand.showcase(0), first.menu)
+        assertEquals("размеры заказов первой смены", J1Stand.sizes(0, demo = true), first.orders.map { it.items.size })
+        assertTrue("указателя нет в самой первой смене", first.pointer)
+        assertNull("реплика новинки в первой смене", first.intro)
+        assertFalse("значок «?» в самой первой смене", first.riddle)
+
+        // одна смена позади — вторая ступень: новая витрина, реплика новинки и значок «?»
+        val after = town.finishShift(fresh, bakery, 0, 0).s1aState()
+        assertEquals("смен в пекарне", 1, after.jobShifts[bakery])
+        val second = town.trayRound(after, bakery) ?: error("нет раунда во второй смене")
+        assertNotEquals("вторая ступень не меняет витрину — проверка пустая", J1Stand.showcase(0), J1Stand.showcase(1))
+        assertEquals("витрина второй смены", J1Stand.showcase(1), second.menu)
+        assertNotNull("у второй ступени нет реплики — проверка пустая", J1Stand.step(1).intro)
+        assertEquals("реплика новинки", J1Stand.step(1).intro, second.intro)
+        assertTrue("во второй смене нет значка «?»", second.riddle)
+
+        // три смены недели сыграны — работа закрыта до нового конверта (№ 47 б)
+        var spent = after
+        repeat(2) { spent = town.finishShift(spent, bakery, 0, 0).s1aState() }
+        assertEquals("смен за неделю", 3, spent.shiftsThisPeriod)
+        assertNull("раунд после лимита смен", town.trayRound(spent, bakery))
     }
 
     @Test
@@ -754,6 +791,256 @@ class TrayTest {
         assertEquals("бомбочка за неверный ответ", s.bombs, wrong.s1aState().bombs)
     }
 
+    // ---------- § 1 (срез 1а). Нехватка подноса ----------
+
+    @Test
+    fun `нехватка подноса считается с кратностью и по порядку заказа`() {
+        assertEquals(
+            "нехватка на пустом подносе",
+            listOf("b", "a", "a"), Tray.missing(round(listOf("b", "a", "a"))),
+        )
+        assertEquals(
+            "нехватка идёт не в порядке заказа",
+            listOf("b", "a"), Tray.missing(round(listOf("b", "a", "a"), tray = listOf("a"))),
+        )
+        assertEquals(
+            "две одинаковых нехватки слиплись в одну",
+            listOf("a", "a"), Tray.missing(round(listOf("a", "a", "b"), tray = listOf("b"))),
+        )
+        assertEquals(
+            "лишнее на подносе спутало нехватку",
+            listOf("a"), Tray.missing(round(listOf("a", "a", "b"), tray = listOf("x", "a", "b"))),
+        )
+        assertEquals(
+            "нехватка собранного подноса",
+            emptyList<String>(), Tray.missing(round(listOf("a", "b"), tray = listOf("b", "a"))),
+        )
+
+        val done = round(listOf("a"), tray = listOf("a"), results = listOf(true))
+        assertTrue("раунд с обслуженным покупателем не закончен", done.done)
+        assertEquals("нехватка после последнего покупателя", emptyList<String>(), Tray.missing(done))
+
+        // то же правило, что называет отдача полного подноса (TOWN-J1-0 § 2)
+        val full = round(listOf("a", "a", "b"), tray = listOf("a", "x", "x"))
+        assertEquals("нехватка расходится с отдачей", Tray.give(full).missing, Tray.missing(full))
+    }
+
+    // ---------- § 1 (срез 1а). Значок «?» в раунде ----------
+
+    /** Обслужить текущего покупателя верно: доложить недостающее и отдать. */
+    private fun serve(r: TrayRound): TrayRound {
+        var x = r
+        val left = x.orders[x.index].items.toMutableList()
+        x.tray.forEach { left.remove(it) }
+        left.forEach { x = Tray.put(x, it) }
+        return Tray.give(x).also { assertTrue("верный поднос не обслужил покупателя", it.served) }.round
+    }
+
+    /**
+     * Стенд значка «?»: вторая смена пекарни настоящим путём (одна смена позади), двое покупателей
+     * обслужены, поднос третьего пуст — на таком подносе подсказка на n и на n + 1 разная.
+     */
+    private fun riddleStand(): Pair<GameState, TrayRound> {
+        val s = town.finishShift(S1aStand.planned(40, 20, 30, demo = false), bakery, 0, 0).s1aState()
+        var r = town.trayRound(s, bakery) ?: error("нет раунда во второй смене")
+        assertTrue("во второй смене раунд не обещает значок «?»", r.riddle)
+        repeat(2) { r = serve(r) }
+        assertEquals("обслужено покупателей", 2, r.index)
+        assertFalse("смена кончилась раньше времени", r.done)
+        assertTrue("поднос третьего покупателя не пуст", r.tray.isEmpty())
+        return s to r
+    }
+
+    @Test
+    fun `значок «?» есть после первого покупателя не в первой смене`() {
+        val (s, r) = riddleStand()
+        val q = town.riddleInRound(s, r)
+        assertNotNull("значка «?» нет на стенде второй смены", q)
+        assertEquals("значок «?» показал не ту загадку", town.nextQuestion(s)?.id, q?.id)
+    }
+
+    @Test
+    fun `значка «?» нет до первого обслуженного покупателя`() {
+        val (s, _) = riddleStand()
+        val r = town.trayRound(s, bakery) ?: error("нет раунда во второй смене")
+        assertEquals("покупателей обслужено", 0, r.index)
+        assertTrue("остальные условия значка не выполнены", r.riddle && !r.done)
+        assertNotNull("очередь загадок пуста", town.nextQuestion(s))
+        assertNull("значок «?» у первого покупателя смены", town.riddleInRound(s, r))
+    }
+
+    @Test
+    fun `значка «?» нет в самой первой смене работы`() {
+        val s = S1aStand.planned(40, 20, 30, demo = false)
+        val r = serve(town.trayRound(s, bakery) ?: error("нет раунда в первой смене"))
+        assertFalse("первая смена обещает значок «?»", r.riddle)
+        assertTrue("остальные условия значка не выполнены", r.index >= 1 && !r.done)
+        assertNotNull("очередь загадок пуста", town.nextQuestion(s))
+        assertNull("значок «?» в первой смене работы", town.riddleInRound(s, r))
+    }
+
+    @Test
+    fun `значка «?» нет после последнего покупателя смены`() {
+        val (s, r0) = riddleStand()
+        var r = r0
+        while (!r.done) r = serve(r)
+        assertTrue("смена не закончилась", r.done)
+        assertTrue("остальные условия значка не выполнены", r.riddle && r.index >= 1)
+        assertNotNull("очередь загадок пуста", town.nextQuestion(s))
+        assertNull("значок «?» после последнего покупателя", town.riddleInRound(s, r))
+    }
+
+    @Test
+    fun `значка «?» нет когда загадка в этой смене уже была`() {
+        val (s, r) = riddleStand()
+        val q = town.nextQuestion(s) ?: error("нет загадки в очереди")
+        val asked = town.answerQuestion(s, q.id, q.correct).s1aState()
+        assertTrue("загадка не отмечена как заданная", asked.riddleAsked)
+        assertTrue("остальные условия значка не выполнены", r.riddle && r.index >= 1 && !r.done)
+        assertNull("второй значок «?» за одну смену", town.riddleInRound(asked, r))
+    }
+
+    @Test
+    fun `значка «?» нет когда все загадки разобраны`() {
+        val (s, r) = riddleStand()
+        // граничная очередь: все пятнадцать загадок разобраны верно
+        val solved = s.copy(riddles = S1bStand.quizIds.map { S1bStand.riddle(it, true) })
+        assertNull("очередь загадок не опустела", town.nextQuestion(solved))
+        assertTrue("остальные условия значка не выполнены", r.riddle && r.index >= 1 && !r.done)
+        assertNull("значок «?» без единой загадки", town.riddleInRound(solved, r))
+    }
+
+    // ---------- § 1 (срез 1а). Ответ на загадку в раунде ----------
+
+    @Test
+    fun `верный ответ в раунде кладёт подсказку Бори на поднос`() {
+        val (s, r) = riddleStand()
+        val n = J1Stand.rules.riddleHint
+        assertNotEquals("на стенде подсказка на $n и на ${n + 1} одинакова", Tray.hint(r, n), Tray.hint(r, n + 1))
+        val q = town.riddleInRound(s, r) ?: error("на стенде нет значка «?»")
+
+        val a: TrayAnswer = town.answerInRound(s, r, q.id, q.correct)
+        val after = a.result.s1aState()
+        assertEquals("подсказка легла не по правилу riddleHint", Tray.hint(r, n), a.round)
+        assertNotEquals("поднос после верного ответа не изменился", r, a.round)
+        assertEquals("звёзды раунда тронуты подсказкой", r.results, a.round.results)
+        assertEquals("бомбочка вместо подсказки", s.bombs, after.bombs)
+        assertEquals("строка", "Верно! ${q.explanation}", a.result.s1aOutcome().line)
+        assertEquals("«Почему?»", listOf(hintWhy), a.result.s1aOutcome().why)
+        assertTrue("загадка не отмечена как заданная", after.riddleAsked)
+        assertEquals("ответ не записан", s.riddles + TaskResult(q.id, true, 0, s.period), after.riddles)
+    }
+
+    @Test
+    fun `верный ответ когда класть нечего оставляет поднос как есть`() {
+        val (s, base) = riddleStand()
+        val order = base.orders[base.index].items
+        val alien = base.menu.first { it !in order }
+        val stands = listOf(
+            "не хватает одного изделия, слот пуст" to order.dropLast(1),
+            "не хватает одного изделия, поднос полон лишним" to (order.dropLast(1) + alien),
+            "поднос собран верно" to order,
+        )
+
+        stands.forEach { (where, tray) ->
+            var r = base
+            tray.forEach { r = Tray.put(r, it) }
+            assertEquals("$where: поднос собран не так", tray, r.tray)
+            assertEquals("$where: подсказке есть что класть", r, Tray.hint(r, J1Stand.rules.riddleHint))
+            val q = town.riddleInRound(s, r) ?: error("$where: на стенде нет значка «?»")
+
+            val a = town.answerInRound(s, r, q.id, q.correct)
+            val after = a.result.s1aState()
+            assertEquals("$where: поднос изменился", r, a.round)
+            assertEquals("$where: строка", "Верно! ${q.explanation}", a.result.s1aOutcome().line)
+            assertEquals("$where: «Почему?»", listOf(hintIdle), a.result.s1aOutcome().why)
+            assertTrue("$where: загадка не отмечена как заданная", after.riddleAsked)
+            assertEquals("$where: ответ не записан", s.riddles + TaskResult(q.id, true, 0, s.period), after.riddles)
+            assertEquals("$where: бомбочка вместо подсказки", s.bombs, after.bombs)
+        }
+    }
+
+    @Test
+    fun `неверный ответ в раунде поднос не трогает`() {
+        val (s, r) = riddleStand()
+        val q = town.riddleInRound(s, r) ?: error("на стенде нет значка «?»")
+        assertNotEquals("на стенде подсказка ничего не кладёт", r, Tray.hint(r, J1Stand.rules.riddleHint))
+
+        val a = town.answerInRound(s, r, q.id, (q.correct + 1) % q.options.size)
+        val after = a.result.s1aState()
+        assertEquals("поднос изменился после неверного ответа", r, a.round)
+        assertEquals("строка", q.explanation, a.result.s1aOutcome().line)
+        assertEquals("«Почему?»", listOf(laterWhy), a.result.s1aOutcome().why)
+        assertEquals("ответ не записан", s.riddles + TaskResult(q.id, false, 0, s.period), after.riddles)
+        assertTrue("загадка не отмечена как заданная", after.riddleAsked)
+        assertEquals("бомбочка за неверный ответ", s.bombs, after.bombs)
+    }
+
+    @Test
+    fun `вариант ответа за списком отказывает и раунд не трогает`() {
+        val (s, r) = riddleStand()
+        val q = town.riddleInRound(s, r) ?: error("на стенде нет значка «?»")
+        listOf(-1, q.options.size).forEach { i ->
+            val a = town.answerInRound(s, r, q.id, i)
+            assertEquals("вариант $i", "Выбери ответ", a.result.s1aRefusal())
+            assertEquals("вариант $i изменил раунд", r, a.round)
+        }
+        assertNotNull("отказ погасил значок «?»", town.riddleInRound(s, r))
+    }
+
+    @Test
+    fun `ответ без значка «?» отказывает и раунд не трогает`() {
+        val (s, r) = riddleStand()
+        val q = town.riddleInRound(s, r) ?: error("на стенде нет значка «?»")
+
+        fun refusal(where: String, state: GameState, round: TrayRound, id: String, option: Int) {
+            val a = town.answerInRound(state, round, id, option)
+            assertEquals(where, noRiddle, a.result.s1aRefusal())
+            assertEquals("$where: раунд изменился", round, a.round)
+        }
+
+        val start = town.trayRound(s, bakery) ?: error("нет раунда во второй смене")
+        refusal("до первого обслуженного покупателя", s, start, q.id, q.correct)
+
+        val firstShift = S1aStand.planned(40, 20, 30, demo = false)
+        val early = serve(town.trayRound(firstShift, bakery) ?: error("нет раунда в первой смене"))
+        val q1 = town.nextQuestion(firstShift) ?: error("нет загадки в очереди")
+        refusal("в первой смене работы", firstShift, early, q1.id, q1.correct)
+
+        var done = r
+        while (!done.done) done = serve(done)
+        refusal("после последнего покупателя", s, done, q.id, q.correct)
+
+        val other = S1bStand.quizIds.first { it != q.id }
+        refusal("чужой вопрос", s, r, other, 0)
+
+        val asked = town.answerQuestion(s, q.id, q.correct).s1aState()
+        assertTrue("загадка не отмечена как заданная", asked.riddleAsked)
+        refusal("вторая загадка за смену", asked, r, q.id, q.correct)
+    }
+
+    @Test
+    fun `после верного ответа значок «?» гаснет до конца смены а в следующей приходит снова`() {
+        val (s, r) = riddleStand()
+        val q = town.riddleInRound(s, r) ?: error("на стенде нет значка «?»")
+        val a = town.answerInRound(s, r, q.id, q.correct)
+        val after = a.result.s1aState()
+        assertNull("значок «?» остался сразу после ответа", town.riddleInRound(after, a.round))
+
+        var played = a.round
+        while (!played.done) played = serve(played)
+        assertNull("значок «?» вернулся в той же смене", town.riddleInRound(after, played))
+
+        // оплата смены — по звёздам покупателей: своей звезды подсказка не даёт
+        val paid = town.finishShift(after, bakery, played.stars, 0)
+        val next = paid.s1aState()
+        assertEquals("надбавка не по звёздам", played.stars, paid.s1aOutcome().pay?.bonus)
+        assertFalse("конец смены не сбросил загадку", next.riddleAsked)
+
+        val third = serve(town.trayRound(next, bakery) ?: error("нет раунда в третьей смене"))
+        assertNotNull("значок «?» не вернулся в новой смене", town.riddleInRound(next, third))
+    }
+
     // ---------- Тексты ----------
 
     @Test
@@ -774,7 +1061,19 @@ class TrayTest {
             repeat(3) { spent = town.finishShift(spent, bakery, 0, 0).s1aState() }
             add(town.shiftQuote(spent, bakery).line)
             addAll(town.finishShift(spent, bakery, 0, 0).s1aTexts())
+
+            // строки ответа на загадку в раунде (§ 1): верно, «класть нечего», неверно и оба отказа
+            val (rs, rr) = riddleStand()
+            val q = town.riddleInRound(rs, rr) ?: error("на стенде нет значка «?»")
+            addAll(town.answerInRound(rs, rr, q.id, q.correct).result.s1aTexts())
+            addAll(town.answerInRound(rs, rr, q.id, (q.correct + 1) % q.options.size).result.s1aTexts())
+            addAll(town.answerInRound(rs, rr, q.id, -1).result.s1aTexts())
+            addAll(town.answerInRound(rs, rr, S1bStand.quizIds.first { it != q.id }, 0).result.s1aTexts())
+            var ready = rr
+            rr.orders[rr.index].items.forEach { ready = Tray.put(ready, it) }
+            addAll(town.answerInRound(rs, ready, q.id, q.correct).result.s1aTexts())
         }
+        assertTrue("строки загадки в раунде не попали в проверку", hintIdle in texts && noRiddle in texts)
         S1aChildText.check("поднос по заказу", texts)
     }
 }

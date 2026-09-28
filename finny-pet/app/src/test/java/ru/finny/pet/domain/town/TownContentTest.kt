@@ -1,7 +1,9 @@
 package ru.finny.pet.domain.town
 
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -274,12 +276,14 @@ class TownContentTest {
     @Test
     fun `работа читает игру поле ходы и задания`() {
         val bakery = town.jobs.first { it.id == "job_bakery" }
-        assertEquals("job_bakery.game", JobGame.MATCH3, bakery.game)
-        assertEquals("job_bakery.board", Board(6, 6), bakery.board)
-        assertEquals("job_bakery.moves", 15, bakery.moves)
-        assertEquals("job_bakery.demoMoves", 5, bakery.demoMoves)
+        assertEquals("job_bakery.title", "Помочь Боре", bakery.title)
+        assertEquals("job_bakery.game", JobGame.TRAY, bakery.game)
+        assertNull("job_bakery.board", bakery.board)
+        assertNull("job_bakery.moves", bakery.moves)
+        assertNull("job_bakery.demoMoves", bakery.demoMoves)
         assertEquals("job_bakery.opensBy", OpensBy(), bakery.opensBy)
         assertEquals("job_bakery.tasks", emptyList<String>(), bakery.tasks)
+        assertEquals("job_bakery.resident", "borya", bakery.resident)
 
         val market = town.jobs.first { it.id == "job_market" }
         assertEquals("job_market.game", JobGame.TAPS, market.game)
@@ -326,6 +330,63 @@ class TownContentTest {
             j.getValue("demoSizes").jsonArray.map { it.jsonPrimitive.int },
             bakery.demoSizes,
         )
+    }
+
+    /** Запись пекарни с полем «три в ряд»: числа записи до среза 1а (коммит d4a06c9). */
+    private fun rawBakeryMatch3(): JsonObject = JsonObject(
+        rawJob("job_bakery") + mapOf(
+            "game" to JsonPrimitive("MATCH3"),
+            "board" to Json.parseToJsonElement("""{"w": 6, "h": 6}"""),
+            "moves" to JsonPrimitive(15),
+            "demoMoves" to JsonPrimitive(5),
+        ),
+    )
+
+    @Test
+    fun `поле ходы и демо-ходы читаются из записи работы`() {
+        val bakery = rawBakeryMatch3()
+        val jobs = JsonArray(
+            rawTown.getValue("jobs").jsonArray.map {
+                if (it.jsonObject.getValue("id").jsonPrimitive.content == "job_bakery") bakery else it
+            },
+        )
+        val text = JsonObject(raw + ("town" to JsonObject(rawTown + ("jobs" to jobs)))).toString()
+        val parsed = ContentRepository.parse(text).town ?: error("копия контента разобрана без town")
+        val job = parsed.jobs.first { it.id == "job_bakery" }
+
+        assertEquals("game из записи", JobGame.MATCH3, job.game)
+        assertEquals("board из записи", Board(6, 6), job.board)
+        assertEquals("moves из записи", 15, job.moves)
+        assertEquals("demoMoves из записи", 5, job.demoMoves)
+        assertEquals("меню записи не потерялось", town.jobs.first { it.id == "job_bakery" }.menu, job.menu)
+    }
+
+    @Test
+    fun `пекарня зовёт помочь Боре одной репликой в заказе и у жителя`() {
+        val call = "Помоги Боре в пекарне!"
+        val event = town.events.first { it.id == "job_bakery_help" }
+        val borya = town.residents.first { it.id == "borya" }
+        val title = town.jobs.first { it.id == "job_bakery" }.title
+
+        assertEquals("intro заказа пекарни", call, event.intro)
+        assertEquals("первая реплика Бори", call, borya.lines.firstOrNull())
+        assertEquals("карточка «В городке»", "Пекарне нужен помощник", event.title)
+        assertEquals("работа заказа", "job_bakery", event.params.job)
+        assertEquals("название работы", "Помочь Боре", title)
+        S1aChildText.check("тексты пекарни", listOf(event.intro, borya.lines.first(), event.title, title))
+    }
+
+    @Test
+    fun `название работы приходит в конверт и дневник`() {
+        val title = town.jobs.first { it.id == "job_bakery" }.title
+        val s = S1aStand.planned(40, 20, 30)
+        val r = S1aStand.town.finishShift(s, "job_bakery", 2, 0)
+        val after = r.s1aState()
+        val total = r.s1aOutcome().pay?.total ?: error("смена не назвала числа итога")
+
+        assertEquals("журнал смены", "Смена: $title", after.envelope.last().text)
+        assertEquals("сумма в журнале", total, after.envelope.last().amount)
+        assertEquals("строка дневника", "Заработали $total: «$title»", after.diary.last().text)
     }
 
     @Test
