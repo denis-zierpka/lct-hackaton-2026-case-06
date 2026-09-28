@@ -682,11 +682,11 @@ class TrayTest {
         val s = S1aStand.planned(40, 20, 30)
         val zero = town.finishShift(s, bakery, 0, 0)
         assertEquals("зарплата без звёзд", listOf(LedgerEntry("Смена: ${J1Stand.job.title}", 6)), zero.s1aState().envelope)
-        assertEquals("строка без звёзд", "6 за смену. ✉ +6 — $payLater", zero.s1aOutcome().line)
+        assertEquals("строка без звёзд", "6 за смену — $payLater", zero.s1aOutcome().line)
         assertEquals("числа итога без звёзд", ShiftPay(6, 0, 6), zero.s1aOutcome().pay)
 
         val three = town.finishShift(s, bakery, 3, 0)
-        assertEquals("строка с тремя звёздами", "6 за смену + 3 за ★. ✉ +9 — $payLater", three.s1aOutcome().line)
+        assertEquals("строка с тремя звёздами", "6 за смену + 3 за ★ — $payLater", three.s1aOutcome().line)
         assertEquals("числа итога с тремя звёздами", ShiftPay(6, 3, 9), three.s1aOutcome().pay)
         assertEquals("зарплата с тремя звёздами", 9, three.s1aState().envelope.first().amount)
 
@@ -773,7 +773,7 @@ class TrayTest {
 
         val r = engine.finishShift(s, bakery, 3, 0)
         assertEquals("надбавка выше потолка", ShiftPay(6, 2, 8), r.s1aOutcome().pay)
-        assertEquals("строка", "6 за смену + 2 за ★. ✉ +8 — $payLater", r.s1aOutcome().line)
+        assertEquals("строка", "6 за смену + 2 за ★ — $payLater", r.s1aOutcome().line)
         assertEquals("зарплата", 8, r.s1aState().envelope.first().amount)
     }
 
