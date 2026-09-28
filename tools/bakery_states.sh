@@ -4,7 +4,7 @@
 # Профиль: бэкап (проверка `[ -s ]` и json.load; прежний бэкап с тем же PREFIX — отказ) → на каждое состояние подмена
 # state.json → снимки при шрифте 1,0 и 1,3 → возврат бэкапа и `cmp` (и при обрыве — trap). На S23 громкость и шрифт
 # сохранить и вернуть самому (HANDOFF, «Окружение»).
-#   tools/bakery_states.sh PREFIX [first|riddle[:QID]|limit|level2|big|levelup|zero ...]   (по умолчанию — first riddle limit level2 big)
+#   tools/bakery_states.sh PREFIX [first|riddle[:QID]|limit|level2|big|levelup|zero|diary ...]   (по умолчанию — first riddle limit level2 big)
 #   first      — 0 смен пекарни: экран заказа первой смены;
 #   riddle:QID — 1 смена, загадка QID первая в очереди (вопросы до неё в town.quiz — отмечены решёнными): экран заказа с
 #                новинкой, раунд, первый покупатель, облачко загадки — строка пользы, «Не сейчас», ПОСЛЕДНИЙ вариант и
@@ -19,6 +19,8 @@
 #                «Заработали 10: 6 за смену + 4 за звёзды»), TOWN-J1-1b1 п. 11 б;
 #   zero       — 1 смена: каждому покупателю сначала полный поднос с изделием вне заказа, затем недостающее → итог 0★
 #                («Заработали 6: 6 за смену — придёт с новым конвертом», ряд ●●●●).
+#   diary      — «Дневник» (TOWN-J1-1b2, bestStars): records.job_bakery 60 (наследие Match3) и 0 — строки «лучшая смена»
+#                нет; 3 при 3 сменах — «Помочь Боре: лучшая смена, звёзд 3» (самопроверка листания), снимки при 1,0 и 1,3.
 # Касания — точным совпадением (кнопка витрины «Хлеб» — префикс слота «Хлеб на подносе»). Промах печатает «not found»:
 # лог проверять `grep -cE "not found|BACKUP"` → 0. DUMP=1 — рядом со снимком сырой дамп emu_PREFIX_<экран>.xml для
 # `python tools/ui_measure.py <дамп> <метка> 3` (мишени < 48 dp, узлы за краем).
@@ -91,6 +93,10 @@ PY
   "$A" shell am force-stop --user 0 ru.finny.pet
   "$A" exec-in run-as ru.finny.pet sh -c 'cat > files/state.json' < "$T/${P}_test.json"; sleep 1
 }
+open_diary() { "$A" font 1.0; "$A" launch >/dev/null; sleep 3; tapx "Продолжить" 2.5; tapx "Дневник" 2; }
+best_row() {  # the «…: лучшая смена, звёзд N» node, scrolling down with a check after each swipe (≤ 6 swipes)
+  local k n; for k in 0 1 2 3 4 5 6; do n=$("$A" ui | awk -F'\t' 'index($2, ": лучшая смена, звёзд ") > 0 {print $2; exit}'); [ -n "$n" ] && { echo "$n"; return; }
+    "$A" shell input swipe 540 1450 540 650 300; sleep 0.8; done; }
 open_bakery() { "$A" font 1.0; "$A" launch >/dev/null; sleep 3; tapx "Продолжить" 2.5; tapx "Дверь: на улицу" 1.5
   "$A" shell input swipe 900 586 200 586 300; sleep 1; tapx "Пекарня, Боря" 2; }
 
@@ -129,6 +135,10 @@ for st in $STATES; do case $st in
             tapx "Отдать" 1.2; has "Ещё нужно: " zero_wrong$c; put_list "$(need)"; tapx "Отдать" 2.2
           done
           has "Заработали 6: 6 за смену — придёт с новым конвертом" zero; shot2 zero; tapx "Готово" 1 ;;
+  diary)  state 0 0 keep "" 60; open_diary; has "Очки роста" diary; n=$(best_row); [ -n "$n" ] && echo "  not found: no «лучшая смена» for the Match3 legacy 60 (got «$n»)"
+          state 0 0 keep "" 0; open_diary; has "Очки роста" diary; n=$(best_row); [ -n "$n" ] && echo "  not found: no «лучшая смена» for 0 stars (got «$n»)"
+          state 3 0 keep "" 3; open_diary; has "Очки роста" diary; n=$(best_row); [ "$n" = "Помочь Боре: лучшая смена, звёзд 3" ] || echo "  not found: «Помочь Боре: лучшая смена, звёзд 3» (got «$n»)"
+          shot2 diary ;;
   *) echo "  not found: unknown state $st" ;;
 esac; done
 echo "done $P"

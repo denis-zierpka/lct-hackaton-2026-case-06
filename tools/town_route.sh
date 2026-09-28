@@ -10,6 +10,7 @@
 # С TOWN-J1-1a2: в раунде нет HUD «Подсказка», в облачке загадки — строка пользы, строка лимита — «…приходи на новой неделе».
 # С TOWN-J1-1b1: итог смены — сцена (узел «Заработали …» в облачке, «Почему?» → строка питомца «Карманные…» текстовым
 # узлом, касание закрывает, «Готово»); снимки итогов result, why, tresult, result2 — при 1,0 и 1,3.
+# С TOWN-J1-1b2: окно комнаты — «Окно: улица, машет <житель недели>» (недели 1–5), «Дневник» — «лучшая смена» Бори.
 # DUMP=1 — рядом со снимком shot2 сырой дамп emu_PREFIX_<экран>{10,13}.xml для `python tools/ui_measure.py <дамп> <метка> 3`.
 #   tools/town_route.sh PREFIX
 set -u
@@ -112,7 +113,7 @@ TMP_UI=$(mktemp)
 tp "Для взрослого"; gate; scroll_to "Создать тестовый профиль (демо)"; tp "Создать тестовый профиль (демо)"; tp "Да, продолжить" 2
 for i in 1 2 3 4 5; do "$A" tap "Дальше" >/dev/null 2>&1 || break; sleep 1; done
 tp "Создать питомца"; tp "Зайка" 0.5; tp "Рыжий" 0.5; tp "Финни" 0.5; swipe_up 1; tp "Начать!" 2.5
-shot1 room
+shot1 room; has "Окно: улица, машет Ося" room
 tp "Дверь: на улицу"; shot1 street
 tp "Рынок у реки"; shot2 market
 tp "У Фомы"; shot2 foma
@@ -152,6 +153,7 @@ xy=$(text_xy "Домой"); [ -z "$xy" ] && echo "  not found: button «Домо
 "$A" ui | grep -q "Окно: улица" || { echo "  not found: room after «Домой»"; tp "Домой"; }
 tp "Лавки"; tp "Рынок у реки"; swipe_up 4; shot1 marketlimit             # market after the limit: no Marta's order card
 tp "Домой"; shot1 home_from_place
+tp "Дневник"; has "Помочь Боре: лучшая смена, звёзд " diary; shot1 diary; tp "Назад"   # TOWN-J1-1b2: bestStars
 tp "События"; shot1 board
 tp "Домой"; tp "Копилка"; shot1 savings
 tp "Домой"; tp "Кровать: сон" 2.5; shot1 night
@@ -162,6 +164,8 @@ for w in 2 3 4 5; do
   swipe_up 3; tp "Как было"; tp "Играть дальше" 2.5; tp "Проснуться" 2.5
   "$A" ui | grep -q "Окно: улица" || echo "  not found: room of week $w"
   shot1 room_w$w
+  case $w in 2) name=Тоша ;; 3) name=Степан ;; 4) name=Кеша ;; 5) name=Ася ;; esac   # residentOfWeek: last arrived (content.json arrivesWeek)
+  has "Окно: улица, машет $name" room_w$w
   [ $w -lt 5 ] && { plan; tp "Домой"; tp "Кровать: сон" 2.5; tp "Сразу к итогу недели"; "$A" tap "Закончить неделю" >/dev/null; sleep 3.5; }
 done
 rm -f "$TMP_UI"
