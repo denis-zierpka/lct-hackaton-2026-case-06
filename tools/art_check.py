@@ -2,8 +2,9 @@
 с контрастом текста на фоне, альфа-bbox спрайтов, палитра жителей. Запуск из корня репозитория:
 
   python tools/art_check.py regress SRC_DIR OUT_DIR   дампы сцены room.py (room_port_day), pet.py (bunny, cat, puppy ×
-                                                      stage 0, 2), place.py (market, foma) и facade.py (market)
-                                                      генераторами из SRC_DIR -> OUT_DIR/*.json
+                                                      stage 0, 2), place.py (market, foma, bakery), facade.py (market)
+                                                      и props.py (tile_apple, goal_custom, ui_coin — по одному на
+                                                      прогон) генераторами из SRC_DIR -> OUT_DIR/*.json
   python tools/art_check.py diff A_DIR B_DIR          сравнить дампы; exit 1, если есть разница или нет файла
   python tools/art_check.py bg BG OUT_DIR [--veil A]  композиты UI со снимков на фон места + контраст G.ink под текстом
                                                       этого места (bg_<place>_port; иной файл — все тексты); exit 1,
@@ -103,8 +104,11 @@ def regress(src, out):
                                            "--out", os.path.join(out, f"pet_{sp}_{st}.png")])
              for sp in ("bunny", "cat", "puppy") for st in (0, 2)]
     # approved at gate № 38: the market and «У Фомы» backgrounds and the market facade (facade.py reads place.PLACES)
-    runs += [(f"place_{p}", "place.py", ["--place", p, "--out", os.path.join(out, f"place_{p}.png"), "--preview"]) for p in ("market", "foma")]
+    # + the bakery (gate № 40): the 1b3 counter overlay is cut from this scene (TOWN-J1-1b3, pilot № 61 б)
+    runs += [(f"place_{p}", "place.py", ["--place", p, "--out", os.path.join(out, f"place_{p}.png"), "--preview"]) for p in ("market", "foma", "bakery")]
     runs += [("facade_market", "facade.py", ["--place", "market", "--samples", "1", "--out", os.path.join(out, "facade_market.png")])]
+    # pastries go into props.py (1b3): three builders, one per run — render_prop resets the scene per prop, a joint run dumps the last only
+    runs += [(f"props_{n}", "props.py", ["--only", n, "--samples", "1", "--out", os.path.join(out, f"props_{n}.png")]) for n in ("tile_apple", "goal_custom", "ui_coin")]
     for name, script, args in runs:
         env = dict(os.environ, DUMP_OUT=os.path.join(out, name + ".json"))
         cmd = [blender(), "-b", "--factory-startup", "--python-exit-code", "1", "-P", os.path.join(src, script), "--python", me, "--"] + args

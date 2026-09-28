@@ -14,3 +14,6 @@ finny-pet/screenshots/emu_*
 
 # worktrees of parallel agents
 .claude/worktrees/
+
+# git worktree арт-кодеров пилота № 61 б (wt/j1b/, wt/a1g/) — внутри корня, но не в дереве
+wt/
