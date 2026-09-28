@@ -83,7 +83,7 @@ app/src/
 | Функция | `Screen` | Файл экрана | Методы VM | Правило |
 |---|---|---|---|---|
 | Заставка, знакомство, создание питомца | `Title`, `Intro`, `CreatePet` | `StartScreens.kt` | `start`, `createPet` | `Economy.createPet`, `Migration.migrate`, `Town.tick` |
-| Комната: HUD, «В городке», полка-банки, холодильник, ящик, кровать, реплика питомца по тапу | `Room` | `RoomScreen.kt` | `petTapped`, `sleep`, `endWeek`, `openPlace`, `goEvent` | `Town.petLine`, `card`, `sleep`, `endWeek`, `weekEndPreview` |
+| Комната: HUD, «В городке», полка-банки, холодильник, ящик, кровать, реплика питомца по тапу | `Room` | `RoomScreen.kt` | `petTapped`, `sleep`, `endWeek`, `openPlace`, `goEvent` | `Town.petLine`, `card`, `sleep`, `endWeek`, `weekEndPreview`, `residentOfWeek` (житель в окне) |
 | Банки: раскладка, план и факт, перенос; «Обустроить» | `Jars`, `Arrange` | `JarsScreen.kt` | `setPlan`, `confirmPlan`, `transfer`, `place` | `Economy.setPlan`; `Town.confirmPlan`, `transfer`, `place` |
 | Копилка и мечта | `Savings` | `SavingsScreen.kt` | `deposit`, `withdraw`, `chooseGoal`, `achieveGoal` | `Town.deposit`, `withdraw`, `achieveGoal`; `Economy.chooseGoal` |
 | Ночь, итог недели и «что поменяем» | `Night`, `WeekEnd` | `NightScreens.kt` | `wake`, `endWeek`, `chooseTweak` | `Town.wake`, `endWeek`, `planTweaks`, `chooseTweak` |
@@ -91,7 +91,7 @@ app/src/
 | Лавка с кассой; работа: заказ (у пекарни — сцена с Борей, `TrayJobScene`) | `Place(placeId)` | `PlaceScreen.kt` | `openPlace`, `buy`, `makeGoal`, `pass`, `startRound`, `trayIntro` | `Town.visit`, `quote`, `buyAt`, `makeGoal`, `pass`, `shiftQuote`, `trayRound` |
 | Смена: «Поднос по заказу» с «Загадкой Бори» или поручения, итог смены | `Round(jobId)` | `RoundScreen.kt` (итог смены в сцене — `ShiftResult`), `TrayScreen.kt` (ряд звёзд `StarRow` — в раунде и на итоге) | `trayPut`, `trayTake`, `trayGive`, `trayThanksDone`, `openRiddle`, `closeRiddle`, `trayAnswer`, `tapTask`, `finishRound`, `closeRound` | `Tray.put`, `take`, `give`, `missing`; `Town.riddleInRound`, `answerInRound`, `finishShift` |
 | Доска событий | `Board` | `BoardScreen.kt` | `goEvent`, `startEvent`, `openPlace` | `Town.activeEvents`, `orders`, `demoBoard`, `startEvent` |
-| Прогресс, справочник | `Progress`, `Glossary` | `ProgressScreens.kt` | — (только чтение) | `Economy.stageIndex`, `nextStageLeft`; `state`: `history`, `records`, `envelope`, `ledger` |
+| Прогресс, справочник | `Progress`, `Glossary` | `ProgressScreens.kt` | — (только чтение) | `Economy.stageIndex`, `nextStageLeft`; `Town.bestStars` (строки «лучшая смена»); `state`: `history`, `envelope`, `ledger` |
 | Раздел для взрослого | `Parent` | `ParentScreen.kt` | `setDemo`, `setAnimations`, `setSounds`, `setMusic`, `parentBonus`, `createTestProfile`, `resetProfile`, `deleteProfile` | `Town.parentBonus`; `Economy.newGame`, `resetProfile`, `deleteProfile` |
 
 ## Поток данных

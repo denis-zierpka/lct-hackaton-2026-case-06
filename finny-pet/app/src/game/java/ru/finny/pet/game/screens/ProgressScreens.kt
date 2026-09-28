@@ -16,6 +16,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.unit.dp
 import ru.finny.pet.PetSprites
 import ru.finny.pet.R
@@ -52,9 +54,12 @@ fun ProgressScreen(vm: GameViewModel) {
             Label("Итоги недель")
             s.history.asReversed().forEach { WeekRow(it) }
         }
-        if (s.records.isNotEmpty()) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        val best = vm.tc.jobs.mapNotNull { j -> vm.town.bestStars(s, j.id)?.takeIf { it > 0 }?.let { j.title to it } }
+        if (best.isNotEmpty()) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Image(painterResource(R.drawable.ui_gamepad), null, Modifier.size(32.dp))
-            TText("Рекорды: " + s.records.entries.joinToString { (id, n) -> "${vm.tc.jobs.firstOrNull { it.id == id }?.title ?: id} $n" }, style = MaterialTheme.typography.bodyMedium)
+            Column { best.forEach { (t, n) ->
+                TText("$t: лучшая смена " + "★".repeat(n), Modifier.clearAndSetSemantics { contentDescription = "$t: лучшая смена, звёзд $n" }, style = MaterialTheme.typography.bodyMedium)
+            } }
         }
         if (s.envelope.isNotEmpty()) {
             Label("Придёт с новым конвертом: +${s.envelope.sumOf { it.amount }}")

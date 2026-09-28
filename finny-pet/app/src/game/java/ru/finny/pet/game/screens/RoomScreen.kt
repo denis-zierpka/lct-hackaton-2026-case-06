@@ -127,7 +127,7 @@ private fun Room(vm: GameViewModel, modifier: Modifier, onPanel: (String) -> Uni
     val pet = s.pet ?: return
     val label = MaterialTheme.typography.labelSmall
     val particles = LocalParticles.current
-    val resident = vm.tc.residents.lastOrNull { r -> r.arrivesWeek.let { it != null && it <= s.period } }
+    val resident = vm.town.residentOfWeek(s)
     val streetEvent = vm.town.activeEvents(s).any { it.place != null && it.place != "home" }
     val mail = s.envelope.sumOf { it.amount }
     Box(modifier.fillMaxWidth().testTag("room")) {
@@ -137,7 +137,7 @@ private fun Room(vm: GameViewModel, modifier: Modifier, onPanel: (String) -> Uni
         }
         Column(Modifier.fillMaxSize().padding(horizontal = 8.dp)) {
             Row(Modifier.fillMaxWidth().height(88.dp).padding(top = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                Target("Окно: улица" + if (streetEvent) ", есть событие" else "", 112.dp, 80.dp, color = G.sky, onClick = { vm.navigate(Screen.Street) }) {
+                Target("Окно: улица" + (resident?.let { ", машет ${it.name}" } ?: "") + (if (streetEvent) ", есть событие" else ""),112.dp, 80.dp, color = G.sky, onClick = { vm.navigate(Screen.Street) }) {
                     if (resident != null) ResidentPic(resident, 40.dp, Modifier.align(Alignment.CenterStart).padding(start = 4.dp))
                     if (streetEvent) TText("!", style = MaterialTheme.typography.titleMedium, modifier = Modifier.align(Alignment.TopEnd).padding(end = 6.dp), color = G.magenta, maxLines = 1)
                 }
