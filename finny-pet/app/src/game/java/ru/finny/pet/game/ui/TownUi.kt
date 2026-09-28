@@ -1,5 +1,6 @@
 package ru.finny.pet.game.ui
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -36,7 +37,9 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
@@ -289,12 +292,9 @@ fun LineHost(vm: GameViewModel, modifier: Modifier = Modifier, maxHeight: Dp = D
     val line = vm.lines.firstOrNull() ?: return
     val pet = vm.state.pet
     var why by remember(line) { mutableStateOf(false) }
-    Column(
-        modifier.fillMaxWidth().padding(8.dp).testTag("line").shadow(8.dp, RoundedCornerShape(20.dp)).background(Color.White, RoundedCornerShape(20.dp))
-            .clickable(onClickLabel = "Закрыть") { vm.closeLine() }.heightIn(max = maxHeight).verticalScroll(rememberScrollState()).padding(10.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    Box(modifier.fillMaxWidth().padding(8.dp).testTag("line").shadow(8.dp, RoundedCornerShape(20.dp)).background(Color.White, RoundedCornerShape(20.dp)).clickable(onClickLabel = "Закрыть") { vm.closeLine() }.heightIn(max = maxHeight)) {
+    Column(Modifier.verticalScroll(rememberScrollState()).padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(Modifier.padding(end = 40.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             if (pet != null) Image(painterResource(PetSprites.id(pet.speciesId, pet.colorId, vm.economy.stageIndex(pet.growth), "happy")), null, Modifier.size(48.dp))
             TText(line.text, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
         }
@@ -302,5 +302,14 @@ fun LineHost(vm: GameViewModel, modifier: Modifier = Modifier, maxHeight: Dp = D
             if (why) line.why.forEach { TText(it, style = MaterialTheme.typography.bodyMedium, color = G.inkSoft) }
             else Row { Spacer(Modifier.width(56.dp)); GameButton("Почему?", style = ButtonStyle.PAPER, minHeight = 48.dp) { why = true } }
         }
+    }
+    // ✕ (№ 63 в1): decoration only, no node — the tap lands on the card's own clickable (one TalkBack action)
+    Box(Modifier.align(Alignment.TopEnd).size(48.dp).background(G.paperTint, CircleShape), contentAlignment = Alignment.Center) {
+        Canvas(Modifier.size(16.dp)) {
+            val s = 3.dp.toPx()
+            drawLine(G.purpleDeep, Offset(0f, 0f), Offset(size.width, size.height), s, StrokeCap.Round)
+            drawLine(G.purpleDeep, Offset(size.width, 0f), Offset(0f, size.height), s, StrokeCap.Round)
+        }
+    }
     }
 }

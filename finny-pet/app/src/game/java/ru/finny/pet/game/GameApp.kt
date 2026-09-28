@@ -221,8 +221,8 @@ fun GameApp(vm: GameViewModel = viewModel()) {
                     }
                     // invisible centre target for confetti
                     Box(Modifier.align(Alignment.Center).size(1.dp).particleTarget(particles, "center"))
-                    // the pay sheet hides LINE (§B.3 уточнение п.2); in Room it sits above the bottom row, not over it
-                    if (!vm.cashOpen) Box(Modifier.align(Alignment.BottomCenter).padding(bottom = if (screen == Screen.Room) 72.dp else 0.dp)) {
+                    // the pay sheet hides LINE (§B.3 уточнение п.2); in Room it sits above the bottom row, not over it, and on the shift result (№ 63 в1) — above «Почему?» and «Готово»
+                    if (!vm.cashOpen) Box(Modifier.align(Alignment.BottomCenter).padding(bottom = if (screen == Screen.Room || (screen is Screen.Round && vm.roundResult != null)) 72.dp else 0.dp)) {
                         SceneFontScale { LineHost(vm, maxHeight = lineMaxHeight) }
                     }
                     if (BuildConfig.DEBUG) {

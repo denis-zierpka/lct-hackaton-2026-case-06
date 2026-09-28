@@ -277,7 +277,7 @@ fun TypewriterText(text: String, animate: Boolean, modifier: Modifier = Modifier
 
 /** Rounded speech bubble with a small tail at the bottom-left; the pet talks through it. */
 @Composable
-fun SpeechBubble(modifier: Modifier = Modifier, tailAtStart: Boolean = true, content: @Composable ColumnScope.() -> Unit) {
+fun SpeechBubble(modifier: Modifier = Modifier, tailAtStart: Boolean = true, tail: Boolean = true, content: @Composable ColumnScope.() -> Unit) {
     Box(modifier) {
         Column(
             Modifier
@@ -287,7 +287,7 @@ fun SpeechBubble(modifier: Modifier = Modifier, tailAtStart: Boolean = true, con
             verticalArrangement = Arrangement.spacedBy(8.dp),
             content = content,
         )
-        Canvas(Modifier.align(if (tailAtStart) Alignment.BottomStart else Alignment.BottomEnd).padding(start = 28.dp, end = 28.dp).size(22.dp, 14.dp).graphicsLayer { translationY = 12.dp.toPx() }) {
+        if (tail) Canvas(Modifier.align(if (tailAtStart) Alignment.BottomStart else Alignment.BottomEnd).padding(start = 28.dp, end = 28.dp).size(22.dp, 14.dp).graphicsLayer { translationY = 12.dp.toPx() }) {
             val p = Path().apply {
                 moveTo(0f, 0f); lineTo(size.width, 0f); lineTo(size.width * 0.35f, size.height); close()
             }
