@@ -186,8 +186,12 @@ def selfcheck():
         ("питомец не опущен (1b1-2)", synth(result_pet=(744, 1344, 1032, 1632)), dict(counter=True), {"pet not on floor", "pet bottom not at buttons"}),
         ("питомец опущен на 28 dp", synth(result_pet=(744, 1428, 1032, 1641)), dict(counter=True), {"pet not on floor"}),
         ("кадр питомца кончается на полу", synth(result_pet=(744, 1386, 1032, 1632)), dict(counter=True), {"pet bottom not at buttons"}),
+        ("питомец выше пола на 1 dp", synth(result_pet=(744, 1383, 1032, 1641)), dict(counter=True), {"pet not on floor"}),
+        ("низ кадра на 1 dp выше кнопок", synth(result_pet=(744, 1386, 1032, 1638)), dict(counter=True), {"pet bottom not at buttons"}),
         ("питомец на облачке (подрезан)", synth(result_pet=(744, 1296, 1032, 1488)), dict(counter=True), {"pet not on floor", "pet bottom not at buttons"}),
-        ("питомец на полу, облачко ниже его верха", synth(job_result=(361, 800, 1056, 1400)), dict(counter=True), {"pet over bubble"}),
+        # облачко (позже, важно для TalkBack) режет питомца по ширине не целиком — bbox непокрытой части = весь кадр
+        ("питомец на полу из-под угла облачка, облачко ниже его верха", synth(job_result=(361, 800, 1056, 1400), result_pet=(200, 1386, 488, 1641)),
+         dict(counter=True), {"pet over bubble"}),
         ("кадр 240 dp при 1,0", synth(result_resident=(0, 912, 535, 1632), result_tail=tail_at(1178)), dict(counter=True), {"resident frame > 232 dp"}),
         ("кадр 232 при --big", synth(big=True, job_result=(361, 599, 1056, 1608), result_resident=(0, 936, 535, 1632), result_tail=(319, 1160, 367, 1226)),
          dict(big=True, counter=True), {"resident frame > 216 dp"}),
