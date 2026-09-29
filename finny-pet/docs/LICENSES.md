@@ -53,10 +53,11 @@
 | Жители «Городка»: Марта, Фома, Боря, Ося, Тоша, Степан, Кеша, Лиза, Ася (силуэт взрослого, своя палитра, аксессуары и предметы ролей — колпак, сумка, шапочка врача, берет и палитра, мяч, гаечный ключ, значок-монета — примитивы) | 9 WebP `res_*` там же (512 × 512; `res_borya` — 768 × 768 для крупного плана пекарни, решение № 45) | `tools/art/pet.py --residents` → `tools/art/to_webp.py` (TOWN-A1f) |
 | Товары, цели, плитки мини-игры, монета | 22 WebP там же: `item_*` (10), `goal_*` (5), `tile_*` (6), `ui_coin` | `tools/art/props.py` |
 | Выпечка пекарни: багет, хлеб, круассан, кекс, пончик, крендель (TOWN-J1-1b3, круг 1b3-2) | 6 WebP `pastry_*` 256 × 256 там же | `tools/art/props.py` → `tools/art/to_webp.py --size 256` |
+| Улица «Городка»: фон и фасады — дом, рынок, «У Фомы», пекарня, калитки парка, леса, зоопарка (TOWN-A1g1, круги A1g1-2…4) | фон `bg_street_port` 1080 × 1920 RGB и 7 WebP `fac_<placeId>` 384 × 384 там же | `tools/art/facade.py --street` / `--all` → `tools/art/to_webp.py` (фон `--rgb`) |
 | Иконки интерфейса: банка и крышки направлений бюджета, кошелёк, копилка, кубок, книга, замок, солнце, луна, геймпад, сумка, пузырь с вопросом | 14 WebP `ui_*` там же | `tools/art/uiprops.py` |
 | Иконка приложения — рендер 3D-котика на фирменном градиенте | `app/src/main/res/drawable-xxxhdpi/ic_launcher_foreground.png` (адаптивная иконка, фон `drawable/ic_launcher_background.xml`), `assets/icon/icon-512.png` для магазина | котик — `tools/art/pet.py` |
 
-Итого в `game/res/drawable-nodpi/` 58 файлов. Анимация питомца в `game` — код
+Итого в `game/res/drawable-nodpi/` 66 файлов. Анимация питомца в `game` — код
 `game/ui/PetSprite.kt` (в `classic` — `ui/PetView.kt`).
 
 ## Звуки

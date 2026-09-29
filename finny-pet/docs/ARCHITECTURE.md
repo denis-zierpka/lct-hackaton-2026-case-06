@@ -25,7 +25,7 @@ app/src/
 ├── game/                          вариант game
 │   ├── java/ru/finny/pet/MainActivity.kt
 │   ├── java/ru/finny/pet/game/    GameApp, GameViewModel (+ Screen, Effect), audio/Sfx, ui/, screens/, mock/ (debug-макеты «Городка»)
-│   └── res/                       drawable-nodpi: комната, фоны мест, жители, товары, цели, плитки, иконки, выпечка (58 WebP);
+│   └── res/                       drawable-nodpi: комната, фоны мест, улица и фасады, жители, товары, цели, плитки, иконки, выпечка (66 WebP);
 │                                  raw: 13 звуков + музыка (OGG)
 ├── classic/                       вариант classic (не сдаётся)
 └── test/java/ru/finny/pet/domain/ JVM-тесты правил
