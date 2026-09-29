@@ -201,7 +201,7 @@ fun ArrangeScreen(vm: GameViewModel) {
                         contentAlignment = Alignment.Center,
                     ) {
                         when {
-                            starter != null -> Pic(null, starter.emoji, 40.dp)
+                            starter != null -> Pic(itemRes(starter.id), starter.emoji, 40.dp)
                             item != null -> Pic(itemRes(item.id), item.emoji, 40.dp)
                         }
                     }

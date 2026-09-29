@@ -89,6 +89,7 @@ import ru.finny.pet.game.ui.bigFont
 import ru.finny.pet.game.ui.chip
 import ru.finny.pet.game.ui.itemRes
 import ru.finny.pet.game.ui.particleTarget
+import ru.finny.pet.game.ui.posterRes
 
 /** A place of the town (§E.2, §E.3): a shop with the shelf and the pay panel, or a job with the order. */
 @Composable
@@ -405,13 +406,19 @@ internal fun ShiftTokens(vm: GameViewModel, label: Boolean = true, color: Color 
     TText(if (label) "Смены на неделе: $dots" else dots, Modifier.clearAndSetSemantics { contentDescription = "Смены: $n из $max" }, color = color, maxLines = if (label) 2 else 1)
 }
 
-/** Events of this place: title, intro and «Пройти мимо» when the event has a Skip outcome. */
+/** Events of this place: the poster if the event has one, title, intro and «Пройти мимо» when the event has a Skip outcome. */
 @Composable
 internal fun PlaceEvents(vm: GameViewModel, placeId: String) {
     vm.eventsAt(placeId).forEach { e ->
         Panel(Modifier.fillMaxWidth(), padding = 12.dp) {
-            TText("! ${e.title}", style = MaterialTheme.typography.titleMedium)
-            TText(e.intro)
+            // № 96, плакат строкой: 64 dp left of the title and intro, no description — the card's text is read (TOWN-A1e2)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                posterRes(e.id)?.let { Image(painterResource(it), null, Modifier.size(64.dp)) }
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    TText("! ${e.title}", style = MaterialTheme.typography.titleMedium)
+                    TText(e.intro)
+                }
+            }
             if (e.outcomes.any { it.fact == Fact.Skip }) GameButton("Пройти мимо", Modifier.fillMaxWidth(), ButtonStyle.PAPER, minHeight = 48.dp) { vm.pass(e.id) }
         }
     }

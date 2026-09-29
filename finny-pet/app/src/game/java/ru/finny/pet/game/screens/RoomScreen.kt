@@ -254,7 +254,7 @@ private fun SpotThing(vm: GameViewModel, spotId: String, modifier: Modifier) {
     val starter = vm.tc.homeItems.firstOrNull { it.spot == spotId }
     val placed = vm.state.placed[spotId]?.let(vm::item)
     when {
-        starter != null -> Pic(null, starter.emoji, 36.dp, modifier)
+        starter != null -> Pic(itemRes(starter.id), starter.emoji, 36.dp, modifier)
         placed != null -> Pic(itemRes(placed.id), placed.emoji, 36.dp, modifier.clearAndSetSemantics {})
     }
 }

@@ -90,7 +90,7 @@ fun Modifier.chip() = background(Color.White, RoundedCornerShape(50))
 
 // ---------- pictures (§B.9) ----------
 
-/** Drawable of a shop item, or null — then the item's emoji is drawn. */
+/** Drawable of a shop item or a starter home thing (item_<id>; gift_toy, lamp_new, fun_lego — a picture of another name), or null — then the emoji is drawn. */
 fun itemRes(id: String): Int? = when (id) {
     "food_basic" -> R.drawable.item_food_basic
     "food_lunch" -> R.drawable.item_food_lunch
@@ -102,6 +102,31 @@ fun itemRes(id: String): Int? = when (id) {
     "fun_balloon" -> R.drawable.item_fun_balloon
     "fun_book" -> R.drawable.item_fun_book
     "fun_tent" -> R.drawable.item_fun_tent
+    "food_porridge" -> R.drawable.item_food_porridge
+    "food_super" -> R.drawable.item_food_super
+    "care_soap" -> R.drawable.item_care_soap
+    "care_shampoo_simple" -> R.drawable.item_care_shampoo_simple
+    "fun_icecream" -> R.drawable.item_fun_icecream
+    "fun_carousel" -> R.drawable.item_fun_carousel
+    "fun_picture" -> R.drawable.item_fun_picture
+    "fun_rug" -> R.drawable.item_fun_rug
+    "fun_spinner" -> R.drawable.item_fun_spinner
+    "fun_kite" -> R.drawable.item_fun_kite
+    "fun_robot" -> R.drawable.item_fun_robot
+    "fun_starlamp" -> R.drawable.item_fun_starlamp
+    "gift_card" -> R.drawable.item_gift_card
+    "gift_toy" -> R.drawable.tile_gift
+    "home_lamp" -> R.drawable.item_home_lamp
+    "home_flower" -> R.drawable.item_home_flower
+    "home_armchair" -> R.drawable.item_home_armchair
+    "lamp_new" -> R.drawable.item_home_lamp
+    "fun_lego" -> R.drawable.goal_lego
+    else -> null
+}
+
+/** Drawable of an event's poster (poster_<itemId>, props.py), or null — the event card has no picture. */
+fun posterRes(eventId: String): Int? = when (eventId) {
+    "pk3_super_food" -> R.drawable.poster_food_super
     else -> null
 }
 
@@ -122,16 +147,22 @@ fun goalRes(id: String): Int? = when {
     id == "goal_paints" -> R.drawable.goal_paints
     id == "goal_lego" -> R.drawable.goal_lego
     id == "goal_zoo" -> R.drawable.goal_zoo
+    id == "goal_camp" -> R.drawable.goal_camp
     id.startsWith("item:") -> itemRes(id.removePrefix("item:"))
     id == "demo_goal" || id.startsWith("custom_") -> R.drawable.goal_custom
     else -> null
 }
+
+/** Emoji drawn instead of a picture right now; the debug «emoji» probe reports them (TOWN-A1e2). */
+val LocalEmoji = staticCompositionLocalOf<SnapshotStateList<String>?> { null }
 
 /** Picture or emoji in a [size] box. */
 @Composable
 fun Pic(res: Int?, emoji: String, size: Dp, modifier: Modifier = Modifier) {
     if (res != null) Image(painterResource(res), null, modifier.size(size))
     else Box(modifier.size(size).clearAndSetSemantics {}, contentAlignment = Alignment.Center) {
+        val shown = LocalEmoji.current
+        DisposableEffect(emoji) { shown?.add(emoji); onDispose { shown?.remove(emoji) } }
         Text(emoji, style = MaterialTheme.typography.titleLarge.copy(fontSize = (size.value * 0.6f).sp, lineHeight = (size.value * 0.7f).sp))
     }
 }
