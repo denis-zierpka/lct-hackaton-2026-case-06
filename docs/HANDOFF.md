@@ -59,7 +59,7 @@
    влива» было на 1.4.1). Скрипты workflow сессии 15 — `C:\Users\Singularity\.claude\projects\C--Users-Singularity-Documents-Claude-lct-hackaton-2026-case-06\c5543d08-1527-4d6e-9d67-1cb7653cc530\workflows\scripts\`
    (`a1e2-spec-fasttrack-*.js`, `a1e2-live-docs-*.js`, `release-141-docs-*.js`, `a1s-spec-fasttrack-*.js`).
 3. **Очередь основного дерева (по одному кодеру):** A1s (витрина, выше) → **A1d3 — перестановка в комнате по словам владельца
-   (№ 120–124, GATE_QUEUE раздел 12; сессия 16, в выпуск 1.4.2)** → 1b5 (эталон кода — пересобрать поверх 1.4.1:
+   (№ 120–128, GATE_QUEUE раздел 12; сессия 16, в выпуск 1.4.2)** → 1b5 (эталон кода — пересобрать поверх 1.4.1:
    в scratch-спеке ссылки на строки GameApp.kt и GameViewModel.kt, оба изменены встройкой A1d2+A1g2 и A1e2) → бра № 108
    (после ответа) → малый круг `uiprops.py` по № 92 б (банка; условие — BACKLOG п. 23: поле ≈ 5 dp под `ui_jar` или
    `offset(y = 12.dp)` полки) → закрытие эпика J1 (демо шаги 1–12, TC-26…42, `j1b_final.jpg`). Каждая: копия спеки в
