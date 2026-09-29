@@ -2,12 +2,12 @@
 
 All four:   Blender -b -P tools/art/room.py -- --all /abs/outdir [--samples 160] [--preview]
 One:        Blender -b -P tools/art/room.py -- --only room_land_evening --out /abs/room.png
-Furniture:  Blender -b -P tools/art/room.py -- --sprites /abs/outdir [--samples 160] [--preview]   (7 × furn_<id>.png)
+Furniture:  Blender -b -P tools/art/room.py -- --sprites /abs/outdir [--samples 160] [--preview]   (9 × furn_<id>.png)
 One sprite: Blender -b -P tools/art/room.py -- --only furn_door --out /abs/furn_door.png
 
 Layout: floor is z = 0, the back wall stands at y = WALL_Y, the camera looks from -Y straight on and a little
-from above so the floor fills the lower ~35 % of the frame. The shell is empty (№ 27): floor, solid walls, garland,
-a clock on the free wall left of spot_2. Window, shelf and furniture are sprites furn_<id> (<id> — the RoomScreen target)
+from above so the floor fills the lower ~35 % of the frame. The shell is empty (№ 27): floor, solid walls, garland.
+Window, shelf, clock and furniture are sprites furn_<id> (<id> — the RoomScreen target; the clock — a decoration under the shelf, № 123)
 built in the portrait day room on the side of their targets: room_camera() (the one room camera, also for A1e) and
 sprite_frame() (just the target-sized part of the frame, PX px per dp), the shell hidden; SHADOW = True — it catches the
 shadow (№ 79). MULLION, WINDOW_VIEW — window cross and view (№ 77); WARM — the warm evening spot, None — none (№ 78).
@@ -16,6 +16,7 @@ Portrait variants are the same room re-framed: every x coordinate is squeezed by
 import sys, os, math, argparse, random
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__))); from lib import *
 from bpy_extras.object_utils import world_to_camera_view
+from mathutils import Matrix
 
 VARIANTS = {  # name: (width, height, evening)
     "room_land_day": (1920, 1080, False), "room_land_evening": (1920, 1080, True),
@@ -117,6 +118,21 @@ def furn_bed(p):
     sphere("pillow", (-L / 2 + 0.3, y, 0.43), 0.18, (1, 1.4, 0.45), mat=p["m_white"])
 
 
+def furn_bed_v(p):
+    """№ 121: the same bed turned 90° by the left edge — the headboard at the back wall, the foot to the camera; A1d3 (owner):
+    ×2.1, bigger than the 120 dp pet; x −1.2, not −1.8 — else its 150 dp frame runs off the 1080 px render.
+    furn_bed stays side-on: the night screen lays the pet on its blanket (№ 91 б)."""
+    old = set(bpy.context.scene.objects); furn_bed(p)
+    next(o for o in set(bpy.context.scene.objects) - old if o.name == "bed_base").scale.x -= 0.04  # its ends were flush with the boards: end-on, Cycles shades that face black
+    _move(old, Matrix.Translation((-1.2, -2.0, 0)) @ Matrix.Scale(2.1, 4) @ Matrix.Rotation(math.radians(-90), 4, "Z") @ Matrix.Translation((0, 2.0, 0)))
+
+
+def _move(old, m):
+    """Moves every object built since the snapshot `old` by the world matrix m (the same model turned or scaled)."""
+    bpy.context.view_layer.update()  # else the last object's matrix_world misses its fresh scale and rotation
+    for o in set(bpy.context.scene.objects) - old: o.matrix_world = m @ o.matrix_world
+
+
 def furn_chest(p):
     """Wooden chest with a domed lid, gold bands and a clasp (not the old purple toy box)."""
     x, y, w, d, h, gold = -2.0, -1.4, 0.73, 0.5, 0.3, p["m_gold"]
@@ -128,9 +144,21 @@ def furn_chest(p):
     box("chest_clasp", (x, y - d / 2 - 0.01, h - 0.02), (0.1, 0.03, 0.14), gold, bevel=0.01)
 
 
+def furn_clock(p):
+    """№ 123: the wall clock just under the jar shelf, right of the window. A sprite, not the shell: the shelf is UI in dp,
+    the background is drawn Crop (S23 ×1,22), so a clock in the shell drifted off the shelf. Where the shell had it (x squeezed by K)."""
+    cx, cz, m_purple = -1.25 * K, 2.5, p["m_purple"]
+    cylinder("clock_rim", (cx, WALL_Y - 0.08, cz), 0.4, 0.12, p["m_gold"], rot=(math.radians(90), 0, 0), bevel=0.03)
+    cylinder("clock_face", (cx, WALL_Y - 0.15, cz), 0.33, 0.04, p["m_white"], rot=(math.radians(90), 0, 0))
+    box("hand_h", (cx + 0.06, WALL_Y - 0.19, cz + 0.06), (0.2, 0.02, 0.035), m_purple, rot=(0, math.radians(-40), 0), bevel=0.005)
+    box("hand_m", (cx, WALL_Y - 0.2, cz + 0.12), (0.035, 0.02, 0.26), m_purple, bevel=0.005)
+    sphere("clock_pin", (cx, WALL_Y - 0.2, cz), 0.03, mat=p["m_mag"], levels=1)
+
+
 def furn_mailbox(p):
     """Mailbox on a post: rounded roof, a slot in front, a raised flag on the side (the envelope stays UI)."""
     x, y, blue = 1.7, -2.15, p["m_blue"]
+    old = set(bpy.context.scene.objects)
     box("mail_foot", (x, y, 0.035), (0.26, 0.26, 0.07), p["m_white"], bevel=0.03)  # round edge: α stays ≥ 2 px off the frame
     box("mail_post", (x, y, 0.13), (0.08, 0.08, 0.22), p["m_white"], bevel=0.01)
     box("mailbox", (x, y, 0.31), (0.42, 0.3, 0.18), blue, bevel=0.03)
@@ -138,31 +166,27 @@ def furn_mailbox(p):
     box("mail_slot", (x, y - 0.155, 0.33), (0.22, 0.02, 0.03), p["m_purple"], bevel=0.005)
     box("mail_pole", (x + 0.225, y, 0.42), (0.025, 0.025, 0.26), p["m_white"], bevel=0.005)
     box("mail_flag", (x + 0.285, y, 0.51), (0.12, 0.02, 0.08), p["m_gold"], bevel=0.005)
+    # № 124: twice as big, from the foot, 0.2 to the left — else the 288 px frame runs off the 1080 px render
+    _move(old, Matrix.Translation((x - 0.2, y, 0)) @ Matrix.Scale(2, 4) @ Matrix.Translation((-x, -y, 0)))
 
 
 def build_room(evening, portrait):
-    """The empty shell (№ 27): floor, walls, garland, clock. Returns where the warm evening light stands (WARM) or None."""
+    """The empty shell (№ 27): floor, walls, garland. Returns where the warm evening light stands (WARM) or None."""
     k = K if portrait else 1.0
     X = lambda x: x * k
     p = palette(); wood, m_wall, m_side, m_white = p["wood"], p["m_wall"], p["m_side"], p["m_white"]
-    m_pink, m_mag, m_purple, m_lav, m_gold = (p[n] for n in ("m_pink", "m_mag", "m_purple", "m_lav", "m_gold"))
+    m_pink, m_mag, m_lav, m_gold = (p[n] for n in ("m_pink", "m_mag", "m_lav", "m_gold"))
 
     # floor, solid back wall, side walls, skirting boards (lib: interior shell)
     plank_floor(wood, k)
     shell_walls(m_wall, m_side, m_white, k, WALL_Y, window=None)
 
-    # pennant garland high on the wall (seen in the portrait framing) and a wall clock on the free wall left of spot_2
+    # pennant garland high on the wall (seen in the portrait framing)
     n = 9
     for i in range(n):
         u = i / (n - 1); gx = X(-4.6 + 9.2 * u); gz = 6.5 - 0.7 * math.sin(math.pi * u)
         cone("flag", (gx, WALL_Y - 0.08, gz - 0.2), 0.17, 0.36, (math.radians(180), 0, 0), (m_mag, m_gold, m_lav, m_pink)[i % 4], scale=(1, 0.2, 1))
     curve("string", [(X(-4.8), WALL_Y - 0.06, 6.55), (0, WALL_Y - 0.06, 5.8), (X(4.8), WALL_Y - 0.06, 6.55)], 0.015, m_white)
-    cx, cz = X(-1.54), 1.75
-    cylinder("clock_rim", (cx, WALL_Y - 0.08, cz), 0.4, 0.12, m_gold, rot=(math.radians(90), 0, 0), bevel=0.03)
-    cylinder("clock_face", (cx, WALL_Y - 0.15, cz), 0.33, 0.04, m_white, rot=(math.radians(90), 0, 0))
-    box("hand_h", (cx + 0.06, WALL_Y - 0.19, cz + 0.06), (0.2, 0.02, 0.035), m_purple, rot=(0, math.radians(-40), 0), bevel=0.005)
-    box("hand_m", (cx, WALL_Y - 0.2, cz + 0.12), (0.035, 0.02, 0.26), m_purple, bevel=0.005)
-    sphere("clock_pin", (cx, WALL_Y - 0.2, cz), 0.03, mat=m_mag, levels=1)
     return WARM and (X(WARM[0]), WARM[1])
 
 
@@ -220,8 +244,9 @@ def sprite_frame(scene, objs, w, h, floor=False, top=None):
 
 
 SPRITES = {"furn_window": (112, 80, furn_window), "furn_shelf": (152, 72, furn_shelf), "furn_fridge": (64, 96, furn_fridge),
-           "furn_door": (64, 136, furn_door), "furn_bed": (128, 64, furn_bed), "furn_mailbox": (48, 48, furn_mailbox),
-           "furn_chest": (64, 48, furn_chest)}  # name: (target width, height in dp — RoomScreen.kt, builder)
+           "furn_door": (64, 136, furn_door), "furn_bed": (128, 64, furn_bed), "furn_mailbox": (96, 96, furn_mailbox),
+           "furn_chest": (64, 48, furn_chest), "furn_bed_v": (150, 162, furn_bed_v),
+           "furn_clock": (42, 42, furn_clock)}  # name: (target width, height in dp — RoomScreen.kt, builder)
 
 
 def render_sprite(name, out, samples, preview=False):
@@ -235,7 +260,7 @@ def render_sprite(name, out, samples, preview=False):
     objs = [o for o in scene.objects if o not in shell]
     light_room(scene, False, None)
     room_camera(scene)
-    wall, floor = name in ("furn_window", "furn_shelf", "furn_fridge", "furn_door"), name not in ("furn_window", "furn_shelf")
+    wall, floor = name in ("furn_window", "furn_shelf", "furn_fridge", "furn_door", "furn_clock"), name not in ("furn_window", "furn_shelf", "furn_clock")
     for o in shell:  # SHADOW: the whole shell catches (№ 79), the camera sees only the floor and/or the back wall under the thing
         o.is_shadow_catcher = SHADOW
         o.visible_camera = SHADOW and (floor and o.name.startswith("plank") or wall and o.name == "wall_back")

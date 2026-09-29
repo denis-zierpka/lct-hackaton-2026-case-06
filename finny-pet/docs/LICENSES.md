@@ -49,16 +49,16 @@
 | Что | Файлы | Генератор |
 |---|---|---|
 | Питомец: кот, зайка, щенок × 3 цвета × 3 стадии × 4 выражения | 108 WebP `pet_*` в `app/src/main/res/drawable-nodpi/` (общие для обоих вариантов) | `tools/art/pet.py` (Blender 5.2) → `tools/art/import_sprites.py` (WebP и `PetSprites.kt`) |
-| Комната: портрет день/вечер — пустая оболочка (TOWN-A1d1–A1d2), альбом — прежний рендер (A1h); мебель — 7 спрайтов | 4 WebP `room_*`, 7 WebP `furn_*` в `app/src/game/res/drawable-nodpi/` | `tools/art/room.py` (`--only room_port_*`, `--sprites`) → `tools/art/to_webp.py` (оболочки `--rgb`) |
+| Комната: портрет день/вечер — пустая оболочка (TOWN-A1d1–A1d2; A1d3 — без часов), альбом — прежний рендер (A1h); мебель — 9 спрайтов (A1d3: кровать `furn_bed_v` 150 × 162 dp у левого края, `furn_bed` боком — для ночи; почтовый ящик 96 dp; часы `furn_clock` 42 dp под полкой банок) | 4 WebP `room_*`, 9 WebP `furn_*` в `app/src/game/res/drawable-nodpi/` | `tools/art/room.py` (`--only room_port_*`, `--sprites`) → `tools/art/to_webp.py` (оболочки `--rgb`) |
 | Фоны мест «Городка»: рынок у реки, лавка «У Фомы», пекарня (портрет) | 3 WebP `bg_market_port`, `bg_foma_port`, `bg_bakery_port` там же | `tools/art/place.py` → `tools/art/to_webp.py --rgb` (TOWN-A1c) |
 | Жители «Городка»: Марта, Фома, Боря, Ося, Тоша, Степан, Кеша, Лиза, Ася (силуэт взрослого, своя палитра, аксессуары и предметы ролей — колпак, сумка, шапочка врача, берет и палитра, мяч, гаечный ключ, значок-монета — примитивы) | 9 WebP `res_*` там же (512 × 512; `res_borya` — 768 × 768 для крупного плана пекарни, решение № 45) | `tools/art/pet.py --residents` → `tools/art/to_webp.py` (TOWN-A1f) |
-| Товары, цели, плитки мини-игры, монета; вещи комнаты и плакат события (TOWN-A1e1, круг A1e1-2) | 40 WebP там же: `item_*` (26: товары и стартовые `item_home_*`; ванна с пеной, мячик, книжка, домик — перерендер 216 px), `goal_*` (6), `poster_food_super`, `tile_*` (6), `ui_coin` | `tools/art/props.py` (вещи комнаты — `render_thing` камерой и светом `room.py`) → `tools/art/to_webp.py` |
+| Товары, цели, плитки мини-игры, монета; вещи комнаты и плакат события (TOWN-A1e1, круг A1e1-2) | 40 WebP там же: `item_*` (26: товары и стартовые `item_home_*`; ванна с пеной, мячик, книжка, домик — перерендер 216 px; кресло `item_home_armchair` — 324 px, 108 dp, без ножек, A1d3), `goal_*` (6), `poster_food_super`, `tile_*` (6), `ui_coin` | `tools/art/props.py` (вещи комнаты — `render_thing` камерой и светом `room.py`) → `tools/art/to_webp.py` |
 | Выпечка пекарни: багет, хлеб, круассан, кекс, пончик, крендель (TOWN-J1-1b3, круг 1b3-2) | 6 WebP `pastry_*` 256 × 256 там же | `tools/art/props.py` → `tools/art/to_webp.py --size 256` |
 | Улица «Городка»: фон и фасады — дом, рынок, «У Фомы», пекарня, калитки парка, леса, зоопарка (TOWN-A1g1, круги A1g1-2…4) | фон `bg_street_port` 1080 × 1920 RGB и 7 WebP `fac_<placeId>` 384 × 384 там же | `tools/art/facade.py --street` / `--all` → `tools/art/to_webp.py` (фон `--rgb`) |
 | Иконки интерфейса: банка и крышки направлений бюджета, кошелёк, копилка, кубок, книга, замок, солнце, луна, геймпад, сумка, пузырь с вопросом | 14 WebP `ui_*` там же | `tools/art/uiprops.py` |
 | Иконка приложения — рендер 3D-котика на фирменном градиенте | `app/src/main/res/drawable-xxxhdpi/ic_launcher_foreground.png` (адаптивная иконка, фон `drawable/ic_launcher_background.xml`), `assets/icon/icon-512.png` для магазина | котик — `tools/art/pet.py` |
 
-Итого в `game/res/drawable-nodpi/` 91 файл. Анимация питомца в `game` — код
+Итого в `game/res/drawable-nodpi/` 93 файла. Анимация питомца в `game` — код
 `game/ui/PetSprite.kt` (в `classic` — `ui/PetView.kt`).
 
 ## Звуки
