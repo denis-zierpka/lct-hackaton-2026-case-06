@@ -315,7 +315,7 @@ alpha 90, method 6, как у питомца): фоны — с `--rgb`, спра
 `--dst` — каталог выхода (например `app/src/game/res/drawable-nodpi/`). GPU `lib.py` выбирает так же, как
 `pet.py` (OptiX, CUDA, HIP, oneAPI, Metal, иначе CPU): на этой машине — HIP, фон 1080 × 1920 при
 160 сэмплах ≈ 46 с. Вызовы Blender в проверках — с `--python-exit-code 1` (иначе исключение в скрипте
-даёт код 0). `props.py --only a,b --out DIR` пишет каждый кадр в DIR/<имя>.png. Листы для ревью —
+даёт код 0). `props.py --only a,b --out DIR` пишет каждый кадр в DIR/<имя>.png (вещь комнаты — `--only item_fun_rug`: камера и свет `room.py`, 216 px; TOWN-A1e1). Листы для ревью —
 `python tools/sheets.py` из корня репозитория, не из `finny-pet/` (альфа на белом, пропорции сохраняются). Приёмка арта —
 `python tools/art_check.py` тоже из корня
 (`regress`/`diff` — кадры комнаты, питомца, рынка, «У Фомы» и фасада рынка не изменились, `bg` — композиты UI на фон

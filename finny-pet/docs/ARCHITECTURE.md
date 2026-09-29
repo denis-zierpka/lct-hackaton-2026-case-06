@@ -185,7 +185,7 @@ Compose перерисовывает экраны по state / screen / lines / 
 | `room.py` | Комната: альбом/портрет × день/вечер (PNG) | `app/src/game/res/drawable-nodpi/room_*` |
 | `place.py` | Фоны мест «Городка» — «кит интерьера»: рынок у реки, «У Фомы», пекарня; портрет 1080 × 1920, RGB (PNG) | `bg_<place>_port` в `game/res/drawable-nodpi/` (TOWN-A1c); у пекарни — полка с хлебом в полосе, открытой на всех её экранах |
 | `facade.py` | Фасады карточек улицы 384 × 384 RGBA: дом, рынок, «У Фомы», пекарня, калитки парка, леса, зоопарка (замок — оверлей UI) (PNG) | `fac_<place>` — с TOWN-A1g |
-| `props.py` | Товары, цели, плитки мини-игры, монета, выпечка пекарни (PNG) | там же: `item_*`, `goal_*`, `tile_*`, `ui_coin`, `pastry_*` (TOWN-J1-1b3) |
+| `props.py` | Товары, цели, плитки мини-игры, монета, выпечка пекарни; вещи комнаты — камерой и светом комнаты (`ROOM`, `render_thing`, `import room`), 216 px (PNG) | там же: `item_*`, `goal_*`, `tile_*`, `ui_coin`, `pastry_*` (TOWN-J1-1b3), вещи `item_home_<id>` / `item_fun_<id>`, плакат `poster_<itemId>` (TOWN-A1e1) |
 | `uiprops.py` | Иконки интерфейса: банка и крышки бюджета, копилка, кошелёк и др. (PNG) | там же: `ui_*` |
 | `sounds.py` | Синтез эффектов и музыки на stdlib Python, кодирование ffmpeg в OGG | `app/src/game/res/raw/*.ogg` |
 
