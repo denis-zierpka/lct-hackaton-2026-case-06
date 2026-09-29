@@ -1,15 +1,18 @@
-"""Зонд геометрии итога смены (TOWN-J1-1b1-2, спека «ДО СПАВНА» п. 1) по сырому дампу uiautomator.
+"""Зонд геометрии итога смены (TOWN-J1-1b1-2 «ДО СПАВНА» п. 1; правила питомца — TOWN-J1-1b1-3) по сырому дампу uiautomator.
 
   python tools/result_geom.py DUMP.xml DENSITY [--big] [--counter] [--line]  -> GEOM OK | GEOM FAIL: <правило>[; …]; exit 0 | 1
   python tools/result_geom.py --selfcheck   -> каждое правило краснеет на своей синтетике, верные — OK; exit 0 | 1
 
 DENSITY — px на dp: вызывающий скрипт берёт `tools/adbui.sh shell wm density` (последнее число / 160; эмулятор после
 wm360 — 3). Узлы по resource-id (testTagsAsResourceId): job_result, result_pet, result_resident, result_tail,
-result_counter, line; кнопка «Почему?»/«Готово» — самый маленький узел clickable="true", чьи bounds содержат центр
+result_counter, line, hud2; кнопка «Почему?»/«Готово» — самый маленький узел clickable="true", чьи bounds содержат центр
 узла с таким text. bounds — непокрытая часть узла (режут узлы, важные для TalkBack и нарисованные позже; узел с одним
 testTag не режет никого; перекрытый целиком — выпадает из дампа).
-Правила — без --line: при 1,0 питомец справа от жителя, под облачком и не подрезан, кадр жителя ≤ 232 dp; с --big
-питомец левее центра облачка (перед жителем), кадр ≤ 216 dp; хвост 16 × 22 dp на левом краю облачка, центр — на уровне
+Правила — без --line: пол = верх кнопок − 3 dp, потолок облачка справа = пол − (низ hud2 + 8 dp) − 120 dp; питомец справа
+от жителя — только если облачко ≤ потолка − 3 px, и тогда под облачком; перед жителем — только если облачко ≥ потолка +
+3 px (сторона по месту, № 83 в; полоса ± 3 px — красный при любой стороне); верх питомца = пол − 82 dp ± 2 px (лапы на
+полу, № 87 б), низ = верх кнопок ± 2 px (кадр уходит под ряд кнопок, режут только они); кадр жителя ≤ 232 dp, с --big
+(шрифт 1,3) ≤ 216 dp; хвост 16 × 22 dp на левом краю облачка, центр — на уровне
 морды жителя (K = 0,37 кадра, зажат в облачко на 31 dp; облачко < 62 dp — его центр), выше кнопок; узлы result_* без
 текста, описания и действий; --counter — прилавок 56 dp у пола под жителем почти во всю ширину, без флага прилавка нет.
 С --line (после «Почему?», только эти правила): line есть, обе кнопки в дампе и не подрезаны (≥ 61 dp), низ line ≤ верх
@@ -60,7 +63,7 @@ def check(xml, d, big=False, counter=False, line=False):
             fail.append("line over buttons")
         return fail
 
-    miss = [k for k in ("job_result", "result_pet", "result_resident", "result_tail") if k not in tag]
+    miss = [k for k in ("job_result", "result_pet", "result_resident", "result_tail", "hud2") if k not in tag]
     if button("Готово") is None:
         miss.append("button Gotovo")
     if miss:
@@ -69,20 +72,22 @@ def check(xml, d, big=False, counter=False, line=False):
     btop = min(b[1] for b in btns)
     cx = lambda b: (b[0] + b[2]) / 2
     h = lambda b: b[3] - b[1]
-    if not big:
-        if cx(pet) <= cx(res):
-            fail.append("pet not right of resident")
+    floor = btop - 3 * d  # the button row starts 3 dp below the floor (RoundScreen: floor = maxHeight − 64 dp, row 61 dp)
+    cap = floor - (tag["hud2"]["b"][3] + 8 * d) - 120 * d  # side ceiling of the bubble: floor − 16 − 104 dp from the scene top
+    if cx(pet) > cx(res):  # right, under the bubble — only when the bubble fits there (№ 83 в)
+        if h(bub) > cap - 3:
+            fail.append("pet right but bubble at side ceiling")
         if pet[1] < bub[3]:
             fail.append("pet over bubble")
-        if h(pet) < 96 * d - 2:
-            fail.append("pet cut")
-        if h(res) > 232 * d + 2:
-            fail.append("resident frame > 232 dp")
-    else:
-        if cx(pet) >= cx(bub):
-            fail.append("pet not in front of resident")
-        if h(res) > 216 * d + 2:
-            fail.append("resident frame > 216 dp")
+    else:  # in front of the resident — only when the bubble does not fit on the right
+        if h(bub) < cap + 3:
+            fail.append("pet in front though bubble fits")
+    if abs(pet[1] - (floor - 82 * d)) > 2:  # № 87 б: frame 14 dp lower — paws (0,86 of 96 dp) on the floor
+        fail.append("pet not on floor")
+    if abs(pet[3] - btop) > 2:  # the frame goes under the button row; only the buttons cut it
+        fail.append("pet bottom not at buttons")
+    if h(res) > (216 if big else 232) * d + 2:
+        fail.append(f"resident frame > {216 if big else 232} dp")
     if abs(tail[2] - tail[0] - 16 * d) > 2 or abs(h(tail) - 22 * d) > 2:
         fail.append("tail size")
     if not bub[0] <= tail[2] <= bub[0] + 3 * d:
@@ -122,18 +127,25 @@ def check(xml, d, big=False, counter=False, line=False):
 # 1,0: frame 232 dp — resident [0,936][535,1632] (off-screen part clipped), bubble left 361 (8 + 0,45 f), its bottom
 # floor − 112 dp = 1296; pet 96 dp at maxWidth − 104 dp; hy = 936 + 0,37 · 696 = 1193,5 → tail [319,1160][367,1226].
 # 1,3: frame 216 dp — resident [0,984][502,1632], bubble left 340, bottom 1608; pet at 8 dp; hy = 1223,8 → tail [298,1191][346,1257].
+# TOWN-J1-1b1-3: pet frame top floor − 82 dp = 1386, its bottom (floor + 14 dp) cut by the buttons at 1641; hud2 [0,270][1080,414];
+# zero at 1,3 fits on the right (273 dp ≤ 278): bubble [340,477][1056,1296], hy clamped to 1296 − 93 = 1203 → tail [298,1170][346,1236].
 E = 'text="" content-desc="" clickable="false" focusable="false"'
 
 
-def synth(big=False, counter=True, line=None, cut=0, buttons=True, pet_attrs=E, **over):
-    """over: resource-id=bounds (None — no node); cut — px the button row lost at its top; buttons=False — no buttons."""
-    b = dict(root=(0, 0, 1080, 1920))
-    if big:
-        b.update(job_result=(340, 350, 1056, 1608), result_resident=(0, 984, 502, 1632),
-                 result_pet=(48, 1344, 336, 1632), result_tail=(298, 1191, 346, 1257))
+def synth(big=False, counter=True, line=None, cut=0, buttons=True, pet_attrs=E, fits=False, **over):
+    """over: resource-id=bounds (None — no node); cut — px the button row lost at its top; buttons=False — no buttons.
+    big — levelup at 1,3 (bubble 336 dp > side ceiling 278 dp: pet in front); big + fits — zero at 1,3 (273 dp: pet right).
+    hud2 bottom 414 + 8 dp → scene top 438; side ceiling 1632 − 438 − 360 = 834 px; pet frame floor − 82 dp … under buttons."""
+    b = dict(root=(0, 0, 1080, 1920), hud2=(0, 270, 1080, 414))
+    if big and fits:
+        b.update(job_result=(340, 477, 1056, 1296), result_resident=(0, 984, 502, 1632),
+                 result_pet=(744, 1386, 1032, 1641), result_tail=(298, 1170, 346, 1236))
+    elif big:
+        b.update(job_result=(340, 599, 1056, 1608), result_resident=(0, 984, 502, 1632),
+                 result_pet=(48, 1386, 336, 1641), result_tail=(298, 1191, 346, 1257))
     else:
         b.update(job_result=(361, 500, 1056, 1296), result_resident=(0, 936, 535, 1632),
-                 result_pet=(744, 1344, 1032, 1632), result_tail=(319, 1160, 367, 1226))
+                 result_pet=(744, 1386, 1032, 1641), result_tail=(319, 1160, 367, 1226))
     if counter:
         b["result_counter"] = (24, 1464, 1056, 1632)  # floor − 56 dp … floor; the bubble at 1,3 leaves its bbox whole
     b["line"] = line
@@ -155,17 +167,31 @@ def selfcheck():
     cases = [  # name, dump, flags, expected failures
         ("верный 1,0, пекарня", synth(), dict(counter=True), set()),
         ("верный 1,0, Марта (без прилавка)", synth(counter=False), {}, set()),
-        ("верный 1,3, пекарня", synth(big=True), dict(big=True, counter=True), set()),
+        ("верный 1,3, облачко выше потолка справа — перед жителем", synth(big=True), dict(big=True, counter=True), set()),
+        ("верный 1,3, облачко помещается — справа", synth(big=True, fits=True), dict(big=True, counter=True), set()),
         ("облачко 50 dp, хвост по его центру", synth(job_result=(361, 1146, 1056, 1296), result_tail=tail_at(1221)), dict(counter=True), set()),
         ("строка над кнопками", synth(line=(24, 1210, 1056, 1614)), L, set()),
         ("облачко 50 dp, хвост у морды, не по центру", synth(job_result=(361, 1146, 1056, 1296)), dict(counter=True), {"tail not at resident face"}),
-        ("питомец на облачке (подрезан)", synth(result_pet=(744, 1296, 1032, 1488)), dict(counter=True), {"pet cut"}),
-        ("питомец из-под угла облачка", synth(result_pet=(200, 1200, 488, 1488)), dict(counter=True), {"pet over bubble"}),
-        ("питомец слева при 1,0", synth(result_pet=(48, 1344, 336, 1632)), dict(counter=True), {"pet not right of resident"}),
+        ("1b1-2 при 1,3: перед жителем, хотя облачко помещается", synth(big=True, job_result=(340, 789, 1056, 1608)), dict(big=True, counter=True),
+         {"pet in front though bubble fits"}),
+        ("1,3: перед жителем, облачко = потолок + 2 px", synth(big=True, job_result=(340, 772, 1056, 1608)), dict(big=True, counter=True),
+         {"pet in front though bubble fits"}),
+        ("1,3: справа, облачко = потолок − 2 px", synth(big=True, fits=True, job_result=(340, 464, 1056, 1296)), dict(big=True, counter=True),
+         {"pet right but bubble at side ceiling"}),
+        ("всегда справа: облачко у потолка справа", synth(big=True, fits=True, job_result=(340, 462, 1056, 1296)), dict(big=True, counter=True),
+         {"pet right but bubble at side ceiling"}),
+        ("справа при облачке перед жителем (подрезан им)", synth(big=True, result_pet=(744, 1608, 1032, 1641)), dict(big=True, counter=True),
+         {"pet right but bubble at side ceiling", "pet not on floor"}),
+        ("перед жителем при 1,0, облачко помещается", synth(result_pet=(48, 1386, 336, 1641)), dict(counter=True), {"pet in front though bubble fits"}),
+        ("питомец не опущен (1b1-2)", synth(result_pet=(744, 1344, 1032, 1632)), dict(counter=True), {"pet not on floor", "pet bottom not at buttons"}),
+        ("питомец опущен на 28 dp", synth(result_pet=(744, 1428, 1032, 1641)), dict(counter=True), {"pet not on floor"}),
+        ("кадр питомца кончается на полу", synth(result_pet=(744, 1386, 1032, 1632)), dict(counter=True), {"pet bottom not at buttons"}),
+        ("питомец на облачке (подрезан)", synth(result_pet=(744, 1296, 1032, 1488)), dict(counter=True), {"pet not on floor", "pet bottom not at buttons"}),
+        ("питомец на полу, облачко ниже его верха", synth(job_result=(361, 800, 1056, 1400)), dict(counter=True), {"pet over bubble"}),
         ("кадр 240 dp при 1,0", synth(result_resident=(0, 912, 535, 1632), result_tail=tail_at(1178)), dict(counter=True), {"resident frame > 232 dp"}),
-        ("--big с питомцем справа (подрезан облачком)", synth(big=True, result_pet=(744, 1608, 1032, 1632)), dict(big=True, counter=True), {"pet not in front of resident"}),
-        ("кадр 232 при --big", synth(big=True, job_result=(361, 350, 1056, 1608), result_resident=(0, 936, 535, 1632), result_tail=(319, 1160, 367, 1226)),
+        ("кадр 232 при --big", synth(big=True, job_result=(361, 599, 1056, 1608), result_resident=(0, 936, 535, 1632), result_tail=(319, 1160, 367, 1226)),
          dict(big=True, counter=True), {"resident frame > 216 dp"}),
+        ("нет шапки hud2", synth(hud2=None), dict(counter=True), {"no nodes: hud2"}),
         ("нет хвоста", synth(result_tail=None), dict(counter=True), {"no nodes: result_tail"}),
         ("хвост 86 px в высоту", synth(result_tail=(319, 1150, 367, 1236)), dict(counter=True), {"tail size"}),
         ("хвост справа", synth(result_tail=(1008, 1160, 1056, 1226)), dict(counter=True), {"tail not on bubble left edge"}),
