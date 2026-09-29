@@ -352,11 +352,13 @@ private fun ShopScene(
     val resident = vm.tc.residents.firstOrNull { it.id == place.resident }
     val order = vm.ordersAt(place.id).firstOrNull()
     val job = order?.let { o -> vm.tc.jobs.firstOrNull { it.id == o.params.job } }
-    val talk = order != null || greet
-    // the seller's bubble in the empty left slot of the board over the counter (макет 1); no such slot or any font above 1.0 —
-    // on the floor, up to 240 dp (at 1.15 the slot of 124 dp broke words and the bubble grew over the tag above)
+    // the seller's bubble only over the head, in the empty left slot of the board over the counter (макет 1; owner 2026-09-29:
+    // a bubble on the floor slid under the screen at 1.3 and pointed at the floor): the order at any font, the greeting only
+    // at 1.0 (at 1.15 its words broke in the 124 dp slot); no slot — no greeting, an order goes to the floor row
     val scaled = LocalDensity.current.fontScale > 1f
-    val inSlot = talk && !scaled && rows.size >= 2 && rows[rows.size - 2][0] == null
+    val slotFree = rows.size >= 2 && rows[rows.size - 2][0] == null
+    val inSlot = slotFree && (order != null || (greet && !scaled))
+    val onFloor = order != null && !slotFree
     BoxWithConstraints(modifier.fillMaxWidth()) {
         val w = maxWidth
         Column {
@@ -406,13 +408,13 @@ private fun ShopScene(
                     val pl = m.measure(Constraints())
                     layout(0, 0) { pl.place((-46).dp.roundToPx(), -(SELLER - 10.dp).roundToPx()) }
                 })
-                // 10 dp up onto the counter's lip: Foma's three-line greeting stays whole over the bottom of 360 × 640 at 1.0
+                // 10 dp up onto the counter's lip
                 FlowRow(
                     Modifier.offset(y = (-10).dp).fillMaxWidth().padding(start = 92.dp, end = 12.dp, top = 2.dp, bottom = 12.dp),
                     horizontalArrangement = Arrangement.SpaceBetween, verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     // 136 dp: the bubble and «Ещё 9» share one line at 1.0 on 360 dp (макет 2); above 1.0 they take two lines
-                    if (talk && !inSlot) SellerBubble(vm, resident, order, job, Tail.LEFT, Modifier.padding(end = 8.dp).widthIn(max = if (scaled) 240.dp else 136.dp))
+                    if (onFloor) SellerBubble(vm, resident, order, job, Tail.LEFT, Modifier.padding(end = 8.dp).widthIn(max = if (scaled) 240.dp else 136.dp))
                     if (job != null && vm.shiftQuote(job.id).canPlay) {
                         Crates()
                         GameButton("Начать смену", style = ButtonStyle.PRIMARY, minHeight = 48.dp) { vm.startRound(job.id) }
