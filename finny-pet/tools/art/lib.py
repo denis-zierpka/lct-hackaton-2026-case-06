@@ -1,4 +1,5 @@
-"""Shared Blender helpers for Finny's toy-style renders (pets, props, room).
+"""Shared Blender helpers for Finny's toy-style renders (props, UI props, room, places, facades);
+pet.py does not import it and keeps its own copy of the scene and studio lights.
 
 Style contract (keep every asset consistent):
   * primitives + subdivision, no hard edges: `smooth()` on meshes, `cone()` gets a bevel
@@ -10,10 +11,11 @@ Style contract (keep every asset consistent):
 Import from a script run inside Blender:
     import sys, os; sys.path.insert(0, os.path.dirname(os.path.abspath(__file__))); from lib import *
 """
-import bpy, math
+import bpy, math, os
 from mathutils import Vector
 
 MATS = {}
+FONT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "montserrat_extrabold.ttf")  # static cut of the app font
 
 
 def hexc(h, a=1.0):
@@ -27,18 +29,24 @@ def mix(c1, c2, t):
 
 
 def reset_scene(samples=96, size=512, width=None, height=None):
-    """Fresh scene: Cycles on Metal GPU (CPU fallback), transparent background, PNG RGBA."""
+    """Fresh scene: Cycles on GPU if available (CPU fallback), transparent background, PNG RGBA."""
     MATS.clear()
     bpy.ops.wm.read_factory_settings(use_empty=True)
     scene = bpy.context.scene
     scene.render.engine = "CYCLES"
+    scene.cycles.device = "CPU"
     prefs = bpy.context.preferences.addons["cycles"].preferences
-    try:
-        prefs.compute_device_type = "METAL"
-        for d in prefs.devices: d.use = True
-        scene.cycles.device = "GPU"
-    except Exception:
-        scene.cycles.device = "CPU"
+    for kind in ("OPTIX", "CUDA", "HIP", "ONEAPI", "METAL"):  # first GPU backend with a device wins, else CPU
+        try:
+            prefs.compute_device_type = kind
+            gpus = [d for d in prefs.get_devices_for_type(kind) if d.type == kind]
+        except (TypeError, ValueError):  # backend not built for this OS
+            continue
+        if gpus:
+            for d in prefs.devices: d.use = d.type == kind
+            scene.cycles.device = "GPU"
+            break
+    print("cycles device:", prefs.compute_device_type if scene.cycles.device == "GPU" else "CPU", flush=True)
     scene.cycles.samples = samples
     scene.cycles.use_denoising = True
     scene.render.film_transparent = True
@@ -140,6 +148,70 @@ def text3d(name, txt, loc, size, mat, extrude=0.06, rot=(math.radians(90), 0, 0)
     td.align_x = align; td.bevel_depth = size * 0.02
     o = bpy.data.objects.new(name, td); bpy.context.collection.objects.link(o)
     o.location = loc; o.rotation_euler = rot; td.materials.append(mat); return o
+
+
+# Interior shell (room.py, place.py): floor is z = 0, the back wall stands at y = wall_y, x is squeezed by k for
+# portrait framing (k = 1: landscape). Materials come from the caller, so every place keeps its own colours.
+def plank_floor(mats, k=1.0, n=9, pitch=0.8, y0=-11.0, y1=5.0):
+    """Planks running towards the back wall (perspective lines), 2n + 1 of them, tints cycle through `mats`."""
+    for i in range(-n, n + 1):
+        box("plank", (i * pitch * k, (y0 + y1) / 2, -0.06), ((pitch - 0.02) * k, y1 - y0, 0.12), mats[abs(i) % len(mats)], bevel=0.015)
+
+
+def shell_walls(m_wall, m_side, m_skirt, k=1.0, wall_y=3.0, half=5.2, height=14.0, depth=10.0, reach=12.0, window=None, back=True):
+    """Back wall (solid, or around a `window` hole (half-width, bottom z, top z) — half-width already squeezed),
+    side walls at x = ±half·k running `depth` towards the camera, white skirting. back=False: no back wall and
+    no back skirting (outdoor places show sky/river there). `reach` = how far the back wall runs past the hole."""
+    h, r = height, reach * k
+    if back and window:
+        ww, z0, z1 = window
+        box("wall_l", (-r / 2 - ww, wall_y + 0.15, h / 2), (r, 0.3, h), m_wall, bevel=0)
+        box("wall_r", (r / 2 + ww, wall_y + 0.15, h / 2), (r, 0.3, h), m_wall, bevel=0)
+        box("wall_b", (0, wall_y + 0.15, z0 / 2), (2 * ww, 0.3, z0), m_wall, bevel=0)
+        box("wall_t", (0, wall_y + 0.15, (z1 + h) / 2), (2 * ww, 0.3, h - z1), m_wall, bevel=0)
+    elif back:
+        box("wall_back", (0, wall_y + 0.15, h / 2), (2 * r, 0.3, h), m_wall, bevel=0)
+    for sx in (-1, 1):
+        box("side", (half * k * sx, wall_y - depth / 2, h / 2), (0.3, depth, h), m_side, bevel=0)
+        box("skirt_s", ((half - 0.15) * k * sx, wall_y - depth / 2, 0.11), (0.06, depth, 0.24), m_skirt, bevel=0.01)
+    if back:
+        box("skirt", (0, wall_y - 0.03, 0.11), ((2 * half - 0.2) * k, 0.07, 0.24), m_skirt, bevel=0.01)
+
+
+def awning(mats, x0, x1, y, z, depth=2.4, slope=30, n=9, drop=0.4):
+    """Striped canopy (places, facades): n stripes across x0..x1, back edge at (y, z), sloping down towards the camera
+    by `slope` degrees over `depth`, a valance of height `drop` with round scallops at the front edge. Stripe colours
+    cycle through `mats`. Returns (y, z) of the valance centre (where a sign is mounted)."""
+    w, a = (x1 - x0) / n, math.radians(slope)
+    yf, zf = y - depth * math.cos(a), z - depth * math.sin(a)
+    for i in range(n):
+        x, m = x0 + (i + 0.5) * w, mats[i % len(mats)]
+        box("awning", (x, (y + yf) / 2, (z + zf) / 2), (w, depth, 0.08), m, rot=(a, 0, 0), bevel=0.03)
+        box("valance", (x, yf, zf - drop / 2), (w, 0.08, drop), m, bevel=0.03)
+        sphere("scallop", (x, yf, zf - drop), w / 2, (1, 0.07 / w, 1), m)  # y radius 0.035: inside the 0.08 valance
+    return yf, zf - drop / 2
+
+
+def sign(loc, w, h, m_board, text="", m_text=None, m_rim=None):
+    """Board facing -Y centred at `loc`, optional rim, optional text in Montserrat ExtraBold (FONT: static cut of the
+    app font, Cyrillic) fitted to 80 % of the board width. The rounded-bevel text is turned into a mesh and
+    voxel-remeshed (voxel = 0.007 × letter height): the overlapping glyph contours merge, no loops or seams."""
+    box("sign", loc, (w, 0.14, h), m_board, bevel=min(w, h) * 0.12)
+    if m_rim: box("sign_rim", (loc[0], loc[1] + 0.03, loc[2]), (w + 0.12, 0.12, h + 0.12), m_rim, bevel=min(w, h) * 0.14)
+    if not text: return None
+    t = text3d("sign_text", text, (loc[0], loc[1] - 0.09, loc[2]), h * 0.62, m_text, extrude=0.02)
+    t.data.font = bpy.data.fonts.load(FONT, check_existing=True); t.data.align_y = "CENTER"
+    t.data.space_character = 1.25; t.data.bevel_depth = h * 0.012  # tracking + a thin bevel: letters ≥ 2 px apart at 1:1
+    me = bpy.data.meshes.new_from_object(t.evaluated_get(bpy.context.evaluated_depsgraph_get()))
+    me.materials.clear(); me.materials.append(m_text)
+    at = t.location.copy(), t.rotation_euler.copy()
+    bpy.data.objects.remove(t)
+    o = bpy.data.objects.new("sign_text", me); bpy.context.collection.objects.link(o)
+    o.location, o.rotation_euler = at
+    xs, ys = [v.co.x for v in me.vertices], [v.co.y for v in me.vertices]  # glyphs lie in local XY
+    r = o.modifiers.new("remesh", "REMESH"); r.mode = "VOXEL"; r.voxel_size = 0.007 * (max(ys) - min(ys)); r.use_smooth_shade = True
+    if max(xs) - min(xs) > w * 0.8: o.scale = [w * 0.8 / (max(xs) - min(xs))] * 3
+    return o
 
 
 def _track(o, target):

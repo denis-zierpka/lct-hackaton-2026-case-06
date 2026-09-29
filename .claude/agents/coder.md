@@ -29,13 +29,18 @@ hooks:
    Gradle запускается из `finny-pet/`: `cd finny-pet && ./gradlew ...`.
 5. В отчёте приводи фактические exit code, а не пересказ. Не запускал — так и пиши.
 
-## Что тебе физически запрещено (блокируется хуком, не полагайся на память)
+## Что тебе запрещено (не полагайся на память)
 
-- писать в любой файл вне `allow` из `.claude/task-scope.json`
-- трогать `app/src/test/`, `*.gradle.kts`, `gradle/`, `gradle.properties`,
-  `proguard-rules.pro`, конфиги lint, `.claude/`
+Блокируется хуком:
+
+- `Edit`/`Write` в любой файл вне `allow` из `.claude/task-scope.json`
+- любая запись в пути из `protect` скоупа (базовый protect: `app/src/test/`,
+  `*.gradle.kts`, `gradle/`, `gradle.properties`, `proguard-rules.pro`, `.claude/`),
+  в том числе через `sed -i`, `>`, `tee`, `rm`, `mv`, `cp`, `python -c`, `node -e`
 - `git commit`, `git reset`, `git checkout`, `git restore`, `git stash`, `git push`
-- обходить запрет через `sed -i`, `>`, `tee`, `rm`, `mv`, `cp`, `python -c`, `node -e`
+
+Запрещено спекой, ловит приёмка (`git diff --name-only`), а не хук: shell-запись в
+прочие файлы вне `allow`, правка конфигов lint.
 
 Если тебе кажется, что задачу нельзя решить без изменения запрещённого файла —
 это `STATUS: BLOCKED`, а не повод искать обход. Такой ответ считается правильным

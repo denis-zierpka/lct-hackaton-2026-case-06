@@ -88,20 +88,27 @@ EOF
 ## Задача, затрагивающая контент (`content.json`)
 
 ```
-1. ./gradlew testClassicDebugUnitTest                        -> exit 0 (ContentTest читает реальный файл)
+1. ./gradlew testClassicDebugUnitTest                        -> exit 0 (ContentTest и ContentValidationTest
+   читают реальный файл; он объявлен входом задачи тестов — правка одного контента их перезапускает,
+   WORKFLOW правило №25; в логе не должно быть `testClassicDebugUnitTest UP-TO-DATE`)
 2. python3 -c "import json;json.load(open('app/src/main/assets/content/content.json'))" -> exit 0
 3. git diff --name-only <BASE> -- app/src/main/java/         -> пусто (контент без правки кода, ТЗ 2.5.14)
 ```
 
 ## Релизная сборка
 
-Подпись требует `keystore.properties` и ключа вне репозитория — у кодера их нет и
-не должно быть. Релиз собирает **оркестратор или сеньор**, не агент:
+Сдаётся вариант `game`. Боевая подпись — `keystore.properties` или переменные
+окружения `FINNY_*` с ключом вне репозитория; у кодера их нет и не должно быть. Без
+них сборка проходит, но APK подписан debug-ключом: для промежуточной сдачи (ТЗ 7.1) debug
+допустим (1.3.0 и 1.4.0 подписаны им), для финала — только постоянный ключ. Релиз собирает
+**оркестратор или сеньор**, не агент (на Windows — `gradlew.bat` вместо `./gradlew`):
 
 ```
-./gradlew assembleClassicRelease                             -> exit 0
-apksigner verify --print-certs app/build/outputs/apk/classic/release/*.apk -> exit 0
+./gradlew assembleGameRelease                                -> exit 0
+./gradlew :app:assembleClassicDebug :app:assembleClassicRelease -> exit 0
+apksigner verify --print-certs app/build/outputs/apk/game/release/*.apk -> exit 0
 aapt2 dump badging <apk> | grep uses-permission               -> только согласованные
+aapt2 dump badging <apk> | grep "versionCode='<N>'"           -> совпадение (N — из build.gradle.kts)
 ```
 
 ## Чего в ACCEPTANCE быть не должно

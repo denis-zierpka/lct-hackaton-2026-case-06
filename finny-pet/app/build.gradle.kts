@@ -23,8 +23,8 @@ android {
         applicationId = "ru.finny.pet"
         minSdk = 26
         targetSdk = 36
-        versionCode = 4
-        versionName = "1.3.0"
+        versionCode = 5
+        versionName = "1.4.0"
     }
 
     // Two editions from one code base. "game" is the submitted app and owns the permanent package
@@ -71,6 +71,12 @@ android {
         compose = true
         buildConfig = true
     }
+}
+
+// JVM tests read content.json straight from src/main/assets (TestContent): declare it an input,
+// otherwise a content-only change leaves the test task UP-TO-DATE with stale results (WORKFLOW rule 25).
+tasks.withType<Test>().configureEach {
+    inputs.dir("src/main/assets/content").withPathSensitivity(PathSensitivity.RELATIVE).withPropertyName("content")
 }
 
 dependencies {

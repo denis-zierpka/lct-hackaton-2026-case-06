@@ -71,12 +71,12 @@ class Economy(val content: Content) {
 
     // ---------- shop ----------
 
-    fun buy(s: GameState, itemId: String): Outcome {
+    fun buy(s: GameState, itemId: String, price: Int = content.item(itemId).price): Outcome {
         val item = content.item(itemId)
         val pet = s.pet ?: return Outcome.Error("Сначала создай питомца")
         if (!s.plan.confirmed) return Outcome.Error("Сначала составь план на неделю", listOf("Открой «План» на главном экране"))
-        if (item.price > s.balance) {
-            val missing = item.price - s.balance
+        if (price > s.balance) {
+            val missing = price - s.balance
             val hints = mutableListOf<String>()
             if (availableTasks(s).isNotEmpty()) hints += "Выполни задание — за него дают монеты"
             content.items
@@ -85,16 +85,16 @@ class Economy(val content: Content) {
                 ?.let { hints += "Есть дешевле: ${it.title} за ${coins(it.price, Case.ACC)}" }
             if (s.savings >= missing) hints += "Можно взять из копилки, но цель отодвинется"
             hints += "Или подожди новую неделю — придут карманные деньги"
-            return Outcome.Error("Не хватает ${coins(missing, Case.GEN)}: цена ${item.price}, у тебя ${s.balance}", hints)
+            return Outcome.Error("Не хватает ${coins(missing, Case.GEN)}: цена ${price}, у тебя ${s.balance}", hints)
         }
-        val newBalance = s.balance - item.price
+        val newBalance = s.balance - price
         val newPet = pet.copy(
             hunger = clamp(pet.hunger + item.hunger),
             clean = clamp(pet.clean + item.clean),
             mood = clamp(pet.mood + item.mood),
         )
-        val purchases = s.purchases + Purchase(item.id, item.title, item.category, item.need, item.price)
-        val msgs = mutableListOf("Баланс: −${coins(item.price)}, осталось $newBalance.")
+        val purchases = s.purchases + Purchase(item.id, item.title, item.category, item.need, price)
+        val msgs = mutableListOf("Баланс: −${coins(price)}, осталось $newBalance.")
         if (item.hunger != 0) msgs += "Сытость ${signed(item.hunger)} (теперь ${newPet.hunger})."
         if (item.clean != 0) msgs += "Чистота ${signed(item.clean)} (теперь ${newPet.clean})."
         if (item.mood != 0) msgs += "Настроение ${signed(item.mood)} (теперь ${newPet.mood})."
@@ -111,7 +111,7 @@ class Economy(val content: Content) {
             balance = newBalance,
             pet = newPet,
             purchases = purchases,
-            ledger = s.ledger + LedgerEntry("Покупка: ${item.title}", -item.price),
+            ledger = s.ledger + LedgerEntry("Покупка: ${item.title}", -price),
         )
         return Outcome.Ok(state, msgs)
     }

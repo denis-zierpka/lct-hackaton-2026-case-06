@@ -34,14 +34,11 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.core.view.SoftwareKeyboardControllerCompat
 import ru.finny.pet.BuildConfig
-import ru.finny.pet.domain.Theme
-import ru.finny.pet.domain.Case
 import ru.finny.pet.domain.Economy
 import ru.finny.pet.game.GameViewModel
 import ru.finny.pet.game.systemAnimates
 import ru.finny.pet.game.ui.ButtonStyle
 import ru.finny.pet.game.ui.G
-import ru.finny.pet.game.ui.GameBar
 import ru.finny.pet.game.ui.GameButton
 import ru.finny.pet.game.ui.GameTextField
 
@@ -93,7 +90,7 @@ fun ParentScreen(vm: GameViewModel) {
         if (unlocked) {
             confirm?.let { kind ->
                 val (title, lines) = when (kind) {
-                    "test" -> "Создать тестовый профиль?" to listOf("Текущий прогресс будет стёрт.", "Включится демо-режим: все задания открыты, недели идут подряд.", "Затем нужно заново создать питомца — как при первом запуске.")
+                    "test" -> "Создать тестовый профиль?" to listOf("Текущий прогресс будет стёрт.", "Включится демо-режим: недели идут подряд, все события — на доске.", "Затем нужно заново создать питомца — как при первом запуске.")
                     "reset" -> "Сбросить профиль?" to listOf("Питомец, прогресс, покупки и копилка обнулятся.", "Настройки сохранятся.")
                     else -> "Удалить профиль и данные?" to listOf("Файл с данными будет очищен полностью.", "Это действие нельзя отменить.")
                 }
@@ -103,9 +100,8 @@ fun ParentScreen(vm: GameViewModel) {
                 }, onDismiss = { confirm = null })
             }
             bonus?.let { i ->
-                val e = vm.economy
-                val reason = vm.content.parentBonusReasons[i]
-                ConfirmPanel("Начислить ${Economy.coins(e.rules.parentBonusAmount, Case.ACC)}?", listOf("За: «$reason»", "Монеты появятся у ребёнка сразу, в журнале будет запись."), "Начислить",
+                val reason = vm.tc.parentBonusReasons[i]
+                ConfirmPanel("Начислить ${vm.content.rules.parentBonusAmount} монет?", listOf("За: «$reason»", "Придёт в новом конверте ребёнка"), "Начислить",
                     onConfirm = { bonus = null; vm.parentBonus(i) }, onDismiss = { bonus = null })
             }
         }
@@ -128,22 +124,17 @@ private fun ParentPanel(vm: GameViewModel, onConfirm: (String) -> Unit, onBonus:
                 if (pet == null) Text("Профиль ещё не создан.", style = MaterialTheme.typography.bodyLarge, color = G.ink)
                 else {
                     Text("Питомец ${pet.name}, стадия «${e.stageTitle(pet.growth)}», игровая неделя ${s.period}. Завершено недель: ${s.history.size}. Целей достигнуто: ${s.achievedGoals.size}.", style = MaterialTheme.typography.bodyMedium, color = G.ink)
-                    Theme.entries.forEach { th ->
-                        val done = e.completedTasks(s).count { it.first.theme == th }
-                        val total = vm.content.tasks.count { it.theme == th }
-                        GameBar("${th.title}: $done из $total", done, th.color(), max = total.coerceAtLeast(1))
-                    }
                     if (s.history.isNotEmpty()) Text("Недель с хорошим балансом решений: ${s.history.count { it.score >= 2 }} из ${s.history.size}.", style = MaterialTheme.typography.bodyMedium, color = G.ink)
                 }
                 // 2.5.12: coins for deeds, limited per week; each grant is a ledger entry the child sees
                 Label("Бонус ребёнку")
                 val left = e.parentBonusesLeft(s)
-                Text("Бонусов в неделю: до ${e.rules.parentBonusPerPeriod}, каждый — +${Economy.coins(e.rules.parentBonusAmount)}. За дела, а не за оценки. Осталось на этой неделе: $left.", style = MaterialTheme.typography.bodyMedium, color = G.ink)
+                Text("Бонусов в неделю: до ${e.rules.parentBonusPerPeriod}, каждый — +${Economy.coins(e.rules.parentBonusAmount)}. За дела, а не за оценки. Бонус придёт в новом конверте ребёнка. Осталось на этой неделе: $left.", style = MaterialTheme.typography.bodyMedium, color = G.ink)
                 when {
                     !s.hasProfile -> Text("Бонус можно начислить, когда питомец создан.", style = MaterialTheme.typography.bodyMedium, color = G.inkSoft)
                     left == 0 -> Text("Все бонусы этой недели начислены. Новые — со следующей игровой недели.", style = MaterialTheme.typography.bodyMedium, color = G.inkSoft)
                 }
-                vm.content.parentBonusReasons.forEachIndexed { i, reason ->
+                vm.tc.parentBonusReasons.forEachIndexed { i, reason ->
                     GameButton(reason, Modifier.fillMaxWidth(), style = ButtonStyle.PAPER, enabled = s.hasProfile && left > 0, minHeight = 48.dp) { onBonus(i) }
                 }
             }, right = {
@@ -152,7 +143,7 @@ private fun ParentPanel(vm: GameViewModel, onConfirm: (String) -> Unit, onBonus:
                 SettingRow("Музыка", "Фоновая мелодия", s.music) { vm.setMusic(it) }
                 // off also when the system «remove animations» is on; that case can't be toggled from here
                 SettingRow("Анимации", if (sysAnimates) "Движение питомца и эффекты" else "Выключены в настройках Android", s.animations, enabled = sysAnimates) { vm.setAnimations(it) }
-                SettingRow("Демо-режим", "Все задания открыты сразу", s.demo) { vm.setDemo(it) }
+                SettingRow("Демо-режим", "Недели идут подряд, все события — на доске", s.demo) { vm.setDemo(it) }
                 Label("Профиль и данные")
                 Text("Все данные хранятся только на этом устройстве в одном файле. Игра не собирает персональные данные, не выходит в интернет и не запрашивает разрешений.", style = MaterialTheme.typography.bodySmall, color = G.inkSoft)
                 GameButton("Создать тестовый профиль (демо)", Modifier.fillMaxWidth(), style = ButtonStyle.PRIMARY, minHeight = 48.dp) { onConfirm("test") }

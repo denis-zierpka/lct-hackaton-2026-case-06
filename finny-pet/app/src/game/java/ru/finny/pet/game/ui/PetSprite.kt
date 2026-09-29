@@ -147,10 +147,8 @@ fun PetSprite(
 }
 
 /** Registers the centre of this composable as a particle target with the given name. */
-fun Modifier.particleTarget(controller: ParticleController, name: String): Modifier = this.then(particleTargetModifier(controller, name))
-
-fun particleTargetModifier(controller: ParticleController, name: String): Modifier =
-    Modifier.onGloballyPositioned { c ->
+fun Modifier.particleTarget(controller: ParticleController, name: String): Modifier =
+    onGloballyPositioned { c ->
         val p = c.positionInRoot()
         controller.target(name, Offset(p.x + c.size.width / 2f, p.y + c.size.height / 2f))
     }

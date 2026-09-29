@@ -9,7 +9,7 @@
 ```
 TASK: <ID>
 BASE: <sha коммита, от которого считается диff>
-BRANCH: task/<ID>-<slug>
+BRANCH: feat/<пак> (ветка пака; задача — коммиты test(<ID>) и <ID>)
 
 ## КОНТЕКСТ
 <Максимум 3 предложения. Зачем это нужно и куда встраивается.
@@ -52,13 +52,17 @@ protect: базовый список из docs/WORKFLOW.md «Базовый prot
   1. ./gradlew testClassicDebugUnitTest            -> exit 0
   2. tests = <было> + <N>, skipped = 0 (подсчёт по XML)
   3. ./gradlew assembleClassicDebug assembleGameDebug -> exit 0
-  4. ./gradlew lintClassicDebug lintGameDebug      -> 0 ошибок, предупреждений ≤ 9 / 10
+  4. ./gradlew lintClassicDebug lintGameDebug      -> 0 ошибок, предупреждений без
+     сетевых проверок версий ≤ 5 / 6 (подсчёт — пресет, п. 4)
   5. git diff --name-only BASE -- app/src/test/    -> пусто
-  6. git diff --shortstat BASE                     -> не более <N> строк
+  6. git diff --name-only BASE -- '*.gradle.kts' gradle/ gradle.properties -> пусто
+  7. git diff --shortstat BASE                     -> не более <N> строк
+  8. grep -rnE '^import (android|androidx)' app/src/main/java/ru/finny/pet/domain/ -> пусто
 
 ## ЖИВАЯ ПРОВЕРКА (если задача меняет экран)
 Для сеньора: вариант сборки, экран, действие, что должно быть видно.
-Сессия экран не видит — без этой секции UI-задача не принимается.
+Экран сессия снимает сама (tools/adbui.sh); плавность, звук и итоговый прогон на устройстве — нет:
+без этой секции UI-задача не принимается.
 
 ## ПРИ БЛОКЕРЕ
 Не изобретать. Вернуть:

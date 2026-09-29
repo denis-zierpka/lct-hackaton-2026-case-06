@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Synthesize Finny's sound effects and music loop from scratch (stdlib only).
 
-Writes WAVs to a temp dir, converts with ffmpeg to OGG Vorbis into app/src/game/res/raw/.
+Writes WAVs to a temp dir, converts with ffmpeg to Ogg into app/src/game/res/raw/: Vorbis if ffmpeg
+has libvorbis, else Opus 64k (the committed files are Opus).
 Run: python3 tools/art/sounds.py
 """
 import math

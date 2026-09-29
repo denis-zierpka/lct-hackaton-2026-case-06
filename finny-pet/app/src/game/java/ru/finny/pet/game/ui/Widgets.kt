@@ -92,6 +92,7 @@ private fun ButtonStyle.content(): Color = when (this) {
  * Face ≥ [minHeight] tall, keep it ≥ 48 dp (ТЗ 3.6: touch targets ≥ 48 dp).
  * [selected] turns it into one option of a choice: magenta + «✓» when chosen, paper otherwise, announced as selected.
  * [tight] is for a one-word label in a narrow tab: 14 sp and 8 dp side paddings keep the word on one line.
+ * [centered] puts the label in the middle of a button wider than its label (title screen); by default it sits at the start, like a list row.
  */
 @Composable
 fun GameButton(
@@ -104,6 +105,7 @@ fun GameButton(
     minHeight: Dp = 56.dp,
     selected: Boolean? = null,
     tight: Boolean = false,
+    centered: Boolean = false,
     onClick: () -> Unit,
 ) {
     val interaction = remember { MutableInteractionSource() }
@@ -126,6 +128,7 @@ fun GameButton(
                 drawRoundRect(edgeColor, topLeft = androidx.compose.ui.geometry.Offset(0f, e), size = androidx.compose.ui.geometry.Size(size.width, size.height - e), cornerRadius = androidx.compose.ui.geometry.CornerRadius(size.height / 2))
             }
             .padding(bottom = edge),
+        contentAlignment = if (centered) Alignment.Center else Alignment.TopStart,
     ) {
         Box(
             Modifier
@@ -274,7 +277,7 @@ fun TypewriterText(text: String, animate: Boolean, modifier: Modifier = Modifier
 
 /** Rounded speech bubble with a small tail at the bottom-left; the pet talks through it. */
 @Composable
-fun SpeechBubble(modifier: Modifier = Modifier, tailAtStart: Boolean = true, content: @Composable ColumnScope.() -> Unit) {
+fun SpeechBubble(modifier: Modifier = Modifier, tailAtStart: Boolean = true, tail: Boolean = true, content: @Composable ColumnScope.() -> Unit) {
     Box(modifier) {
         Column(
             Modifier
@@ -284,7 +287,7 @@ fun SpeechBubble(modifier: Modifier = Modifier, tailAtStart: Boolean = true, con
             verticalArrangement = Arrangement.spacedBy(8.dp),
             content = content,
         )
-        Canvas(Modifier.align(if (tailAtStart) Alignment.BottomStart else Alignment.BottomEnd).padding(start = 28.dp, end = 28.dp).size(22.dp, 14.dp).graphicsLayer { translationY = 12.dp.toPx() }) {
+        if (tail) Canvas(Modifier.align(if (tailAtStart) Alignment.BottomStart else Alignment.BottomEnd).padding(start = 28.dp, end = 28.dp).size(22.dp, 14.dp).graphicsLayer { translationY = 12.dp.toPx() }) {
             val p = Path().apply {
                 moveTo(0f, 0f); lineTo(size.width, 0f); lineTo(size.width * 0.35f, size.height); close()
             }

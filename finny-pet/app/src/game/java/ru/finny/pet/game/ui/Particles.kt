@@ -47,6 +47,8 @@ class ParticleController {
 
     fun target(name: String, at: Offset) { targets[name] = at }
     fun targetOf(name: String): Offset? = targets[name]
+    /** A new screen: targets of the old one are gone (TOWN-S1d §F — an effect plays only where both targets are). */
+    fun clearTargets() = targets.clear()
     val isEmpty: Boolean get() = ps.isEmpty()
 
     /** Coins fly from [from] to a named target along an arc, then vanish (the HUD number animates on its own). */

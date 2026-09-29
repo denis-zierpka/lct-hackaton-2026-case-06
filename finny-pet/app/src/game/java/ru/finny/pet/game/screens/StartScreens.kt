@@ -46,8 +46,6 @@ import androidx.compose.ui.unit.dp
 import ru.finny.pet.PetSprites
 import ru.finny.pet.R
 import ru.finny.pet.domain.Face
-import ru.finny.pet.domain.Case
-import ru.finny.pet.domain.Economy
 import ru.finny.pet.game.GameViewModel
 import ru.finny.pet.game.LocalAnimate
 import ru.finny.pet.game.LocalLayout
@@ -61,23 +59,25 @@ import ru.finny.pet.game.ui.GameTextField
 import ru.finny.pet.game.ui.Panel
 import ru.finny.pet.game.ui.PetSprite
 import ru.finny.pet.game.ui.SpeechBubble
+import ru.finny.pet.game.ui.TText
 import ru.finny.pet.game.ui.TypewriterText
 
 @Composable
 fun TitleScreen(vm: GameViewModel) {
     val s = vm.state
     val layout = LocalLayout.current
-    Box(Modifier.fillMaxSize().background(G.purpleDeep.copy(alpha = 0.45f))) {
+    // A1d2: the empty day shell is lighter — the pink subtitle 3,6 → 5,1 : 1 under 0.6 (GATE_QUEUE, A1d1 judges)
+    Box(Modifier.fillMaxSize().background(G.purpleDeep.copy(alpha = 0.6f))) {
         val body: @Composable () -> Unit = {
             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text("Питомец", style = MaterialTheme.typography.headlineMedium, color = G.pink)
                 Text("Финни", style = MaterialTheme.typography.displayMedium, color = Color.White)
                 Text("Копи, планируй, заботься", style = MaterialTheme.typography.bodyLarge, color = G.pink)
                 Spacer(Modifier.height(8.dp))
-                GameButton(if (s.hasProfile) "Продолжить" else "Играть", Modifier.widthIn(min = 220.dp), style = ButtonStyle.GOLD, minHeight = 60.dp) { vm.start() }
-                if (s.hasProfile) GameButton("Подсказка", Modifier.widthIn(min = 220.dp), style = ButtonStyle.GHOST, minHeight = 48.dp) { vm.navigate(Screen.Intro) }
-                GameButton("Для взрослого", Modifier.widthIn(min = 220.dp), style = ButtonStyle.GHOST, minHeight = 48.dp, icon = painterResource(R.drawable.ui_lock), iconSize = 24.dp) { vm.navigate(Screen.Parent) }
-                Text("Без регистрации. Данные остаются на устройстве.", style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.8f), textAlign = TextAlign.Center)
+                GameButton(if (s.hasProfile) "Продолжить" else "Играть", Modifier.widthIn(min = 220.dp), style = ButtonStyle.GOLD, minHeight = 60.dp, centered = true) { vm.start() }
+                if (s.hasProfile) GameButton("Подсказка", Modifier.widthIn(min = 220.dp), style = ButtonStyle.GHOST, minHeight = 48.dp, centered = true) { vm.navigate(Screen.Intro) }
+                GameButton("Для взрослого", Modifier.widthIn(min = 220.dp), style = ButtonStyle.GHOST, minHeight = 48.dp, icon = painterResource(R.drawable.ui_lock), iconSize = 24.dp, centered = true) { vm.navigate(Screen.Parent) }
+                Text("Без регистрации. Данные остаются на устройстве.", style = MaterialTheme.typography.bodySmall, color = Color.White, textAlign = TextAlign.Center)
             }
         }
         val pet = s.pet
@@ -95,19 +95,20 @@ fun TitleScreen(vm: GameViewModel) {
     }
 }
 
-private class Page(val text: String, val icons: List<Int>)
+/** An intro page (§D.11, §11 step 1): the pet's text, then icons, or cards «icon — words». */
+private class Page(val text: String, val icons: List<Int> = emptyList(), val cards: List<Pair<Int, String>> = emptyList())
 
-private fun introPages(allowance: Int) = listOf(
-    Page("Привет! Я твой питомец. Мне нужны еда, уход и радость. Ты решаешь, на что тратить монеты, а я показываю, что из этого вышло.", listOf(R.drawable.item_food_basic, R.drawable.item_care_shampoo, R.drawable.item_fun_ball)),
-    Page("Каждую неделю ты получаешь ${Economy.coins(allowance, Case.ACC)}. Их надо разделить на три части: обязательное, желаемое и копилка на мечту.", listOf(R.drawable.ui_lid_mandatory, R.drawable.ui_lid_optional, R.drawable.ui_lid_savings)),
-    Page("Ошибаться можно! После каждого решения я расскажу, что изменилось и почему. Не вышло на этой неделе — поправим на следующей.", listOf(R.drawable.ui_book, R.drawable.ui_gamepad, R.drawable.ui_trophy)),
+private val introPages = listOf(
+    Page("Помоги питомцу вырасти: заботься о нём и копи на мечту", listOf(R.drawable.item_food_basic, R.drawable.item_care_shampoo, R.drawable.ui_piggy)),
+    Page("", cards = listOf(R.drawable.ui_lid_mandatory to "Нужное — еда и мыло", R.drawable.ui_lid_optional to "Хочу — то, что радует", R.drawable.ui_lid_savings to "В копилку — на мечту")),
+    Page("Каждую неделю почтальон приносит конверт. Заработанное придёт в следующем", listOf(R.drawable.ui_purse, R.drawable.ui_coin, R.drawable.ui_bag)),
 )
 
 @Composable
 fun IntroScreen(vm: GameViewModel) {
     var page by rememberSaveable { mutableIntStateOf(0) }
     val s = vm.state
-    val pages = introPages(vm.content.rules.allowance)
+    val pages = introPages
     val p = pages[page]
     val layout = LocalLayout.current
     Box(Modifier.fillMaxSize().background(G.purpleDeep.copy(alpha = 0.45f))) {
@@ -121,9 +122,18 @@ fun IntroScreen(vm: GameViewModel) {
         val bubble: @Composable () -> Unit = {
             Column(Modifier.widthIn(max = 440.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 SpeechBubble(tailAtStart = layout.landscape) {
-                    TypewriterText(p.text, animate = LocalAnimate.current)
-                    Row(horizontalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterHorizontally), modifier = Modifier.fillMaxWidth()) {
+                    if (p.text.isNotEmpty()) TypewriterText(p.text, animate = LocalAnimate.current)
+                    if (p.icons.isNotEmpty()) Row(horizontalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterHorizontally), modifier = Modifier.fillMaxWidth()) {
                         p.icons.forEach { Image(painterResource(it), null, Modifier.size(56.dp)) }
+                    }
+                    p.cards.forEach { (icon, words) ->
+                        Row(Modifier.fillMaxWidth().background(G.paperTint, RoundedCornerShape(16.dp)).padding(8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Box(Modifier.size(48.dp)) {
+                                Image(painterResource(R.drawable.ui_jar), null, Modifier.align(Alignment.BottomCenter).size(44.dp))
+                                Image(painterResource(icon), null, Modifier.align(Alignment.TopCenter).size(26.dp))
+                            }
+                            TText(words, modifier = Modifier.weight(1f))
+                        }
                     }
                 }
                 Spacer(Modifier.height(8.dp))
