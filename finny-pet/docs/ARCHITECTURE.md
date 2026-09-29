@@ -7,7 +7,7 @@ Android-приложение без сервера. Один Gradle-модуль
 | `game` | `ru.finny.pet` | **сдаётся**: комната с питомцем, звуки, мини-игра |
 | `classic` | `ru.finny.pet.classic` | альтернативный вариант сборки (обычный интерфейс Material 3: [src/classic/](../app/src/classic/)), в сдачу не входит |
 
-Дальше описан только общий код и вариант `game` выпуска 1.4.0: с TOWN-S1d `game` работает на движке «Городка» (`domain/town`), `classic` — на `Economy` по правилам 1.3.0. Экраны `game` выпуска 1.3.0 (план, магазин, задания) и `FeedbackOverlay` — на теге `v1.3.0`.
+Дальше описан только общий код и вариант `game` выпуска 1.4.1: с TOWN-S1d `game` работает на движке «Городка» (`domain/town`), `classic` — на `Economy` по правилам 1.3.0. Экраны `game` выпуска 1.3.0 (план, магазин, задания) и `FeedbackOverlay` — на теге `v1.3.0`.
 
 ## Раскладка исходников
 
@@ -210,11 +210,11 @@ JVM-тесты (JUnit 4) в [app/src/test/java/ru/finny/pet/domain/](../app/src/
 | | |
 |---|---|
 | Инструменты | Gradle 9.4.1 (wrapper), AGP 9.2.1 со встроенной поддержкой Kotlin, Kotlin 2.4.20 (плагины compose и serialization), JDK 17 |
-| Android | minSdk 26 (Android 8.0), targetSdk и compileSdk 36; `versionCode 5`, `versionName 1.4.0` |
+| Android | minSdk 26 (Android 8.0), targetSdk и compileSdk 36; `versionCode 6`, `versionName 1.4.1` |
 | Библиотеки | Compose BOM 2026.06.01 (ui, material3, material3-adaptive-navigation-suite — использует только classic, material-icons-extended, ui-tooling-preview), activity-compose 1.12.4, lifecycle-viewmodel-compose 2.10.0, kotlinx-serialization-json 1.11.0; тесты — junit 4.13.2 |
 | Release | R8 (`isMinifyEnabled`, `isShrinkResources`), правила для сериализаторов — [app/proguard-rules.pro](../app/proguard-rules.pro). Подпись — `keystore.properties` или переменные `FINNY_*`; без них release подписывается debug-ключом с предупреждением |
 | Сдаваемый APK | `gradlew.bat :app:assembleGameRelease` → `app/build/outputs/apk/game/release/` |
 
 Пошаговая инструкция — [BUILD_AND_DEMO.md](BUILD_AND_DEMO.md).
 
-Актуально на ветку `feat/town` после TOWN-A1e2 (2026-09-29); `versionName` — 1.4.0 (`versionCode 5`); выпуск 1.4.0 — тег `v1.4.0`
+Актуально на выпуск 1.4.1 (2026-09-29, тег `v1.4.1`; код — TOWN-A1e2; `versionCode 6`); выпуск 1.4.0 — тег `v1.4.0`
