@@ -37,8 +37,8 @@
 | `sounds` | Boolean | `true` | Переключатель «Звуки» в разделе для взрослого: звуковые эффекты при действиях |
 | `music` | Boolean | `false` | Переключатель «Музыка» в разделе для взрослого: фоновая мелодия |
 | `bombs` | Int | `0` | Бомбочки для поля Match3: `+rules.quizBombReward` за верный ответ — в 1.3.0 на вопрос питомца, в `game` на «Загадку Бори» (`Town.answerQuestion`), только если пекарня — `MATCH3` (со среза 1а TOWN-J1 она `TRAY`, бомб загадка не даёт); минус использованные в завершённом раунде (в смене `MATCH3` — сверх бомб уровня `jobLevelBombs`) |
-| `miniGameEarned` | Int | `0` | Монеты из мини-игры 1.3.0 за неделю, не больше `rules.miniGameCap` ⟲; интерфейс ветки мини-игру 1.3.0 не вызывает — смена пекарни платит в `envelope` |
-| `quizResults` | List<`TaskResult`> | `[]` | Ответы на вопросы питомца 1.3.0 (`Economy.answerQuiz`; интерфейс ветки их не пишет, ответы на «Загадку Бори» — в `riddles`), `reward` всегда 0. Неверный ответ можно повторить, поэтому на вопрос бывает несколько записей |
+| `miniGameEarned` | Int | `0` | Монеты из мини-игры 1.3.0 за неделю, не больше `rules.miniGameCap` ⟲; интерфейс 1.4.0 мини-игру 1.3.0 не вызывает — смена пекарни платит в `envelope` |
+| `quizResults` | List<`TaskResult`> | `[]` | Ответы на вопросы питомца 1.3.0 (`Economy.answerQuiz`; интерфейс 1.4.0 их не пишет, ответы на «Загадку Бори» — в `riddles`), `reward` всегда 0. Неверный ответ можно повторить, поэтому на вопрос бывает несколько записей |
 | `parentBonusesThisPeriod` | Int | `0` | Число бонусов от взрослого за неделю ⟲. Растёт в `Town.parentBonus` — в `game` кнопки причин в разделе «Бонус ребёнку» для взрослого (`Economy.parentBonus` 1.3.0 интерфейс не вызывает); не больше `rules.parentBonusPerPeriod` |
 
 ⟲ — сбрасывается в `Economy.endPeriod` при завершении недели.
@@ -175,7 +175,7 @@
 | `TaskOption` | `text`: String; `correct`: Boolean; `explanation`: String | |
 | `GlossaryEntry` | `term`, `definition`: String | Справочник |
 | `QuizQuestion` | `id`: String; `theme`: `Theme`; `question`: String; `options`: List<String>; `correct`: Int (индекс); `explanation`: String | Вопрос питомца в комнате `game` 1.3.0 (`quiz`) и «Загадка Бори» (`town.quiz`); все поля обязательны |
-| `Chatter` | `idle`, `hungry`, `dirty`, `bored`, `proud`, `facts`: List<String> = [] | Реплики питомца в комнате `game` 1.3.0: `hungry`/`dirty`/`bored` — при показателе ниже 40, иначе `idle`, `facts` и подсказка следующего шага; `{pet}` → имя. В ветке `chatter` код не читает: у `game` реплики — `town.chatter` |
+| `Chatter` | `idle`, `hungry`, `dirty`, `bored`, `proud`, `facts`: List<String> = [] | Реплики питомца в комнате `game` 1.3.0: `hungry`/`dirty`/`bored` — при показателе ниже 40, иначе `idle`, `facts` и подсказка следующего шага; `{pet}` → имя. В 1.4.0 `chatter` код не читает: у `game` реплики — `town.chatter` |
 
 `parentBonusReasons` — причины бонуса от взрослого 1.3.0 (в `game` — `town.parentBonusReasons`, их берёт `Town.parentBonus`
 и пишет причину в конверт). `Economy.parentBonus` принимает индекс
@@ -254,4 +254,4 @@
 название — `rules.stageTitles[i]`, а если его нет — «Стадия N». За неделю `growth` растёт
 на `score` итога (0–3). По умолчанию `[0, 4, 9]` → «Малыш», «Подросток», «Взрослый».
 
-Актуально на ветку `feat/town`: код TOWN-S1d на a262f13 (2026-09-26, ревью PASS); отметки «1.3.0» — выпуск 1.3.0, `versionName` не менялся
+Актуально на выпуск 1.4.0 (2026-09-29); отметки «1.3.0» — выпуск 1.3.0

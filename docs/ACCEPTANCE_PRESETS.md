@@ -99,13 +99,16 @@ EOF
 
 Сдаётся вариант `game`. Боевая подпись — `keystore.properties` или переменные
 окружения `FINNY_*` с ключом вне репозитория; у кодера их нет и не должно быть. Без
-них сборка проходит, но APK подписан debug-ключом — годится для проверки, не для
-сдачи. Релиз собирает **оркестратор или сеньор**, не агент:
+них сборка проходит, но APK подписан debug-ключом: для промежуточной сдачи (ТЗ 7.1) debug
+допустим (1.3.0 и 1.4.0 подписаны им), для финала — только постоянный ключ. Релиз собирает
+**оркестратор или сеньор**, не агент (на Windows — `gradlew.bat` вместо `./gradlew`):
 
 ```
 ./gradlew assembleGameRelease                                -> exit 0
+./gradlew :app:assembleClassicDebug :app:assembleClassicRelease -> exit 0
 apksigner verify --print-certs app/build/outputs/apk/game/release/*.apk -> exit 0
 aapt2 dump badging <apk> | grep uses-permission               -> только согласованные
+aapt2 dump badging <apk> | grep "versionCode='<N>'"           -> совпадение (N — из build.gradle.kts)
 ```
 
 ## Чего в ACCEPTANCE быть не должно
