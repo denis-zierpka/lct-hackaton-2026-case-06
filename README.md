@@ -14,6 +14,13 @@
 | Презентация | [о команде и решении](ЛЦТ2026_Питомец_Финни_о_команде_и_решении.pptx) (PPTX, 15 МБ) |
 | Репозиторий | https://github.com/denis-zierpka/lct-hackaton-2026-case-06 |
 
+**Где что**
+
+- **Готовый APK** — [`finny-pet/release/finny-pet-1.4.3-release.apk`](finny-pet/release/finny-pet-1.4.3-release.apk), установка — [ниже](#установка-готового-apk)
+- **Сборка из исходников** — [раздел «Сборка из исходников»](#сборка-из-исходников): JDK 17, Android SDK 36, одна команда Gradle
+- **Документация** — в [`finny-pet/docs/`](finny-pet/docs/), список с описанием каждого документа — [раздел «Документация»](#документация)
+- **Демо для эксперта** — [раздел «Демо-режим»](#демо-режим-для-эксперта)
+
 ## Запуск
 
 ### Установка готового APK
@@ -63,7 +70,7 @@ adb install -r finny-pet/release/finny-pet-1.4.3-release.apk
 Полный сценарий показа по Приложению А ТЗ с тем, что видно на каждом шаге, —
 [BUILD_AND_DEMO.md](finny-pet/docs/BUILD_AND_DEMO.md#сценарий-демонстрации-приложение-а).
 
-### Сборка из исходников
+## Сборка из исходников
 
 Нужны JDK 17 и Android SDK (platform 36, build-tools 36.0.0). Android Studio не обязательна:
 wrapper сам скачает Gradle. Первой сборке нужен интернет, самому приложению — нет. Команды — из
@@ -81,6 +88,33 @@ gradlew.bat :app:testGameDebugUnitTest :app:assembleGameRelease
 экранируется: `sdk.dir=C\:/Users/<имя>/AppData/Local/Android/Sdk`. Готовый APK —
 `finny-pet/app/build/outputs/apk/game/release/app-game-release.apk`. Подпись своим ключом, lint,
 отладочная сборка и сброс профиля — [BUILD_AND_DEMO.md](finny-pet/docs/BUILD_AND_DEMO.md).
+
+## Документация
+
+В [`finny-pet/docs/`](finny-pet/docs/), по разделу 5 ТЗ:
+
+- [BUILD_AND_DEMO.md](finny-pet/docs/BUILD_AND_DEMO.md) — окружение, сборка, подпись, установка,
+  демо-режим, сценарий показа
+- [ARCHITECTURE.md](finny-pet/docs/ARCHITECTURE.md) — компоненты, поток данных, обновление контента
+- [DATA_MODEL.md](finny-pet/docs/DATA_MODEL.md) — профиль, контент, прогресс
+- [REQUIREMENTS_MATRIX.md](finny-pet/docs/REQUIREMENTS_MATRIX.md) — матрица требований
+- [ECONOMY.md](finny-pet/docs/ECONOMY.md) — формулы: монеты, банки, касса, смены, рост питомца
+- [CONTENT_MAP.md](finny-pet/docs/CONTENT_MAP.md) — темы, навыки, события, объяснения
+- [UX_ACCESSIBILITY.md](finny-pet/docs/UX_ACCESSIBILITY.md) — интерфейс и доступность
+- [PRIVACY_PERMISSIONS.md](finny-pet/docs/PRIVACY_PERMISSIONS.md) — разрешения, данные, удаление профиля
+- [TEST_CASES.md](finny-pet/docs/TEST_CASES.md) — тест-кейсы и отчёт о проверке
+- [LIMITATIONS_ROADMAP.md](finny-pet/docs/LIMITATIONS_ROADMAP.md) — ограничения и план до финала
+- [LICENSES.md](finny-pet/docs/LICENSES.md) — библиотеки, шрифты, изображения, звуки
+
+Ещё:
+
+- [QUESTIONS.md](finny-pet/docs/QUESTIONS.md) — вопросы заказчику
+- [USER_TESTING.md](finny-pet/docs/USER_TESTING.md) — протокол проверки с детьми и взрослыми
+- [RUSTORE_CARD.md](finny-pet/docs/RUSTORE_CARD.md) — черновик карточки RuStore
+- [finny-pet/CHANGELOG.md](finny-pet/CHANGELOG.md) — история выпусков
+- [docs/GAME_CONCEPT.md](docs/GAME_CONCEPT.md) — концепция игры
+- [docs/competencies.md](docs/competencies.md) — привязка механик к рамке компетенций
+- как велась разработка — [docs/WORKFLOW.md](docs/WORKFLOW.md)
 
 ## Об игре
 
@@ -226,33 +260,6 @@ gradlew.bat :app:testGameDebugUnitTest :app:assembleGameRelease
   придётся переустановить, и игра начнётся заново.
 
 Весь список и план до финала — [LIMITATIONS_ROADMAP.md](finny-pet/docs/LIMITATIONS_ROADMAP.md).
-
-## Документация
-
-В [`finny-pet/docs/`](finny-pet/docs/), по разделу 5 ТЗ:
-
-- [BUILD_AND_DEMO.md](finny-pet/docs/BUILD_AND_DEMO.md) — окружение, сборка, подпись, установка,
-  демо-режим, сценарий показа
-- [ARCHITECTURE.md](finny-pet/docs/ARCHITECTURE.md) — компоненты, поток данных, обновление контента
-- [DATA_MODEL.md](finny-pet/docs/DATA_MODEL.md) — профиль, контент, прогресс
-- [REQUIREMENTS_MATRIX.md](finny-pet/docs/REQUIREMENTS_MATRIX.md) — матрица требований
-- [ECONOMY.md](finny-pet/docs/ECONOMY.md) — формулы: монеты, банки, касса, смены, рост питомца
-- [CONTENT_MAP.md](finny-pet/docs/CONTENT_MAP.md) — темы, навыки, события, объяснения
-- [UX_ACCESSIBILITY.md](finny-pet/docs/UX_ACCESSIBILITY.md) — интерфейс и доступность
-- [PRIVACY_PERMISSIONS.md](finny-pet/docs/PRIVACY_PERMISSIONS.md) — разрешения, данные, удаление профиля
-- [TEST_CASES.md](finny-pet/docs/TEST_CASES.md) — тест-кейсы и отчёт о проверке
-- [LIMITATIONS_ROADMAP.md](finny-pet/docs/LIMITATIONS_ROADMAP.md) — ограничения и план до финала
-- [LICENSES.md](finny-pet/docs/LICENSES.md) — библиотеки, шрифты, изображения, звуки
-
-Ещё:
-
-- [QUESTIONS.md](finny-pet/docs/QUESTIONS.md) — вопросы заказчику
-- [USER_TESTING.md](finny-pet/docs/USER_TESTING.md) — протокол проверки с детьми и взрослыми
-- [RUSTORE_CARD.md](finny-pet/docs/RUSTORE_CARD.md) — черновик карточки RuStore
-- [finny-pet/CHANGELOG.md](finny-pet/CHANGELOG.md) — история выпусков
-- [docs/GAME_CONCEPT.md](docs/GAME_CONCEPT.md) — концепция игры
-- [docs/competencies.md](docs/competencies.md) — привязка механик к рамке компетенций
-- как велась разработка — [docs/WORKFLOW.md](docs/WORKFLOW.md)
 
 ## Структура репозитория
 
