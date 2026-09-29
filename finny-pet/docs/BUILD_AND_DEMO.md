@@ -302,7 +302,7 @@ python tools/art/import_sprites.py C:/tmp/pets
 | Скрипт | Команда | Что получается |
 |---|---|---|
 | `pet.py` | `<blender> -b -P tools/art/pet.py -- --residents <dir> [--only-resident marta]` | 9 жителей `res_<id>` по `town.residents` (своя палитра, силуэт взрослого, аксессуары и предметы ролей) |
-| `room.py` | `<blender> -b -P tools/art/room.py -- --all <dir>` | комната: альбом и портрет, день и вечер (PNG) |
+| `room.py` | `<blender> -b -P tools/art/room.py -- --all <dir>` (`--only room_port_day --out F.png`; `--sprites <dir>` — 7 `furn_*`) | комната: альбом и портрет, день и вечер (портрет — пустая оболочка), мебель `furn_*` (PNG) |
 | `place.py` | `<blender> -b -P tools/art/place.py -- --all <dir>` (`--place market --out F [--preview]`) | фоны мест `bg_<place>_port`: рынок, «У Фомы», пекарня (PNG RGB 1080 × 1920) |
 | `facade.py` | `<blender> -b -P tools/art/facade.py -- --all <dir>` (`--place market --out F`) | 7 фасадов карточек улицы `fac_<place>` 384 × 384 (PNG RGBA) |
 | `props.py` | `<blender> -b -P tools/art/props.py -- --all <dir>` (`--only pastry_croissant,… --out DIR`) | товары, цели, плитки мини-игры, монета, 6 изделий пекарни `pastry_*` (PNG; в WebP — `to_webp.py --size 256`) |

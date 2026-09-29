@@ -48,7 +48,7 @@
 | Что | Файлы | Генератор |
 |---|---|---|
 | Питомец: кот, зайка, щенок × 3 цвета × 3 стадии × 4 выражения | 108 WebP `pet_*` в `app/src/main/res/drawable-nodpi/` (общие для обоих вариантов) | `tools/art/pet.py` (Blender 5.2) → `tools/art/import_sprites.py` (WebP и `PetSprites.kt`) |
-| Комната: альбом и портрет, день и вечер | 4 WebP `room_*` в `app/src/game/res/drawable-nodpi/` | `tools/art/room.py` |
+| Комната: портрет день/вечер — пустая оболочка (TOWN-A1d1–A1d2), альбом — прежний рендер (A1h); мебель — 7 спрайтов | 4 WebP `room_*`, 7 WebP `furn_*` в `app/src/game/res/drawable-nodpi/` | `tools/art/room.py` (`--only room_port_*`, `--sprites`) → `tools/art/to_webp.py` (оболочки `--rgb`) |
 | Фоны мест «Городка»: рынок у реки, лавка «У Фомы», пекарня (портрет) | 3 WebP `bg_market_port`, `bg_foma_port`, `bg_bakery_port` там же | `tools/art/place.py` → `tools/art/to_webp.py --rgb` (TOWN-A1c) |
 | Жители «Городка»: Марта, Фома, Боря, Ося, Тоша, Степан, Кеша, Лиза, Ася (силуэт взрослого, своя палитра, аксессуары и предметы ролей — колпак, сумка, шапочка врача, берет и палитра, мяч, гаечный ключ, значок-монета — примитивы) | 9 WebP `res_*` там же (512 × 512; `res_borya` — 768 × 768 для крупного плана пекарни, решение № 45) | `tools/art/pet.py --residents` → `tools/art/to_webp.py` (TOWN-A1f) |
 | Товары, цели, плитки мини-игры, монета | 22 WebP там же: `item_*` (10), `goal_*` (5), `tile_*` (6), `ui_coin` | `tools/art/props.py` |
@@ -57,7 +57,7 @@
 | Иконки интерфейса: банка и крышки направлений бюджета, кошелёк, копилка, кубок, книга, замок, солнце, луна, геймпад, сумка, пузырь с вопросом | 14 WebP `ui_*` там же | `tools/art/uiprops.py` |
 | Иконка приложения — рендер 3D-котика на фирменном градиенте | `app/src/main/res/drawable-xxxhdpi/ic_launcher_foreground.png` (адаптивная иконка, фон `drawable/ic_launcher_background.xml`), `assets/icon/icon-512.png` для магазина | котик — `tools/art/pet.py` |
 
-Итого в `game/res/drawable-nodpi/` 66 файлов. Анимация питомца в `game` — код
+Итого в `game/res/drawable-nodpi/` 73 файла. Анимация питомца в `game` — код
 `game/ui/PetSprite.kt` (в `classic` — `ui/PetView.kt`).
 
 ## Звуки

@@ -13,7 +13,8 @@
                                                       этого места (bg_<place>_port; иной файл — все тексты); exit 1,
                                                       если среднее < 4,5 : 1, 10-й перцентиль < 3 : 1 или пересвет
                                                       (R и G ≥ 250) в полосах 0–31 % / 80–100 % > 5 %
-  python tools/art_check.py bg - - --selfcheck        самопроверка маски: белые карточки над белым окном комнаты не
+  python tools/art_check.py bg - - --selfcheck        самопроверка маски (эталон — старая комната screenshots/emu_b_room_port_day.webp,
+                                                      TOWN-A1d2): белые карточки над белым окном комнаты не
                                                       уходят фону (≤ 50 px), а сырая маска их отдаёт (≥ 1000 px)
   python tools/art_check.py bbox PNG [PNG …] [--ref x0,y0,x1,y1] [--tol 3] [--margin 2]
   python tools/art_check.py palette                   RESIDENT_COLORS из pet.py против town.residents и палитры питомца
@@ -203,7 +204,11 @@ def bg(path, out, *opt):
     import numpy as np
     from PIL import Image
     veil = float(opt[opt.index("--veil") + 1]) if "--veil" in opt else VEIL
-    room = np.asarray(Image.open(os.path.join(FP, "app/src/game/res/drawable-nodpi/room_port_day.webp")).convert("RGB")).astype(int)
+    # the mask compares the emu_b_* snapshots (taken on the old room) with that old room: TOWN-A1d2 replaced the shell in res
+    ref = os.path.join(FP, "screenshots/emu_b_room_port_day.webp")
+    if not os.path.exists(ref):
+        print("нет эталона маски", ref, "— git show 83667c6:finny-pet/app/src/game/res/drawable-nodpi/room_port_day.webp > этот путь"); return 1
+    room = np.asarray(Image.open(ref).convert("RGB")).astype(int)
     if "--selfcheck" in opt:
         return selfcheck(room)
     os.makedirs(out, exist_ok=True)
