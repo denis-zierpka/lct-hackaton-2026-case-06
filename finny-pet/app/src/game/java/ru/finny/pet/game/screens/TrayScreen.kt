@@ -95,6 +95,7 @@ import ru.finny.pet.game.ui.Pic
 import ru.finny.pet.game.ui.ResidentPic
 import ru.finny.pet.game.ui.TText
 import ru.finny.pet.game.ui.particleTarget
+import ru.finny.pet.game.ui.pastryRes
 
 // counter colours of the bakery mock (tools/mock_bakery.py), UI only
 private val CounterFront = Color(0xFFF4A261)
@@ -203,7 +204,7 @@ fun TrayScreen(vm: GameViewModel, modifier: Modifier) {
                                         .clickable(role = Role.Button, onClickLabel = "Положить на поднос") { vm.trayPut(id) }
                                         .semantics { contentDescription = title; if (k > 0) stateDescription = "на подносе: $k" },
                                     contentAlignment = Alignment.Center,
-                                ) { Pic(null, emoji(id), 56.dp) }
+                                ) { Pic(pastryRes(id), emoji(id), 56.dp) }
                             }
                         }
                     }
@@ -337,7 +338,7 @@ private fun TrayScene(vm: GameViewModel, r: TrayRound, host: String, shown: Int,
                                 .semantics { contentDescription = "$title на подносе" },
                             contentAlignment = Alignment.Center,
                         ) {
-                            PopIn(i, item, animate) { Pic(null, emoji(item), 40.dp) }
+                            PopIn(i, item, animate) { Pic(pastryRes(item), emoji(item), 40.dp) }
                         }
                     } else {
                         val short = vm.trayCue == TrayCue.SHORT
@@ -381,7 +382,7 @@ private fun TrayScene(vm: GameViewModel, r: TrayRound, host: String, shown: Int,
                         val ok = miss != null && k <= (total[id] ?: 0) - (left[id] ?: 0)
                         val gap = miss != null && !ok
                         Box(Modifier.size(s).drawBehind { if (gap) dashedCircle(G.purple, 3.dp) }) {
-                            Pic(null, emoji(id), s)
+                            Pic(pastryRes(id), emoji(id), s)
                             if (ok) Canvas(Modifier.align(Alignment.BottomEnd).size(20.dp)) {
                                 drawCircle(G.greenDark)
                                 val w = size.width

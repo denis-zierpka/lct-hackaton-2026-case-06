@@ -105,6 +105,17 @@ fun itemRes(id: String): Int? = when (id) {
     else -> null
 }
 
+/** Drawable of a bakery pastry (pastry_<menuId>, props.py), or null — then the pastry's emoji is drawn. */
+fun pastryRes(id: String): Int? = when (id) {
+    "croissant" -> R.drawable.pastry_croissant
+    "bread" -> R.drawable.pastry_bread
+    "baguette" -> R.drawable.pastry_baguette
+    "pretzel" -> R.drawable.pastry_pretzel
+    "donut" -> R.drawable.pastry_donut
+    "cupcake" -> R.drawable.pastry_cupcake
+    else -> null
+}
+
 /** Drawable of a dream: its own picture, the item's for «item:x», goal_custom for own and demo dreams, else null (emoji). */
 fun goalRes(id: String): Int? = when {
     id == "goal_scooter" -> R.drawable.goal_scooter

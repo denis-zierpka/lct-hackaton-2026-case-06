@@ -181,7 +181,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     fun home() { if (screen is Screen.Round && roundResult == null) finishRound() else navigate(Screen.Room) }
 
     fun back() {
-        if (screen is Screen.Round) { if (roundResult == null) finishRound() else closeRound(); return }
+        if (screen is Screen.Round) { if (roundResult == null) finishRound() else { lines.clear(); closeRound() }; return }
         if (stack.size > 1) stack.removeAt(stack.lastIndex)
         if (screen == Screen.Room && state.asleep) { stack.clear(); stack += Screen.Night }
         petLine = null

@@ -305,7 +305,7 @@ python tools/art/import_sprites.py C:/tmp/pets
 | `room.py` | `<blender> -b -P tools/art/room.py -- --all <dir>` | комната: альбом и портрет, день и вечер (PNG) |
 | `place.py` | `<blender> -b -P tools/art/place.py -- --all <dir>` (`--place market --out F [--preview]`) | фоны мест `bg_<place>_port`: рынок, «У Фомы», пекарня (PNG RGB 1080 × 1920) |
 | `facade.py` | `<blender> -b -P tools/art/facade.py -- --all <dir>` (`--place market --out F`) | 7 фасадов карточек улицы `fac_<place>` 384 × 384 (PNG RGBA) |
-| `props.py` | `<blender> -b -P tools/art/props.py -- --all <dir>` | товары, цели, плитки мини-игры, монета (PNG) |
+| `props.py` | `<blender> -b -P tools/art/props.py -- --all <dir>` (`--only pastry_croissant,… --out DIR`) | товары, цели, плитки мини-игры, монета, 6 изделий пекарни `pastry_*` (PNG; в WebP — `to_webp.py --size 256`) |
 | `uiprops.py` | `<blender> -b -P tools/art/uiprops.py -- --all <dir>` | иконки интерфейса (PNG) |
 | `smoke.py` | `<blender> -b -P tools/art/smoke.py -- <dir>/smoke.png` | проверка общих хелперов `lib.py` |
 | `sounds.py` | `python tools/art/sounds.py` (Linux — `python3`) | 13 эффектов и музыкальная петля сразу в `app/src/game/res/raw/*.ogg`; нужен `ffmpeg` в `PATH` (Vorbis, если в сборке ffmpeg есть `libvorbis`, иначе Opus) |
