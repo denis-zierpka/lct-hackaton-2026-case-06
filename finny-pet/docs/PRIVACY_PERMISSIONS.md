@@ -1,6 +1,6 @@
 # Разрешения, данные и защита ребёнка
 
-Как «Питомец Финни» выполняет ТЗ 3.4 (разрешения, секреты) и 3.5 (данные, защита ребёнка). Описан сдаваемый вариант game (`ru.finny.pet`, 1.4.1); classic использует тот же манифест и то же хранилище.
+Как «Питомец Финни» выполняет ТЗ 3.4 (разрешения, секреты) и 3.5 (данные, защита ребёнка). Описан сдаваемый вариант game (`ru.finny.pet`, 1.4.2); classic использует тот же манифест и то же хранилище.
 
 ## Кратко
 
@@ -35,12 +35,12 @@
 
 ```
 # Windows
-%LOCALAPPDATA%\Android\Sdk\build-tools\36.0.0\aapt2 dump permissions release\finny-pet-1.4.1-release.apk
+%LOCALAPPDATA%\Android\Sdk\build-tools\36.0.0\aapt2 dump permissions release\finny-pet-1.4.2-release.apk
 # Linux
-$ANDROID_HOME/build-tools/36.0.0/aapt2 dump permissions release/finny-pet-1.4.1-release.apk
+$ANDROID_HOME/build-tools/36.0.0/aapt2 dump permissions release/finny-pet-1.4.2-release.apk
 ```
 
-Ожидаемый вывод (1.3.0 проверен на `app/build/outputs/apk/game/release/app-game-release.apk`; у файлов сдачи 1.4.0 и 1.4.1 `aapt2 dump badging` показывает то же одно разрешение):
+Ожидаемый вывод (1.3.0 проверен на `app/build/outputs/apk/game/release/app-game-release.apk`; у файлов сдачи 1.4.0, 1.4.1 и 1.4.2 `aapt2 dump badging` показывает то же одно разрешение):
 
 ```
 package: ru.finny.pet
@@ -88,7 +88,7 @@ uses-permission: name='ru.finny.pet.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION'
 
 - Файлы `keystore.properties`, `*.jks`, `*.keystore`, `local.properties` перечислены в [`../.gitignore`](../.gitignore). В git лежит только шаблон [`../keystore.properties.example`](../keystore.properties.example): пароли пустые, путь к ключу и псевдоним — заглушки. Подпись также можно передать переменными `FINNY_STOREFILE`, `FINNY_STOREPASSWORD`, `FINNY_KEYALIAS`, `FINNY_KEYPASSWORD`.
 - Проверка: `git ls-files | grep -iE "keystore|\.jks|local.properties"` выдаёт только `keystore.properties.example`.
-- Release 1.4.1 для промежуточной сдачи (ТЗ 7.1), как 1.3.0 и 1.4.0, подписан debug-ключом (`CN=Android Debug`), потому что `keystore.properties` нет. Постоянный ключ будет к финалу и храниться будет вне репозитория.
+- Release 1.4.2 для промежуточной сдачи (ТЗ 7.1), как 1.3.0, 1.4.0 и 1.4.1, подписан debug-ключом (`CN=Android Debug`), потому что `keystore.properties` нет. Постоянный ключ будет к финалу и храниться будет вне репозитория.
 
 ## При дальнейшей публикации
 
@@ -97,4 +97,4 @@ uses-permission: name='ru.finny.pet.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION'
 - согласие законного представителя (ТЗ 3.5);
 - соблюдение 152-ФЗ, 436-ФЗ и правил RuStore.
 
-Актуально на версию 1.4.1 (2026-09-29)
+Актуально на версию 1.4.2 (2026-09-29)

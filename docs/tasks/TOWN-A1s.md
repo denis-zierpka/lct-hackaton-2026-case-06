@@ -1435,3 +1435,5 @@ echo "done $P"
        `gen/route_a1sr.c1.log`;
      - после — на emulator-5554 снова 1.4.1 release: md5 на устройстве = `finny-pet/release/finny-pet-1.4.1-release.apk`
        (`1fc9614c…`), шрифт 1,0, 360 × 640 оставлен (`gen/install_c2.log`).
+
+**Выпуск 1.4.2, ворота владельца (2026-09-29, лист `town/r142_release.jpg`).** Владелец: облачка продавцов «съехали вниз экрана» при 1,3, у Фомы при 1,0 облачко «ниже и показывает на пол». Решение № 129 (GAME_CONCEPT §18): облачко только над головой — `ShopScene`: `inSlot = slotFree && (order != null || (greet && !scaled))`, `onFloor = order != null && !slotFree`; правило R2 «при шрифте > 1,0 — на полу» отменено; на полной странице «У Фомы» реплики нет. Пересборка: тесты 619/0, lint 0 ошибок; маршрут на release — промахов 0, GEOM OK 8, CLOSE OK 2, обрезки 0.

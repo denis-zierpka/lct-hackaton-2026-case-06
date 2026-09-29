@@ -58,7 +58,7 @@ sdk.dir=C\:/Users/<имя>/AppData/Local/Android/Sdk
 На Windows — `gradlew.bat` вместо `./gradlew`. Установка на телефон или эмулятор:
 `adb install -r <путь к APK>`.
 
-**Тесты.** 600 JVM-тестов в [app/src/test/](app/src/test/java/ru/finny/pet/domain/) проверяют только
+**Тесты.** 619 JVM-тестов в [app/src/test/](app/src/test/java/ru/finny/pet/domain/) проверяют только
 `domain/` на настоящем `content.json` — без Android и эмулятора, поэтому одинаковы для обоих
 вариантов. Что проверяет каждый класс — [ARCHITECTURE.md](docs/ARCHITECTURE.md#тесты), ручные
 сценарии — [TEST_CASES.md](docs/TEST_CASES.md).

@@ -6,8 +6,8 @@
 
 | | |
 |---|---|
-| Версия | 1.4.1 (versionCode 6), пакет `ru.finny.pet` |
-| APK | 4,6 МБ (4 637 942 байт), Android 8.0 и новее, телефон, портретная ориентация |
+| Версия | 1.4.2 (versionCode 7), пакет `ru.finny.pet` |
+| APK | 4,7 МБ (4 686 772 байт), Android 8.0 и новее, телефон, портретная ориентация |
 | Конкурс | «Лидеры цифровой трансформации» 2026, кейс 06 |
 | Заказчик | Департамент финансов города Москвы |
 | Команда | «Сингулярность Бытия»: Ким Владимир, Цирпка Денис |
@@ -17,12 +17,12 @@
 
 ### Установка готового APK
 
-Файл — [`finny-pet/release/finny-pet-1.4.1-release.apk`](finny-pet/release/finny-pet-1.4.1-release.apk).
+Файл — [`finny-pet/release/finny-pet-1.4.2-release.apk`](finny-pet/release/finny-pet-1.4.2-release.apk).
 Скопировать на телефон и открыть, разрешив установку из неизвестных источников, или поставить
 с компьютера:
 
 ```bash
-adb install -r finny-pet/release/finny-pet-1.4.1-release.apk
+adb install -r finny-pet/release/finny-pet-1.4.2-release.apk
 ```
 
 Это тестовая сборка с временной подписью. Если на телефоне уже стоит «Питомец Финни» с другой
@@ -147,6 +147,8 @@ gradlew.bat :app:testGameDebugUnitTest :app:assembleGameRelease
 | ![Создание питомца](finny-pet/screenshots/game/01_create.png) | ![Комната](finny-pet/screenshots/game/02_room.png) | ![Банки](finny-pet/screenshots/game/03_jars.png) |
 | **Копилка и мечта** | **Улица** | **Пекарня** |
 | ![Копилка](finny-pet/screenshots/game/04_savings.png) | ![Улица](finny-pet/screenshots/game/05_street.png) | ![Пекарня](finny-pet/screenshots/game/06_bakery.png) |
+| **Рынок у реки — витрина** | **Лавка «У Фомы»** | |
+| ![Рынок](finny-pet/screenshots/game/07_market.png) | ![У Фомы](finny-pet/screenshots/game/08_foma.png) | |
 
 ## Стек
 
@@ -156,7 +158,7 @@ gradlew.bat :app:testGameDebugUnitTest :app:assembleGameRelease
 | Данные | kotlinx.serialization 1.11.0: контент — `content.json` в assets приложения, профиль — `state.json` во внутренней памяти |
 | Сборка | Gradle 9.4.1 (wrapper), Android Gradle Plugin 9.2.1, JDK 17 |
 | Android | minSdk 26 (Android 8.0), compileSdk и targetSdk 36 |
-| Тесты | JUnit 4.13.2: 600 JVM-тестов правил игры |
+| Тесты | JUnit 4.13.2: 619 JVM-тестов правил игры |
 | Картинки и звуки | собственные: Blender и Python-скрипты в `finny-pet/tools/art/` |
 
 Один Gradle-модуль, без сервера. Правила игры — чистый Kotlin без Android, их проверяют тесты;
