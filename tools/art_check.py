@@ -1,7 +1,8 @@
 """Приёмочные проверки арта (TOWN-A1b и дальше): регрессия кадра дампом сцены, композиты «как увидит ребёнок»
 с контрастом текста на фоне, альфа-bbox спрайтов, палитра жителей. Запуск из корня репозитория:
 
-  python tools/art_check.py regress SRC_DIR OUT_DIR   дампы сцены room.py (room_port_day, room_port_evening), pet.py (bunny, cat, puppy ×
+  python tools/art_check.py regress SRC_DIR OUT_DIR   дампы сцены room.py (room_port_day, room_port_evening, 7 спрайтов мебели
+                                                      furn_<id> по одному -> room_furn_<id>), pet.py (bunny, cat, puppy ×
                                                       stage 0, 2), place.py (market, foma, bakery), facade.py (7 фасадов по одному)
                                                       и props.py (tile_apple, goal_custom, ui_coin — по одному на
                                                       прогон) генераторами из SRC_DIR -> OUT_DIR/*.json
@@ -105,6 +106,9 @@ def regress(src, out):
     me = os.path.abspath(__file__)
     runs = [("room_port_day", "room.py", ["--only", "room_port_day", "--out", os.path.join(out, "room.png"), "--preview"])]
     runs += [("room_port_evening", "room.py", ["--only", "room_port_evening", "--out", os.path.join(out, "room_e.png"), "--preview"])]  # A1d1: the evening shell
+    # all 7 furniture sprites, one per run (a run dumps its last scene only): the room camera and light for A1e stay under regress
+    runs += [(f"room_furn_{n}", "room.py", ["--only", f"furn_{n}", "--samples", "1", "--out", os.path.join(out, f"room_furn_{n}.png")])
+             for n in ("window", "shelf", "fridge", "door", "bed", "mailbox", "chest")]
     runs += [(f"pet_{sp}_{st}", "pet.py", ["--species", sp, "--stage", str(st), "--size", "64", "--samples", "1",
                                            "--out", os.path.join(out, f"pet_{sp}_{st}.png")])
              for sp in ("bunny", "cat", "puppy") for st in (0, 2)]
