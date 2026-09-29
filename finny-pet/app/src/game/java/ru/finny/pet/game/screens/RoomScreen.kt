@@ -11,7 +11,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -51,6 +50,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -132,7 +132,7 @@ private fun TownCard(vm: GameViewModel) {
 /** Floor line of room_port_day (room.py, 1080 × 1920 px): the back wall meets the floor at y = 1228 (TOWN-A1d2, № 76 а). */
 private const val FLOOR_PX = 1228f
 
-/** The room as a scheme: wall and floor, flat objects over them, the pet above the bed. */
+/** The room as a scheme (№ 120–124): along the wall on the floor line — fridge, chest, armchair, door; on the floor — bed, pet, mailbox. */
 @Composable
 private fun Room(vm: GameViewModel, modifier: Modifier, onPanel: (String) -> Unit, onBed: () -> Unit) {
     val s = vm.state
@@ -145,9 +145,12 @@ private fun Room(vm: GameViewModel, modifier: Modifier, onPanel: (String) -> Uni
     val mail = s.envelope.sumOf { it.amount }
     val dream = s.achievedGoals.lastOrNull()
     val density = LocalDensity.current
-    var fridgeTop by remember { mutableStateOf(0.dp) } // № 76 а: set from the floor line below; 0 — the first frame
-    var doorY by remember { mutableStateOf(0.dp) }
+    var floorY by remember { mutableStateOf(0.dp) } // № 76 а: the floor line in the box below; 0 — the first frame
+    var bedH by remember { mutableStateOf(162.dp) }
     Box(modifier.fillMaxWidth().testTag("room")) {
+        // № 123: the clock just under the jar shelf, right of the window — a sprite held by the top row, not drawn in the Crop
+        // background (S23 ×1,22 put it 69 dp under the shelf); 360 × 640 where room_port_day had it: 119..161 × 271..313 dp
+        Image(painterResource(R.drawable.furn_clock), null, Modifier.offset(119.dp, 77.dp).size(42.dp))
         Column(Modifier.fillMaxSize().padding(horizontal = 8.dp)) {
             Row(Modifier.fillMaxWidth().height(88.dp).padding(top = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                 Target("Окно: улица" + (resident?.let { ", машет ${it.name}" } ?: "") + (if (streetEvent) ", есть событие" else "") + (dream?.let { ", у забора мечта «${it.title}»" } ?: ""), 112.dp, 80.dp, color = Color.Transparent, onClick = { vm.navigate(Screen.Street) }) {
@@ -167,54 +170,55 @@ private fun Room(vm: GameViewModel, modifier: Modifier, onPanel: (String) -> Uni
                 }
             }
             Box(Modifier.fillMaxWidth().weight(1f).padding(top = 4.dp, bottom = 4.dp).onGloballyPositioned { c ->
-                // № 76 а: the fridge and the door stand on the floor line of room_port_day, drawn Crop over the whole window (GameApp.RoomBackground)
+                // № 76 а: the wall things stand on the floor line of room_port_day, drawn Crop over the whole window (GameApp.RoomBackground)
                 val root = c.findRootCoordinates().size
                 val k = maxOf(root.width / 1080f, root.height / 1920f)
                 val floor = with(density) { (root.height / 2f + (FLOOR_PX - 960f) * k - c.positionInRoot().y).toDp() }
-                // not below «zone − 228» (fridge 96 + spot_3 36 + chest 48 + book 48): else the book shrinks under 48 dp
-                fridgeTop = (floor - 96.dp).coerceAtMost(with(density) { c.size.height.toDp() } - 228.dp).coerceAtLeast(0.dp)
-                doorY = floor - 136.dp
+                val zone = with(density) { c.size.height.toDp() }
+                // not below «zone − 124»: the pet (120) stands under the armchair; 360 × 640: 123 of 254, S23: ≈ 220 of 410
+                floorY = floor.coerceAtMost(zone - 124.dp)
+                // № 121: the bed up to 150 × 162 dp, 12 dp over the bottom and under the chest's front edge (floor + 13); 360 × 640: 106
+                bedH = (zone - 12.dp - floorY - 13.dp).coerceIn(48.dp, 162.dp)
             }) {
-                Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Column(Modifier.fillMaxHeight(), verticalArrangement = Arrangement.SpaceBetween) {
-                        Target("Холодильник: список нужного и цены", 64.dp, 96.dp, Modifier.padding(top = fridgeTop), color = Color.Transparent, onClick = { onPanel("fridge") }) {
-                            Image(painterResource(R.drawable.furn_fridge), null, Modifier.fillMaxSize())
-                            TText("Список", style = label, modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 6.dp).wrapContentWidth(unbounded = true), maxLines = 1)
-                        }
-                        SpotThing(vm, "spot_3", Modifier.align(Alignment.CenterHorizontally))
-                        Target("Сундук: обустроить комнату", 64.dp, 48.dp, color = Color.Transparent, onClick = { vm.navigate(Screen.Arrange) }) { Image(painterResource(R.drawable.furn_chest), null, Modifier.fillMaxSize()) }
-                        Target("Словарик", 48.dp, 48.dp, onClick = { vm.navigate(Screen.Glossary) }) { Image(painterResource(R.drawable.ui_book), null, Modifier.size(36.dp)) }
-                    }
-                    BoxWithConstraints(Modifier.weight(1f).fillMaxHeight()) {
-                        val petSize = minOf(120.dp, maxHeight - 64.dp - 36.dp).coerceAtLeast(64.dp)
-                        SpotThing(vm, "spot_2", Modifier.align(Alignment.TopCenter))
-                        SpotThing(vm, "spot_1", Modifier.align(Alignment.BottomStart).padding(bottom = 68.dp))
-                        SpotThing(vm, "spot_6", Modifier.align(Alignment.BottomEnd).padding(bottom = 68.dp))
-                        PetSprite(
-                            speciesId = pet.speciesId, colorId = pet.colorId, stage = vm.economy.stageIndex(pet.growth), face = vm.face, animate = LocalAnimate.current,
-                            size = petSize, bounceKey = vm.bounce, action = LocalPetAction.current.action, actionKey = LocalPetAction.current.key, seen = LocalPetAction.current,
-                            description = "${pet.name}. ${vm.economy.stageTitle(pet.growth)}. Нажми — что на уме",
-                            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 64.dp).particleTarget(particles, "pet"),
-                            onTap = vm::petTapped,
-                        )
-                        Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(64.dp)) {
-                            SpotThing(vm, "spot_4", Modifier.align(Alignment.CenterStart))
-                            Target("Кровать: сон", 128.dp, 64.dp, Modifier.align(Alignment.Center), color = Color.Transparent, onClick = onBed) {
-                                Image(painterResource(R.drawable.furn_bed), null, Modifier.fillMaxSize())
-                                TText("Сон", style = label, maxLines = 1)
-                            }
-                            SpotThing(vm, "spot_5", Modifier.align(Alignment.CenterEnd))
-                        }
-                    }
-                    Column(Modifier.fillMaxHeight(), horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.SpaceBetween) {
-                        // lambda offset: doorY is State (lint UseOfNonLambdaOffsetOverload)
-                        Target("Дверь: на улицу", 64.dp, 136.dp, Modifier.offset { IntOffset(0, doorY.roundToPx()) }, color = Color.Transparent, onClick = { vm.navigate(Screen.Street) }) {
-                            Image(painterResource(R.drawable.furn_door), null, Modifier.fillMaxSize())
-                            TText("Улица", style = label, modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 6.dp), maxLines = 1)
-                        }
-                        Mailbox(mail, Modifier.particleTarget(particles, "mail")) { onPanel("mail") }
-                    }
+                // a thing by the wall: x from the box side, its back-bottom edge on the floor line, so the frame bottom is `d` lower — the
+                // depth of the thing in its own sprite (room.py camera: fridge 9, chest 13, armchair 20, a 36 dp thing 3); the door is in
+                // the wall, d = 0. Lambda offset — floorY is State (lint UseOfNonLambdaOffsetOverload)
+                fun Modifier.wall(x: Dp, h: Dp, d: Dp = 0.dp) = offset { IntOffset(x.roundToPx(), (floorY + d - h).roundToPx()) }
+                // wall picture right of the clock (360 × 640 119..161 × 271..313 dp), left of the armchair's back
+                SpotThing(vm, "spot_2", Modifier.padding(start = 154.dp, top = 2.dp))
+                Target("Холодильник: список нужного и цены", 64.dp, 96.dp, Modifier.wall(0.dp, 96.dp, 9.dp), color = Color.Transparent, onClick = { onPanel("fridge") }) {
+                    Image(painterResource(R.drawable.furn_fridge), null, Modifier.fillMaxSize())
+                    TText("Список", style = label, modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 6.dp).wrapContentWidth(unbounded = true), maxLines = 1)
                 }
+                // № 122: the chest right of the fridge; spot_3 («стол») on its lid (the dome is 9 dp under the 48 dp frame top)
+                Target("Сундук: обустроить комнату", 64.dp, 48.dp, Modifier.wall(68.dp, 48.dp, 13.dp), color = Color.Transparent, onClick = { vm.navigate(Screen.Arrange) }) { Image(painterResource(R.drawable.furn_chest), null, Modifier.fillMaxSize()) }
+                SpotThing(vm, "spot_3", Modifier.wall(82.dp, 72.dp, 13.dp))
+                SpotThing(vm, "spot_5", Modifier.wall(132.dp, 36.dp, 3.dp))
+                Target("Дверь: на улицу", 64.dp, 136.dp, Modifier.align(Alignment.TopEnd).wall(0.dp, 136.dp), color = Color.Transparent, onClick = { vm.navigate(Screen.Street) }) {
+                    Image(painterResource(R.drawable.furn_door), null, Modifier.fillMaxSize())
+                    TText("Улица", style = label, modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 6.dp), maxLines = 1)
+                }
+                // № 120: the armchair (starter of spot_4) 108 dp by the door, 4 dp off it; «Словарик» on its seat (the cushion 73..84 dp of the sprite)
+                SpotThing(vm, "spot_4", Modifier.align(Alignment.TopEnd).wall((-68).dp, 108.dp, 20.dp), 108.dp)
+                Target("Словарик", 48.dp, 48.dp, Modifier.align(Alignment.TopEnd).wall((-98).dp, 65.dp, 20.dp), color = Color.Transparent, onClick = { vm.navigate(Screen.Glossary) }) { Image(painterResource(R.drawable.ui_book), null, Modifier.size(36.dp)) }
+                // the floor, on the box bottom: № 121 the bed on the left edge headboard to the wall (furn_bed_v), in front of it spot_1 and spot_6,
+                // the pet, № 124 the mailbox
+                val bedW = bedH * (150f / 162f)
+                Target("Кровать: сон", bedW, bedH, Modifier.align(Alignment.BottomStart).padding(bottom = 12.dp), color = Color.Transparent, onClick = onBed) {
+                    Image(painterResource(R.drawable.furn_bed_v), null, Modifier.fillMaxSize())
+                    TText("Сон", style = label, maxLines = 1)
+                }
+                SpotThing(vm, "spot_1", Modifier.align(Alignment.BottomStart).padding(start = bedW * 0.4f - 18.dp))
+                SpotThing(vm, "spot_6", Modifier.align(Alignment.BottomStart).padding(start = bedW * 0.4f + 22.dp))
+                PetSprite(
+                    speciesId = pet.speciesId, colorId = pet.colorId, stage = vm.economy.stageIndex(pet.growth), face = vm.face, animate = LocalAnimate.current,
+                    size = 120.dp, bounceKey = vm.bounce, action = LocalPetAction.current.action, actionKey = LocalPetAction.current.key, seen = LocalPetAction.current,
+                    description = "${pet.name}. ${vm.economy.stageTitle(pet.growth)}. Нажми — что на уме",
+                    // 12 dp right of the middle: between the bed and the mailbox (360 dp: 132..252)
+                    modifier = Modifier.align(Alignment.BottomCenter).offset(x = 12.dp).particleTarget(particles, "pet"),
+                    onTap = vm::petTapped,
+                )
+                Mailbox(mail, Modifier.align(Alignment.BottomEnd).particleTarget(particles, "mail")) { onPanel("mail") }
                 PetBubble(vm)
             }
         }
@@ -248,14 +252,15 @@ private fun Shelf(vm: GameViewModel) {
     }
 }
 
-/** A thing on a room spot: a starter or a placed item, ≈ 36 dp, no touch; an empty spot is not drawn. */
+/** A thing on a room spot: a starter or a placed item, 36 dp (the armchair 108, № 120), no touch; an empty spot is not drawn.
+ *  A child's thing never stands on a starter's spot: Town.place refuses («Здесь стоит кресло»), «Обустроить» does not open it. */
 @Composable
-private fun SpotThing(vm: GameViewModel, spotId: String, modifier: Modifier) {
+private fun SpotThing(vm: GameViewModel, spotId: String, modifier: Modifier, size: Dp = 36.dp) {
     val starter = vm.tc.homeItems.firstOrNull { it.spot == spotId }
     val placed = vm.state.placed[spotId]?.let(vm::item)
     when {
-        starter != null -> Pic(itemRes(starter.id), starter.emoji, 36.dp, modifier)
-        placed != null -> Pic(itemRes(placed.id), placed.emoji, 36.dp, modifier.clearAndSetSemantics {})
+        starter != null -> Pic(itemRes(starter.id), starter.emoji, size, modifier)
+        placed != null -> Pic(itemRes(placed.id), placed.emoji, size, modifier.clearAndSetSemantics {})
     }
 }
 
@@ -264,15 +269,16 @@ private fun SpotThing(vm: GameViewModel, spotId: String, modifier: Modifier) {
 private fun Mailbox(mail: Int, modifier: Modifier, onClick: () -> Unit) {
     val pulse = mail > 0 && LocalAnimate.current
     val scale = if (pulse) rememberInfiniteTransition(label = "mail").animateFloat(1f, 1.15f, infiniteRepeatable(tween(700), RepeatMode.Reverse), label = "pulse").value else 1f
-    Target("Почтовый ящик: плюс $mail придёт с новым конвертом", 48.dp, 48.dp, modifier, color = Color.Transparent, onClick = onClick) {
+    // № 124: 96 dp; the envelope and «+N» twice as big, on the box body (5..77 × 15..62 dp of furn_mailbox, the post under it)
+    Target("Почтовый ящик: плюс $mail придёт с новым конвертом", 96.dp, 96.dp, modifier, color = Color.Transparent, onClick = onClick) {
         Image(painterResource(R.drawable.furn_mailbox), null, Modifier.fillMaxSize())
-        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Canvas(Modifier.size(22.dp, 14.dp).graphicsLayer { scaleX = scale; scaleY = scale }) { // envelope: an emoji line is taller than 24 dp at 1.3
-                val st = Stroke(2.dp.toPx())
+        Column(Modifier.offset(x = (-7).dp, y = (-10).dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Canvas(Modifier.size(44.dp, 28.dp).graphicsLayer { scaleX = scale; scaleY = scale }) { // envelope: an emoji line is taller than 24 dp at 1.3
+                val st = Stroke(4.dp.toPx())
                 drawRect(G.purpleDeep, style = st)
                 drawPath(Path().apply { moveTo(0f, 0f); lineTo(size.width / 2, size.height * 0.6f); lineTo(size.width, 0f) }, G.purpleDeep, style = st)
             }
-            TText("+$mail", style = MaterialTheme.typography.labelSmall, maxLines = 1)
+            TText("+$mail", style = MaterialTheme.typography.titleMedium, maxLines = 1)
         }
     }
 }
@@ -282,7 +288,7 @@ private fun Mailbox(mail: Int, modifier: Modifier, onClick: () -> Unit) {
 private fun androidx.compose.foundation.layout.BoxScope.PetBubble(vm: GameViewModel) {
     val line = vm.petLine ?: return
     val shop = line.shop?.let { id -> vm.tc.shops.firstOrNull { it.id == id } }
-    Column(Modifier.align(Alignment.BottomCenter).padding(bottom = 176.dp).fillMaxWidth()) {
+    Column(Modifier.align(Alignment.BottomCenter).padding(bottom = 112.dp).fillMaxWidth()) { // the tail 8 dp into the top of the 120 dp pet on the floor
         Row(
             Modifier.fillMaxWidth().shadow(8.dp, RoundedCornerShape(20.dp)).background(Color.White, RoundedCornerShape(20.dp)).clickable(onClickLabel = "Закрыть") { vm.closePetLine() }.padding(8.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),

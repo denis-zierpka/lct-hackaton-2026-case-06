@@ -23,6 +23,7 @@ R = math.radians
 WHITE = (1, 1, 1, 1)
 ITEM_PX = 216  # 72 dp × 3 px/dp: the largest box of an item or a dream (SavingsScreen)
 ROOM_FILL = 0.9
+THING_PX = {"item_home_armchair": 324}  # № 120: the armchair by the door is 108 dp (3 × 36), the rest ITEM_PX
 C = {  # brand accents + pastel toy palette
     "purple": "#520978", "accent": "#FF0053", "pink": "#FFD6E4", "lav": "#8A83D1",
     "red": "#E63946", "orange": "#F4A261", "yellow": "#FFC94D", "gold": "#F5B400", "gold_dk": "#D99000",
@@ -441,14 +442,13 @@ def item_home_flower():  # starter thing of spot_1: a dark plum pot with a rim, 
         sphere("flower", (x, -0.12, z), 0.06, (1, 0.5, 1), M("yellow"))
 
 
-def item_home_armchair():  # starter thing of spot_4: soft — seat, cushion, back, two armrests, legs; teal, not the lavender wall
-    c = M("#2A9D8F", rough=0.7)
-    box("chair", (0, 0, 0.42), (1.0, 0.86, 0.34), c, bevel=0.12)
-    box("chair_back", (0, 0.32, 0.98), (1.0, 0.24, 0.9), c, bevel=0.12)
-    box("cushion", (0, -0.06, 0.66), (0.96, 0.74, 0.18), M("mint", rough=0.7), bevel=0.08)
+def item_home_armchair():  # starter thing of spot_4: soft — seat, cushion, back, two armrests; teal, not the lavender wall
+    c = M("#2A9D8F", rough=0.7)  # A1d3 (owner): no legs — the soft body stands on the floor itself (was the same body 0.25 higher)
+    box("chair", (0, 0, 0.17), (1.0, 0.86, 0.34), c, bevel=0.12)
+    box("chair_back", (0, 0.32, 0.59), (1.0, 0.24, 1.18), c, bevel=0.12)
+    box("cushion", (0, -0.06, 0.41), (0.96, 0.74, 0.18), M("mint", rough=0.7), bevel=0.08)
     for sx in (-1, 1):
-        box("armrest", (0.6 * sx, 0, 0.66), (0.24, 0.9, 0.62), c, bevel=0.12)
-        for sy in (-1, 1): capsule("chair_leg", (0.6 * sx, 0.34 * sy, 0.13), 0.06, 0.26, M("brown"))  # round: α off the frame
+        box("armrest", (0.6 * sx, 0, 0.36), (0.24, 0.9, 0.72), c, bevel=0.12)
 
 
 def item_home_lamp():  # бра (home_lamp and lamp_new) on the wall: a plate, a bent arm, a bell shade, the bulb lit
@@ -702,12 +702,12 @@ def render_thing(name, out, samples):
     for o in shell:  # the loop of room.render_sprite: the one № 79 decision lives in room.py
         o.is_shadow_catcher = room.SHADOW
         o.visible_camera = room.SHADOW and (floor and o.name.startswith("plank") or wall and o.name == "wall_back")
-    objs, W, H = [o for o in new if o.type == "MESH"], scene.render.resolution_x, scene.render.resolution_y
+    objs, W, H, px = [o for o in new if o.type == "MESH"], scene.render.resolution_x, scene.render.resolution_y, THING_PX.get(name, ITEM_PX)
     for _ in range(6):  # perspective: measure again after each scaling (the bbox corners, as sprite_frame)
         bpy.context.view_layer.update()
         uv = [world_to_camera_view(scene, cam, o.matrix_world @ Vector(c)) for o in objs for c in o.bound_box]
-        e.scale = e.scale * ROOM_FILL * ITEM_PX / max((max(q.x for q in uv) - min(q.x for q in uv)) * W, (max(q.y for q in uv) - min(q.y for q in uv)) * H)
-    room.sprite_frame(scene, objs, ITEM_PX, ITEM_PX, floor=ROOM[name] != "wall")
+        e.scale = e.scale * ROOM_FILL * px / max((max(q.x for q in uv) - min(q.x for q in uv)) * W, (max(q.y for q in uv) - min(q.y for q in uv)) * H)
+    room.sprite_frame(scene, objs, px, px, floor=ROOM[name] != "wall")
     render(scene, out)
 
 

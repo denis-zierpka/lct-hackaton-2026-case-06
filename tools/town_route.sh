@@ -149,7 +149,8 @@ serve 2.0; serve 2.5; has "Заработали " result; has "Почему?" re
 tapx "Почему?" 1.2; [ -n "$(text_xy "Карманные приходят каждую неделю, зарплата — когда поработаешь")" ] || echo "  not found: LINE on why"; shotg why --line; tp "Карманные" 0.8; tapx "Готово" 1.5
 tp "Домой"; plan; shot1 jars
 tp "Домой"; tp "Лавки"; tp "Рынок у реки"; shot2 marketp
-# the order card sits below the fold; a font change recreates the screen and loses the scroll — scroll after each
+# Marta's «Начать смену» is on the floor of the showcase (below the fold with the Пк3 poster or at 1,3); a font change
+# recreates the screen and loses the scroll — scroll after each
 swipe_up 4; shot1 order10; "$A" font 1.3; sleep 2.2; swipe_up 4; shot1 order13; "$A" font 1.0; sleep 1.5; swipe_up 4
 tp "Начать смену" 2; no_hud_hint "Закончить" taps; shot2 taps              # shift 2 of the week — Marta
 tp "Разложить яблоки" 0.4; tp "Подмести у прилавка" 0.4; tp "Отнести ящик" 0.4; tp "Закончить" 2; no_hud_hint "Готово" tresult
@@ -170,7 +171,8 @@ tapx "Закончить" 2; has "Заработали " result2; has "Поче�
 has "Смены на неделе закончились — приходи на новой неделе" limit; shot2 limit   # bakery after the limit: ●●●, «Домой» (№ 54 б, 59 б)
 xy=$(text_xy "Домой"); [ -z "$xy" ] && echo "  not found: button «Домой» on limit" || { "$A" shell input tap $xy; sleep 2; }
 "$A" ui | grep -q "Окно: улица" || { echo "  not found: room after «Домой»"; tp "Домой"; }
-tp "Лавки"; tp "Рынок у реки"; swipe_up 4; shot1 marketlimit             # market after the limit: no Marta's order card
+tp "Лавки"; tp "Рынок у реки"; swipe_up 4; has "Свежее с утра! Заглядывай." marketlimit   # market after the limit: Marta's line, no order (№ 62 б)
+"$A" ui | awk -F'\t' '$1=="Начать смену"' | grep -q . && echo "  not found: no «Начать смену» on marketlimit"; shot1 marketlimit
 tp "Домой"; shot1 home_from_place
 tp "Дневник"; has "Помочь Боре: лучшая смена, звёзд " diary; shot1 diary; tp "Назад"   # TOWN-J1-1b2: bestStars
 tp "События"; shot1 board
