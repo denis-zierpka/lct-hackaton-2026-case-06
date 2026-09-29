@@ -5,7 +5,8 @@
                                                       furn_<id> по одному -> room_furn_<id>), pet.py (bunny, cat, puppy ×
                                                       stage 0, 2), place.py (market, foma, bakery), facade.py (7 фасадов по одному
                                                       и фон улицы --street -> street)
-                                                      и props.py (tile_apple, goal_custom, ui_coin — по одному на
+                                                      и props.py (tile_apple, goal_custom, ui_coin; item_fun_robot — камера и
+                                                      свет комнаты A1e1, item_food_super — товар A1e1; по одному на
                                                       прогон) генераторами из SRC_DIR -> OUT_DIR/*.json
   python tools/art_check.py diff A_DIR B_DIR          сравнить дампы; exit 1, если есть разница или нет файла
   python tools/art_check.py bg BG OUT_DIR [--veil A]  композиты UI со снимков на фон места + контраст G.ink под текстом
@@ -122,7 +123,9 @@ def regress(src, out):
     # the street background bg_street_port (A1g1): the same flags as its acceptance (TOWN-A1g1 п. 8)
     runs += [("street", "facade.py", ["--street", os.path.join(out, "street.png"), "--preview"])]
     # pastries go into props.py (1b3): three builders, one per run — render_prop resets the scene per prop, a joint run dumps the last only
-    runs += [(f"props_{n}", "props.py", ["--only", n, "--samples", "1", "--out", os.path.join(out, f"props_{n}.png")]) for n in ("tile_apple", "goal_custom", "ui_coin")]
+    # + A1e1: a room thing (the room camera and light seen from props.py) and a new good
+    runs += [(f"props_{n}", "props.py", ["--only", n, "--samples", "1", "--out", os.path.join(out, f"props_{n}.png")])
+             for n in ("tile_apple", "goal_custom", "ui_coin", "item_fun_robot", "item_food_super")]
     for name, script, args in runs:
         env = dict(os.environ, DUMP_OUT=os.path.join(out, name + ".json"))
         cmd = [blender(), "-b", "--factory-startup", "--python-exit-code", "1", "-P", os.path.join(src, script), "--python", me, "--"] + args
