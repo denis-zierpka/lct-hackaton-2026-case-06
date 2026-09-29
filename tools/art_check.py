@@ -3,7 +3,8 @@
 
   python tools/art_check.py regress SRC_DIR OUT_DIR   дампы сцены room.py (room_port_day, room_port_evening, 7 спрайтов мебели
                                                       furn_<id> по одному -> room_furn_<id>), pet.py (bunny, cat, puppy ×
-                                                      stage 0, 2), place.py (market, foma, bakery), facade.py (7 фасадов по одному)
+                                                      stage 0, 2), place.py (market, foma, bakery), facade.py (7 фасадов по одному
+                                                      и фон улицы --street -> street)
                                                       и props.py (tile_apple, goal_custom, ui_coin — по одному на
                                                       прогон) генераторами из SRC_DIR -> OUT_DIR/*.json
   python tools/art_check.py diff A_DIR B_DIR          сравнить дампы; exit 1, если есть разница или нет файла
@@ -118,6 +119,8 @@ def regress(src, out):
     # all 7 facades, one per run (a run dumps its last scene only): the street generator A1g1 changes some (pilot № 61 б)
     runs += [(f"facade_{f}", "facade.py", ["--place", f, "--samples", "1", "--out", os.path.join(out, f"facade_{f}.png")])
              for f in ("home", "market", "foma", "bakery", "gate_park", "gate_forest", "gate_zoo")]
+    # the street background bg_street_port (A1g1): the same flags as its acceptance (TOWN-A1g1 п. 8)
+    runs += [("street", "facade.py", ["--street", os.path.join(out, "street.png"), "--preview"])]
     # pastries go into props.py (1b3): three builders, one per run — render_prop resets the scene per prop, a joint run dumps the last only
     runs += [(f"props_{n}", "props.py", ["--only", n, "--samples", "1", "--out", os.path.join(out, f"props_{n}.png")]) for n in ("tile_apple", "goal_custom", "ui_coin")]
     for name, script, args in runs:
