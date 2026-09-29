@@ -80,6 +80,7 @@ import ru.finny.pet.game.ui.G
 import ru.finny.pet.game.ui.GameTheme
 import ru.finny.pet.game.ui.LineHost
 import ru.finny.pet.game.ui.LocalClipped
+import ru.finny.pet.game.ui.LocalEmoji
 import ru.finny.pet.game.ui.LocalParticles
 import ru.finny.pet.game.ui.ParticleController
 import ru.finny.pet.game.ui.ParticleLayer
@@ -129,6 +130,7 @@ fun GameApp(vm: GameViewModel = viewModel()) {
     DisposableEffect(sfx) { onDispose { sfx.release() } }
     val particles = remember { ParticleController() }
     val clipped = remember { mutableStateListOf<String>() }
+    val emoji = remember { mutableStateListOf<String>() }
     val petAction = vm.petAction
     var systemAnim by remember { mutableStateOf(systemAnimates(context)) }
     val animate = vm.state.animations && systemAnim
@@ -177,7 +179,7 @@ fun GameApp(vm: GameViewModel = viewModel()) {
             val lineMaxHeight = maxHeight * 0.4f
             CompositionLocalProvider(
                 LocalLayout provides layout, LocalParticles provides particles, LocalPetAction provides petAction,
-                LocalAnimate provides animate, LocalClipped provides clipped,
+                LocalAnimate provides animate, LocalClipped provides clipped, LocalEmoji provides emoji,
             ) {
                 // at the bottom of the stack (Room, Night, Title) the system back closes the app without a dialog (§9.2 №15)
                 BackHandler(enabled = vm.canGoBack) { vm.back() }
@@ -230,6 +232,8 @@ fun GameApp(vm: GameViewModel = viewModel()) {
                         // debug probe (WORKFLOW №17): how many texts are clipped right now, and which; no node in release
                         val probe = "Обрезано: ${clipped.size}" + if (clipped.isEmpty()) "" else " — " + clipped.joinToString("; ")
                         Box(Modifier.align(Alignment.TopEnd).size(1.dp).testTag("overflow").semantics { contentDescription = probe })
+                        // debug probe (TOWN-A1e2): how many emoji stand in for a picture right now, and which
+                        Box(Modifier.align(Alignment.TopStart).size(1.dp).testTag("emoji").semantics { contentDescription = "Эмодзи: ${emoji.size}" + if (emoji.isEmpty()) "" else " — " + emoji.joinToString(" ") })
                     }
                 }
                 ParticleLayer(particles)

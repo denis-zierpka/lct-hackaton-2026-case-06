@@ -4,7 +4,7 @@
 за виртуальным питомцем. Кейс 06 конкурса «Лидеры цифровой трансформации» 2026, заказчик —
 Департамент финансов города Москвы. Без регистрации, интернета, рекламы и реальных денег.
 
-В выпуске 1.4.0 вариант `game` играет по концепции «Городок» ([../docs/GAME_CONCEPT.md](../docs/GAME_CONCEPT.md)).
+В выпуске 1.4.1 вариант `game` играет по концепции «Городок» ([../docs/GAME_CONCEPT.md](../docs/GAME_CONCEPT.md)).
 Главный экран — комната с питомцем. Каждую неделю почтальон приносит конверт со 100 монетами, ребёнок
 раскладывает их по банкам «Нужное», «Хочу» и «В копилку», покупает в двух лавках с разными ценами через
 кассу, работает у соседей (заработок приходит со следующим конвертом), копит на мечту и решает события
@@ -20,7 +20,7 @@
 | Пункт 7.1 | Где |
 |---|---|
 | 2. README: стек, запуск, реализованные требования | корневой [README.md](../README.md); стек, запуск и каталоги — этот файл |
-| 3. Рабочая сборка APK | [release/finny-pet-1.4.0-release.apk](release/finny-pet-1.4.0-release.apk) |
+| 3. Рабочая сборка APK | [release/finny-pet-1.4.1-release.apk](release/finny-pet-1.4.1-release.apk) |
 | 4. Архитектура и структура данных | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/DATA_MODEL.md](docs/DATA_MODEL.md) |
 | 5. Ключевые экраны | [создание питомца](screenshots/game/01_create.png), [комната](screenshots/game/02_room.png), [банки](screenshots/game/03_jars.png), [копилка](screenshots/game/04_savings.png), [улица](screenshots/game/05_street.png), [пекарня](screenshots/game/06_bakery.png) |
 | 6. Требования со статусами и планом до финала | статусы — [docs/REQUIREMENTS_MATRIX.md](docs/REQUIREMENTS_MATRIX.md), план — раздел «План до финала» в [docs/LIMITATIONS_ROADMAP.md](docs/LIMITATIONS_ROADMAP.md) |
@@ -31,11 +31,11 @@
 | Параметр | Значение |
 |---|---|
 | Пакет, название | `ru.finny.pet`, «Питомец Финни» |
-| Версия | 1.4.0 (versionCode 5), minSdk 26 (Android 8.0), targetSdk 36 |
+| Версия | 1.4.1 (versionCode 6), minSdk 26 (Android 8.0), targetSdk 36 |
 | Экран | только портрет |
 | Подпись | отладочный ключ (`CN=Android Debug`), так как `keystore.properties` нет. Постоянный ключ появится к финалу |
 | Разрешения | пользователь не видит ни одного запроса. В итоговом манифесте есть одно signature-разрешение `ru.finny.pet.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION`, его добавляет `androidx.core`. Интернета нет, `allowBackup=false`, подробнее в [PRIVACY_PERMISSIONS.md](docs/PRIVACY_PERMISSIONS.md) |
-| Размер APK | 4 601 440 байт |
+| Размер APK | 4 637 942 байт |
 
 ## Стек
 
@@ -49,8 +49,8 @@ compileSdk и targetSdk 36. Один Gradle-модуль `app`, сервера �
 
 | Вариант | Пакет | Название | Версия | Статус |
 |---|---|---|---|---|
-| `game` | `ru.finny.pet` | Питомец Финни | 1.4.0 | сдаётся: «Городок» — комната, улица, лавки, работа, события, звуки |
-| `classic` | `ru.finny.pet.classic` | Финни classic | 1.4.0-classic | остаётся в репозитории, в сдачу не входит: обычный интерфейс на Material 3, правила 1.3.0 |
+| `game` | `ru.finny.pet` | Питомец Финни | 1.4.1 | сдаётся: «Городок» — комната, улица, лавки, работа, события, звуки |
+| `classic` | `ru.finny.pet.classic` | Финни classic | 1.4.1-classic | остаётся в репозитории, в сдачу не входит: обычный интерфейс на Material 3, правила 1.3.0 |
 
 ## Структура каталогов
 
@@ -162,4 +162,4 @@ adb install -r app/build/outputs/apk/game/debug/app-game-debug.apk
 
 «Сингулярность Бытия»: Ким Владимир, Цирпка Денис. Прототипа в Figma не было.
 
-Актуально на версию 1.4.0 (2026-09-29)
+Актуально на версию 1.4.1 (2026-09-29)
