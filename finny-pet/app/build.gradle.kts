@@ -23,8 +23,8 @@ android {
         applicationId = "ru.finny.pet"
         minSdk = 26
         targetSdk = 36
-        versionCode = 7
-        versionName = "1.4.2"
+        versionCode = 8
+        versionName = "1.4.3"
     }
 
     // Two editions from one code base. "game" is the submitted app and owns the permanent package

@@ -83,6 +83,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.max
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import kotlinx.coroutines.delay
 import ru.finny.pet.R
 import ru.finny.pet.domain.Category
@@ -184,10 +185,10 @@ private fun ShopPlace(vm: GameViewModel, place: Place) {
             Hud1(vm, inPlace = true)
             Hud2 { JarsHud(vm); Spacer(Modifier.weight(1f)); StatsCollapsed(vm) }
             ShopTabs(vm, place.id)
-            Box(Modifier.weight(1f).fillMaxWidth()) {
+            BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
                 // under the pay sheet the showcase leaves the TalkBack tree (the scrim takes taps only); after the scroll — it keeps its own
                 val under = if (pick != null) Modifier.clearAndSetSemantics {} else Modifier
-                ShopScene(vm, place, pages.getOrElse(p) { emptyList() }, events, greet = p == 0, Modifier.verticalScroll(scroll).then(under), onPick = { pick = it }) {
+                ShopScene(vm, place, pages.getOrElse(p) { emptyList() }, events, greet = p == 0, maxHeight, Modifier.verticalScroll(scroll).then(under), onPick = { pick = it }) {
                     if (p > 0) Pager("Назад", next = false, eventOn(p - 1)) { page = p - 1 }
                     if (p < pages.lastIndex) Pager("Ещё ${pages[p + 1].flatten().count { it != null }}", next = true, eventOn(p + 1)) { page = p + 1 }
                 }
@@ -341,9 +342,14 @@ private fun DrawScope.backWall(bottom: Float) {
  */
 @Composable
 private fun ShopScene(
-    vm: GameViewModel, place: Place, rows: List<List<ShelfItem?>>, events: Map<String, EventDef>, greet: Boolean,
+    vm: GameViewModel, place: Place, rows: List<List<ShelfItem?>>, events: Map<String, EventDef>, greet: Boolean, viewport: Dp,
     modifier: Modifier, onPick: (String) -> Unit, pager: @Composable () -> Unit,
 ) {
+    // a taller screen (S23): the spare height goes between the boards, the sizes stay (owner 2026-09-29, «б»); the scene's
+    // height without the gaps is measured, so the gap does not feed back into itself
+    val density = LocalDensity.current
+    var natural by remember(rows) { mutableStateOf(0.dp) }
+    val gap = if (rows.size > 1 && natural > 0.dp) ((viewport - natural) / (rows.size - 1)).coerceIn(0.dp, 96.dp).value.toInt().dp else 0.dp
     val tagH = with(LocalDensity.current) { 19.sp.toDp() } + 22.dp
     val slab = HANG_C + tagH + 6.dp
     // ponytail: art by place id, like placeBackground — «У Фомы» is a room with a rack, the market is open air
@@ -361,7 +367,10 @@ private fun ShopScene(
     val onFloor = order != null && !slotFree
     BoxWithConstraints(modifier.fillMaxWidth()) {
         val w = maxWidth
-        Column {
+        Column(Modifier.onSizeChanged { s ->
+            val n = with(density) { s.height.toDp() } - gap * (rows.size - 1).coerceAtLeast(0)
+            if (kotlin.math.abs((n - natural).value) > 1f) natural = n
+        }) {
             Column(Modifier.testTag("shelf").drawBehind { if (indoor && rows.isNotEmpty()) backWall(size.height - slab.toPx()) }) {
                 // ponytail: the seller reaches ≈ 160 dp over the floor — a page of one board gets room above it
                 Spacer(Modifier.height(maxOf(2.dp, 160.dp - 125.dp * rows.size)))
@@ -369,6 +378,11 @@ private fun ShopScene(
                     val counter = r == rows.lastIndex
                     val (start, end) = if (counter) 76.dp to 16.dp else 19.dp to 19.dp
                     val slot = (w - start - end) / 3
+                    // the market's lower back board goes on behind the gap over the counter (the bowl painted into bg_market_port
+                    // is there); the gap over the 2nd board stays sky, as the 2nd board's top in макет 1
+                    if (r > 0 && gap > 0.dp) Spacer(Modifier.fillMaxWidth().height(gap).drawBehind {
+                        if (!indoor && r == rows.lastIndex && r > 1) drawRect(lerp(front, Color.White, 0.55f), Offset(19.dp.toPx(), 0f), Size(size.width - 38.dp.toPx(), size.height))
+                    })
                     val posters = row.withIndex().mapNotNull { (i, s) -> s?.let { events[it.item.id] }?.let { Triple(i, s, it) } }
                     if (posters.isNotEmpty()) Box(Modifier.fillMaxWidth().padding(bottom = 12.dp)) {
                         val pw = if (posters.size == 1) minOf(250.dp, w - 24.dp) else (w - 24.dp) / 2 - 4.dp
@@ -380,7 +394,8 @@ private fun ShopScene(
                     }
                     val h = ITEM + 2.dp + if (counter) slab else HANG + tagH
                     Box(
-                        Modifier.fillMaxWidth().height(h).drawBehind {
+                        // the board with the seller's bubble over the next ones: the bubble goes down into the gap to the head
+                        Modifier.fillMaxWidth().height(h).zIndex(if (inSlot && r == rows.size - 2) 1f else 0f).drawBehind {
                             val y = (ITEM + 2.dp).toPx()
                             // the market's lower back board behind the 2nd board and the counter: the counter and bowl painted into
                             // bg_market_port stand still under the scroll and looked like an item without a tag (круг критиков 1)
@@ -395,7 +410,7 @@ private fun ShopScene(
                             }
                         }
                         // over the seller's head: the bubble's bottom (tail tip) meets the top of the figure
-                        if (inSlot && r == rows.size - 2) Box(Modifier.offset(x = 8.dp).size(124.dp, h + ITEM + 2.dp + slab - SELLER + 2.dp)) {
+                        if (inSlot && r == rows.size - 2) Box(Modifier.offset(x = 8.dp, y = gap).size(124.dp, h + ITEM + 2.dp + slab - SELLER + 2.dp)) {
                             SellerBubble(vm, resident, order, job, Tail.DOWN, Modifier.align(Alignment.BottomStart).wrapContentHeight(Alignment.Bottom, unbounded = true))
                         }
                     }

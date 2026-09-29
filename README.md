@@ -6,7 +6,7 @@
 
 | | |
 |---|---|
-| Версия | 1.4.2 (versionCode 7), пакет `ru.finny.pet` |
+| Версия | 1.4.3 (versionCode 8), пакет `ru.finny.pet` |
 | APK | 4,7 МБ (4 686 772 байт), Android 8.0 и новее, телефон, портретная ориентация |
 | Конкурс | «Лидеры цифровой трансформации» 2026, кейс 06 |
 | Заказчик | Департамент финансов города Москвы |
@@ -17,12 +17,12 @@
 
 ### Установка готового APK
 
-Файл — [`finny-pet/release/finny-pet-1.4.2-release.apk`](finny-pet/release/finny-pet-1.4.2-release.apk).
+Файл — [`finny-pet/release/finny-pet-1.4.3-release.apk`](finny-pet/release/finny-pet-1.4.3-release.apk).
 Скопировать на телефон и открыть, разрешив установку из неизвестных источников, или поставить
 с компьютера:
 
 ```bash
-adb install -r finny-pet/release/finny-pet-1.4.2-release.apk
+adb install -r finny-pet/release/finny-pet-1.4.3-release.apk
 ```
 
 Это тестовая сборка с временной подписью. Если на телефоне уже стоит «Питомец Финни» с другой
