@@ -242,6 +242,7 @@ fun GameApp(vm: GameViewModel = viewModel()) {
 private fun placeBackground(s: Screen, vm: GameViewModel): Int? = when (s) {
     is Screen.Place -> placeBackground(s.placeId)
     is Screen.Round -> vm.tc.jobs.firstOrNull { it.id == s.jobId }?.place?.let(::placeBackground)
+    Screen.Street -> R.drawable.bg_street_port
     else -> null
 }
 

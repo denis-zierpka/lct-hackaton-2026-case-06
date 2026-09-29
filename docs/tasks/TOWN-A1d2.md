@@ -66,7 +66,7 @@ scaleIn 0,96 за 320 мс, выход fadeOut + scaleOut 1,02 за 160 мс); `
 | :174-176 | кровать: 🛏 + `Spacer` + «Сон» | § 6 |
 | :180-185 | правая колонка `SpaceBetween`: дверь `G.goldDark`, точка-ручка :182, «Улица» :183; ящик :185 | § 3, § 6 |
 | :232-245 | `Mailbox`: `Target` 48 dp :235, Canvas-конверт с пульсом, «+N» :242 | § 6 (спрайт под конвертом) |
-| :115 | «!» плашки «В городке» — `G.magenta` 28 dp | **не здесь** (№ 85 б — 1b1-3) |
+| :115 | «!» плашки «В городке» — `G.magenta` 28 dp (после 1b1-3 — `Color(0xFFE0004A)`) | **не здесь** (№ 85 б — 1b1-3) |
 
 `Target` (TownUi.kt:174-179): `Box(modifier.size(w, h).background(color, RoundedCornerShape(10.dp)).clickable(Role.Button)
 .clearAndSetSemantics { contentDescription = desc })` — параметр `color` уже есть; умолчание White α 0,85 не меняется
@@ -557,7 +557,7 @@ BASE и положительным на клоне с выключателями
      `C $RS | grep -cF 'GoalPic(it, 24.dp, Modifier.align(Alignment.TopStart).padding(start = 60.dp, top = 42.dp))'` → 1;
      `C $RS | grep -cF 'size(32.dp).background(Color.White, CircleShape).padding(2.dp).background(Color(0xFFE0004A), CircleShape)'` → 1;
      `C $RS | grep -cF 'wrapContentSize(unbounded = true)'` → 1; `C $RS | grep -cF ', у забора мечта «${it.title}»'` → 1;
-     `C $RS | grep -c 'G.magenta'` → 1 (только «В городке» :115);
+     `C $RS | grep -c 'G.magenta'` → 0 («В городке» :115 — `#E0004A` после 1b1-3, единственный `G.magenta` BASE — «!» окна, его заменяет § 4; ревью сессии 15);
    - `C $RS | grep -cF 'align(Alignment.TopCenter).offset(y = 12.dp)'` → 1;
      `C $RS | grep -cF 'labelSmall.copy(shadow = Shadow(Color.White, blurRadius = 8f))'` → 1 (или форма журнала п. 7 в);
    - `C $NS | grep -cF 'Modifier.size(128.dp, 64.dp)'` → 1; `C $NS | grep -cF 'padding(bottom = 21.dp).size(180.dp)'` → 1 (или
@@ -1121,3 +1121,21 @@ sys.exit(1 if bad or not fr else 0)
   1228, подоконник 213 (71 dp), доска 126, одеяло 51 — как в CONTRACT. Отложено до после сдачи: отрицательный контроль
   маски, п. 3 замеры BASE, зонды на BASE и клоне. Приёмка — ACCEPTANCE машинные пункты, живые снимки комнаты (день, вечер,
   ночь, титул) при 1,0 и 1,3, `ui_measure`, глазами, ревьювер. Task-scope — объединённый с TOWN-A1g2.
+- **2026-09-29, сессия 15 — кодеры, приёмка, живая.** Кодер A1g2 — `StreetScreen.kt`, `GameApp.kt` (+35 −16 без import,
+  import +2); правщик — литеральные U+00A0 в строке калитки → escape `\u00A0` (§ 3). Кодер A1d2 — 5 файлов allow (+54 −25,
+  import +9; кровать — вариант а, 128 × 64 dp, 21 dp). Task-scope объединённый (base c110135), `git diff --name-only
+  c110135` — ровно 7 путей allow. **Машинная приёмка** (`<scratchpad сессии 15>/acc_g2d2/acc.sh`, 98 проверок, `GRADLE=1`):
+  PASS 95 / FAIL 3; все три — дефекты скрипта, проверены вручную: № 43/44 `art_check residents`/`pastries` — exit 0,
+  `MATCH 9` / `MATCH 6` (сравнение внутри `ok` через `eval` не видело переменные цикла); № 72 `G.magenta` в RoomScreen —
+  0, ожидание спеки 1 устарело (1b1-3 заменил «В городке» на `#E0004A`, единственный `G.magenta` — «!» окна, его заменил
+  § 4). Итог по существу — 98 / 0: тесты 600 / 0 / 0 × 2, сборки, lint game без сетевых 5, `UnusedResources` по
+  `fac_*`/`furn_*`/`bg_street_port` 0, контракты § дословно, aapt2 release — 8 + 9 ресурсов на месте. **Живая**
+  (эмулятор 360 × 640, debug md5 c9829df9 = установленный, DEBUGGABLE; `DUMP=1 tools/town_route.sh g2d2`): промахов 0,
+  `GEOM OK` 8, `CLOSE OK` 2, «Обрезано» 0 во всех кадрах; `which` — room, room_w5, title → `room_port_day`, street, street2
+  → `bg_street_port`, night → `room_port_evening`; `ui_measure` всех дампов маршрута и `street13` — мелких целей и узлов за
+  краем 0; при 1,3 комната и улица (с прокруткой) — `emu_g2d2_room13`, `street13`, `street13b`; глазами: мебель в
+  мишенях, житель в окне, банки на доске, портрет Оси в строке почтальона, ночью кровать под питомцем, фасады с жителями и
+  «!», калитки без 🔒, «0 / 150» не рвётся. Судьи, зонды g2_*/a1d2_*, S23 — отложены до после сдачи.
+- **2026-09-29, сессия 15 — ревью PASS** (reviewer, BASE c110135, обе задачи вместе): FINDINGS пусто; 600/0/0 × 2, сборки,
+  lint 0 / без сетевых 5 / 5, `UnusedResources` 0; разделение allow между задачами соблюдено; единственное несовпадение —
+  ожидание `G.magenta` (→ 0, исправлено в ACCEPTANCE п. 7 и карте кода); отложенное в журнале записано честно.

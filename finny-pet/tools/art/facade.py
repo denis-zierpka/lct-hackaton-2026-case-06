@@ -12,7 +12,7 @@ house studio light of the pets and props that stand on the card. The street is o
 over it in a LazyRow (TOWN-A1, decision 30); the 120 dp card relies on these zones (TOWN-A1b, CONTRACT 2):
   top ≈ 30 %     roof and the sign board with its picture (the place title is drawn by the UI);
   bottom centre  free: the resident (64 dp) stands there, so the door, windows and goods keep to the sides;
-  gates          fence + wicket, no resident; the lock is NOT baked (ui_lock is an overlay in the UI).
+  gates          fence + wicket, no resident; no lock at all: the UI row shows the gate facade, the dream's picture and n / N (№ 72 а).
 Market, «У Фомы» and bakery take their colours from place.PLACES: a facade is the same world as its background.
 MARKS: a pretzel sign of the bakery (top left, on a post), a flower and a boletus on the park and forest boards.
 SIGNS: pictures on the boards — a house (home), a baguette (bakery), a basket (market, «У Фомы»); False — blank boards.

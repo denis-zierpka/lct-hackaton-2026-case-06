@@ -66,7 +66,8 @@ import ru.finny.pet.game.ui.TypewriterText
 fun TitleScreen(vm: GameViewModel) {
     val s = vm.state
     val layout = LocalLayout.current
-    Box(Modifier.fillMaxSize().background(G.purpleDeep.copy(alpha = 0.45f))) {
+    // A1d2: the empty day shell is lighter — the pink subtitle 3,6 → 5,1 : 1 under 0.6 (GATE_QUEUE, A1d1 judges)
+    Box(Modifier.fillMaxSize().background(G.purpleDeep.copy(alpha = 0.6f))) {
         val body: @Composable () -> Unit = {
             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text("Питомец", style = MaterialTheme.typography.headlineMedium, color = G.pink)
@@ -76,7 +77,7 @@ fun TitleScreen(vm: GameViewModel) {
                 GameButton(if (s.hasProfile) "Продолжить" else "Играть", Modifier.widthIn(min = 220.dp), style = ButtonStyle.GOLD, minHeight = 60.dp, centered = true) { vm.start() }
                 if (s.hasProfile) GameButton("Подсказка", Modifier.widthIn(min = 220.dp), style = ButtonStyle.GHOST, minHeight = 48.dp, centered = true) { vm.navigate(Screen.Intro) }
                 GameButton("Для взрослого", Modifier.widthIn(min = 220.dp), style = ButtonStyle.GHOST, minHeight = 48.dp, icon = painterResource(R.drawable.ui_lock), iconSize = 24.dp, centered = true) { vm.navigate(Screen.Parent) }
-                Text("Без регистрации. Данные остаются на устройстве.", style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.8f), textAlign = TextAlign.Center)
+                Text("Без регистрации. Данные остаются на устройстве.", style = MaterialTheme.typography.bodySmall, color = Color.White, textAlign = TextAlign.Center)
             }
         }
         val pet = s.pet

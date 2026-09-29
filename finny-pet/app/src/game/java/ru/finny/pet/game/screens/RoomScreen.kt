@@ -19,9 +19,11 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -37,13 +39,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.findRootCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ru.finny.pet.R
@@ -54,6 +62,7 @@ import ru.finny.pet.game.LocalPetAction
 import ru.finny.pet.game.Screen
 import ru.finny.pet.game.ui.G
 import ru.finny.pet.game.ui.GameButton
+import ru.finny.pet.game.ui.GoalPic
 import ru.finny.pet.game.ui.Hud1
 import ru.finny.pet.game.ui.Hud2
 import ru.finny.pet.game.ui.LocalParticles
@@ -120,41 +129,60 @@ private fun TownCard(vm: GameViewModel) {
     }
 }
 
+/** Floor line of room_port_day (room.py, 1080 × 1920 px): the back wall meets the floor at y = 1228 (TOWN-A1d2, № 76 а). */
+private const val FLOOR_PX = 1228f
+
 /** The room as a scheme: wall and floor, flat objects over them, the pet above the bed. */
 @Composable
 private fun Room(vm: GameViewModel, modifier: Modifier, onPanel: (String) -> Unit, onBed: () -> Unit) {
     val s = vm.state
     val pet = s.pet ?: return
-    val label = MaterialTheme.typography.labelSmall
+    // a light halo: labels lie right on the sprites («Список» on the fridge's dark rim, A1d1 judges)
+    val label = MaterialTheme.typography.labelSmall.copy(shadow = Shadow(Color.White, blurRadius = 8f))
     val particles = LocalParticles.current
     val resident = vm.town.residentOfWeek(s)
     val streetEvent = vm.town.activeEvents(s).any { it.place != null && it.place != "home" }
     val mail = s.envelope.sumOf { it.amount }
+    val dream = s.achievedGoals.lastOrNull()
+    val density = LocalDensity.current
+    var fridgeTop by remember { mutableStateOf(0.dp) } // № 76 а: set from the floor line below; 0 — the first frame
+    var doorY by remember { mutableStateOf(0.dp) }
     Box(modifier.fillMaxWidth().testTag("room")) {
-        Column(Modifier.fillMaxSize()) {
-            Box(Modifier.fillMaxWidth().weight(0.6f).background(G.lavenderLight))
-            Box(Modifier.fillMaxWidth().weight(0.4f).background(G.lavender))
-        }
         Column(Modifier.fillMaxSize().padding(horizontal = 8.dp)) {
             Row(Modifier.fillMaxWidth().height(88.dp).padding(top = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                Target("Окно: улица" + (resident?.let { ", машет ${it.name}" } ?: "") + (if (streetEvent) ", есть событие" else ""),112.dp, 80.dp, color = G.sky, onClick = { vm.navigate(Screen.Street) }) {
-                    if (resident != null) ResidentPic(resident, 40.dp, Modifier.align(Alignment.CenterStart).padding(start = 4.dp))
-                    if (streetEvent) TText("!", style = MaterialTheme.typography.titleMedium, modifier = Modifier.align(Alignment.TopEnd).padding(end = 6.dp), color = G.magenta, maxLines = 1)
+                Target("Окно: улица" + (resident?.let { ", машет ${it.name}" } ?: "") + (if (streetEvent) ", есть событие" else "") + (dream?.let { ", у забора мечта «${it.title}»" } ?: ""), 112.dp, 80.dp, color = Color.Transparent, onClick = { vm.navigate(Screen.Street) }) {
+                    Image(painterResource(R.drawable.furn_window), null, Modifier.fillMaxSize())
+                    // feet on the sill (71 dp of furn_window): 492 of the 512 frame = 61,5 dp down the 64 dp resident (TOWN-A1f)
+                    if (resident != null) ResidentPic(resident, 64.dp, Modifier.align(Alignment.TopStart).padding(start = 8.dp, top = 10.dp))
+                    // decision 25: the last reached dream on the grass by the fence behind the glass (fence 50..62, grass 62,7..65 dp), right of the resident
+                    dream?.let { GoalPic(it, 24.dp, Modifier.align(Alignment.TopStart).padding(start = 60.dp, top = 42.dp)) }
+                    // № 75 а, № 85 б: #E0004A 28 dp in a white 2 dp ring, 32 dp; the «!» line (31 dp at 1.3) is not clipped by the circle
+                    if (streetEvent) Box(Modifier.align(Alignment.TopEnd).padding(4.dp).size(32.dp).background(Color.White, CircleShape).padding(2.dp).background(Color(0xFFE0004A), CircleShape), contentAlignment = Alignment.Center) {
+                        TText("!", style = MaterialTheme.typography.titleMedium, modifier = Modifier.wrapContentSize(unbounded = true), color = Color.White, maxLines = 1)
+                    }
                 }
                 Shelf(vm)
                 Target("Копилка ${s.savings}", 64.dp, 64.dp, onClick = { vm.navigate(Screen.Savings) }) {
                     Image(painterResource(R.drawable.ui_piggy), null, Modifier.size(52.dp))
                 }
             }
-            Box(Modifier.fillMaxWidth().weight(1f).padding(top = 4.dp, bottom = 4.dp)) {
+            Box(Modifier.fillMaxWidth().weight(1f).padding(top = 4.dp, bottom = 4.dp).onGloballyPositioned { c ->
+                // № 76 а: the fridge and the door stand on the floor line of room_port_day, drawn Crop over the whole window (GameApp.RoomBackground)
+                val root = c.findRootCoordinates().size
+                val k = maxOf(root.width / 1080f, root.height / 1920f)
+                val floor = with(density) { (root.height / 2f + (FLOOR_PX - 960f) * k - c.positionInRoot().y).toDp() }
+                // not below «zone − 228» (fridge 96 + spot_3 36 + chest 48 + book 48): else the book shrinks under 48 dp
+                fridgeTop = (floor - 96.dp).coerceAtMost(with(density) { c.size.height.toDp() } - 228.dp).coerceAtLeast(0.dp)
+                doorY = floor - 136.dp
+            }) {
                 Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Column(Modifier.fillMaxHeight(), verticalArrangement = Arrangement.SpaceBetween) {
-                        Target("Холодильник: список нужного и цены", 64.dp, 96.dp, color = Color.White, onClick = { onPanel("fridge") }) {
-                            Box(Modifier.align(Alignment.TopCenter).padding(top = 32.dp).fillMaxWidth().height(2.dp).background(G.lavender))
+                        Target("Холодильник: список нужного и цены", 64.dp, 96.dp, Modifier.padding(top = fridgeTop), color = Color.Transparent, onClick = { onPanel("fridge") }) {
+                            Image(painterResource(R.drawable.furn_fridge), null, Modifier.fillMaxSize())
                             TText("Список", style = label, modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 6.dp).wrapContentWidth(unbounded = true), maxLines = 1)
                         }
                         SpotThing(vm, "spot_3", Modifier.align(Alignment.CenterHorizontally))
-                        Target("Сундук: обустроить комнату", 64.dp, 48.dp, onClick = { vm.navigate(Screen.Arrange) }) { TText("🧳", style = MaterialTheme.typography.titleLarge, maxLines = 1) }
+                        Target("Сундук: обустроить комнату", 64.dp, 48.dp, color = Color.Transparent, onClick = { vm.navigate(Screen.Arrange) }) { Image(painterResource(R.drawable.furn_chest), null, Modifier.fillMaxSize()) }
                         Target("Словарик", 48.dp, 48.dp, onClick = { vm.navigate(Screen.Glossary) }) { Image(painterResource(R.drawable.ui_book), null, Modifier.size(36.dp)) }
                     }
                     BoxWithConstraints(Modifier.weight(1f).fillMaxHeight()) {
@@ -171,15 +199,17 @@ private fun Room(vm: GameViewModel, modifier: Modifier, onPanel: (String) -> Uni
                         )
                         Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(64.dp)) {
                             SpotThing(vm, "spot_4", Modifier.align(Alignment.CenterStart))
-                            Target("Кровать: сон", 128.dp, 64.dp, Modifier.align(Alignment.Center), onClick = onBed) {
-                                Row(verticalAlignment = Alignment.CenterVertically) { TText("🛏", style = MaterialTheme.typography.titleLarge, maxLines = 1); Spacer(Modifier.width(6.dp)); TText("Сон", style = label, maxLines = 1) }
+                            Target("Кровать: сон", 128.dp, 64.dp, Modifier.align(Alignment.Center), color = Color.Transparent, onClick = onBed) {
+                                Image(painterResource(R.drawable.furn_bed), null, Modifier.fillMaxSize())
+                                TText("Сон", style = label, maxLines = 1)
                             }
                             SpotThing(vm, "spot_5", Modifier.align(Alignment.CenterEnd))
                         }
                     }
                     Column(Modifier.fillMaxHeight(), horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.SpaceBetween) {
-                        Target("Дверь: на улицу", 64.dp, 136.dp, color = G.goldDark, onClick = { vm.navigate(Screen.Street) }) {
-                            Box(Modifier.align(Alignment.CenterEnd).padding(end = 8.dp).size(8.dp).background(G.purpleDeep, CircleShape))
+                        // lambda offset: doorY is State (lint UseOfNonLambdaOffsetOverload)
+                        Target("Дверь: на улицу", 64.dp, 136.dp, Modifier.offset { IntOffset(0, doorY.roundToPx()) }, color = Color.Transparent, onClick = { vm.navigate(Screen.Street) }) {
+                            Image(painterResource(R.drawable.furn_door), null, Modifier.fillMaxSize())
                             TText("Улица", style = label, modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 6.dp), maxLines = 1)
                         }
                         Mailbox(mail, Modifier.particleTarget(particles, "mail")) { onPanel("mail") }
@@ -198,8 +228,10 @@ private fun Shelf(vm: GameViewModel) {
     val planned = s.plan.confirmed
     val nums = listOf(s.jarNeed, s.jarWant, s.reserve)
     val desc = if (planned) "Банки: Нужное ${nums[0]}, Хочу ${nums[1]}, Запас ${nums[2]}" else "Банки: разложи монеты"
-    Target(desc, 152.dp, 72.dp, onClick = { vm.navigate(Screen.Jars) }) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+    Target(desc, 152.dp, 72.dp, color = Color.Transparent, onClick = { vm.navigate(Screen.Jars) }) {
+        Image(painterResource(R.drawable.furn_shelf), null, Modifier.fillMaxSize())
+        // jars stand on the board (42 dp of furn_shelf; ui_jar's glass ends 5 dp above its 36 dp box); offset, not padding: 36 + 26 dp at 1.3 would not fit
+        Column(Modifier.align(Alignment.TopCenter).offset(y = 12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Row(horizontalArrangement = Arrangement.SpaceEvenly, modifier = Modifier.fillMaxWidth()) {
                 listOf(R.drawable.ui_lid_mandatory, R.drawable.ui_lid_optional, R.drawable.ui_lid_savings).forEachIndexed { i, lid ->
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -232,7 +264,8 @@ private fun SpotThing(vm: GameViewModel, spotId: String, modifier: Modifier) {
 private fun Mailbox(mail: Int, modifier: Modifier, onClick: () -> Unit) {
     val pulse = mail > 0 && LocalAnimate.current
     val scale = if (pulse) rememberInfiniteTransition(label = "mail").animateFloat(1f, 1.15f, infiniteRepeatable(tween(700), RepeatMode.Reverse), label = "pulse").value else 1f
-    Target("Почтовый ящик: плюс $mail придёт с новым конвертом", 48.dp, 48.dp, modifier, onClick = onClick) {
+    Target("Почтовый ящик: плюс $mail придёт с новым конвертом", 48.dp, 48.dp, modifier, color = Color.Transparent, onClick = onClick) {
+        Image(painterResource(R.drawable.furn_mailbox), null, Modifier.fillMaxSize())
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Canvas(Modifier.size(22.dp, 14.dp).graphicsLayer { scaleX = scale; scaleY = scale }) { // envelope: an emoji line is taller than 24 dp at 1.3
                 val st = Stroke(2.dp.toPx())

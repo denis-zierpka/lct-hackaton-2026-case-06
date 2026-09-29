@@ -304,7 +304,7 @@ python tools/art/import_sprites.py C:/tmp/pets
 | `pet.py` | `<blender> -b -P tools/art/pet.py -- --residents <dir> [--only-resident marta]` | 9 жителей `res_<id>` по `town.residents` (своя палитра, силуэт взрослого, аксессуары и предметы ролей) |
 | `room.py` | `<blender> -b -P tools/art/room.py -- --all <dir>` (`--only room_port_day --out F.png`; `--sprites <dir>` — 7 `furn_*`) | комната: альбом и портрет, день и вечер (портрет — пустая оболочка), мебель `furn_*` (PNG) |
 | `place.py` | `<blender> -b -P tools/art/place.py -- --all <dir>` (`--place market --out F [--preview]`) | фоны мест `bg_<place>_port`: рынок, «У Фомы», пекарня (PNG RGB 1080 × 1920) |
-| `facade.py` | `<blender> -b -P tools/art/facade.py -- --all <dir>` (`--place market --out F`) | 7 фасадов карточек улицы `fac_<place>` 384 × 384 (PNG RGBA) |
+| `facade.py` | `<blender> -b -P tools/art/facade.py -- --all <dir>` (`--place market --out F`; `--street OUT` — фон улицы) | 7 фасадов мест улицы `fac_<placeId>` 384 × 384 (PNG RGBA), фон `bg_street_port` 1080 × 1920 (PNG RGB) |
 | `props.py` | `<blender> -b -P tools/art/props.py -- --all <dir>` (`--only pastry_croissant,… --out DIR`) | товары, цели, плитки мини-игры, монета, 6 изделий пекарни `pastry_*` (PNG; в WebP — `to_webp.py --size 256`) |
 | `uiprops.py` | `<blender> -b -P tools/art/uiprops.py -- --all <dir>` | иконки интерфейса (PNG) |
 | `smoke.py` | `<blender> -b -P tools/art/smoke.py -- <dir>/smoke.png` | проверка общих хелперов `lib.py` |
@@ -318,7 +318,7 @@ alpha 90, method 6, как у питомца): фоны — с `--rgb`, спра
 даёт код 0). `props.py --only a,b --out DIR` пишет каждый кадр в DIR/<имя>.png (вещь комнаты — `--only item_fun_rug`: камера и свет `room.py`, 216 px; TOWN-A1e1). Листы для ревью —
 `python tools/sheets.py` из корня репозитория, не из `finny-pet/` (альфа на белом, пропорции сохраняются). Приёмка арта —
 `python tools/art_check.py` тоже из корня
-(`regress`/`diff` — кадры комнаты, питомца, рынка, «У Фомы» и фасада рынка не изменились, `bg` — композиты UI на фон
+(`regress`/`diff` — кадры комнаты (оболочки и 7 `furn_*`), питомца, фонов мест, 7 фасадов и фона улицы, `props.py` не изменились, `bg` — композиты UI на фон
 места, контраст текста и пересвет, `bg - - --selfcheck` — самопроверка маски, `which` — какой фон под снимком
 эмулятора или S23, `tiles` — плитки Match3 против фона, `bbox`, `palette`; подробности — в шапке скрипта). Живая
 проверка «Городка»: `tools/town_route.sh PREFIX` (демо-профиль с нуля и снимки мест при 1,0 и 1,3), `tools/rec.sh`

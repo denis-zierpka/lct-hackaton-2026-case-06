@@ -65,7 +65,7 @@ sealed interface Screen {
 }
 
 /** One engine line for the LINE bubble (§B.3): the line and «Почему?». */
-class Line(val text: String, val why: List<String> = emptyList())
+class Line(val text: String, val why: List<String> = emptyList(), val speaker: String? = null)
 
 /** What the night or the week end brought: the engine's line, why and event results. */
 class Report(val line: Line, val results: List<EventResult>)
@@ -259,7 +259,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
             settle(seededState)
             // envelope line before the arrival's intro settle() just queued (R2)
             val envelopeLine = "Почтальон принёс конверт: карманные ${content.rules.allowance}"
-            if (lines.none { it.text == envelopeLine }) lines.add(0, Line(envelopeLine))
+            if (lines.none { it.text == envelopeLine }) lines.add(0, Line(envelopeLine, speaker = "osya"))
             sfx(Sound.FANFARE); emit(Effect.Confetti)
         } else ok(o)
     }

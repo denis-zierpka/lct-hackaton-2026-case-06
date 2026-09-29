@@ -57,7 +57,11 @@ fun NightScreen(vm: GameViewModel) {
             horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
         ) {
             Image(painterResource(R.drawable.ui_moon), null, Modifier.size(72.dp))
-            Image(painterResource(PetSprites.id(pet.speciesId, pet.colorId, vm.economy.stageIndex(pet.growth), "blink")), "${pet.name} спит", Modifier.size(180.dp))
+            // № 91 б: the pet sleeps on furn_bed, paws on the blanket: 64 − 17 (blanket top) − 26 (empty under the paws of the 180 dp frame) = 21 dp
+            Box(contentAlignment = Alignment.BottomCenter) {
+                Image(painterResource(R.drawable.furn_bed), null, Modifier.size(128.dp, 64.dp))
+                Image(painterResource(PetSprites.id(pet.speciesId, pet.colorId, vm.economy.stageIndex(pet.growth), "blink")), "${pet.name} спит", Modifier.padding(bottom = 21.dp).size(180.dp))
+            }
             Panel(Modifier.fillMaxWidth(), padding = 12.dp) {
                 night?.line?.text?.takeIf { it.isNotBlank() }?.let { TText(it) }
                 night?.results?.forEach { TText(it.line, style = MaterialTheme.typography.bodyMedium) }

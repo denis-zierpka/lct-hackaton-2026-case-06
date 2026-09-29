@@ -302,11 +302,12 @@ fun Hud2(content: @Composable RowScope.() -> Unit) {
 fun LineHost(vm: GameViewModel, modifier: Modifier = Modifier, maxHeight: Dp = Dp.Infinity) {
     val line = vm.lines.firstOrNull() ?: return
     val pet = vm.state.pet
+    val who = line.speaker?.let { id -> vm.tc.residents.firstOrNull { it.id == id } }
     var why by remember(line) { mutableStateOf(false) }
     Box(modifier.fillMaxWidth().padding(8.dp).testTag("line").shadow(8.dp, RoundedCornerShape(20.dp)).background(Color.White, RoundedCornerShape(20.dp)).clickable(onClickLabel = "Закрыть") { vm.closeLine() }.heightIn(max = maxHeight)) {
     Column(Modifier.verticalScroll(rememberScrollState()).padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(Modifier.padding(end = 40.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (pet != null) Image(painterResource(PetSprites.id(pet.speciesId, pet.colorId, vm.economy.stageIndex(pet.growth), "happy")), null, Modifier.size(48.dp))
+            if (who != null) ResidentPic(who, 48.dp, Modifier.clearAndSetSemantics {}) else if (pet != null) Image(painterResource(PetSprites.id(pet.speciesId, pet.colorId, vm.economy.stageIndex(pet.growth), "happy")), null, Modifier.size(48.dp))
             TText(line.text, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
         }
         if (line.why.isNotEmpty()) {
