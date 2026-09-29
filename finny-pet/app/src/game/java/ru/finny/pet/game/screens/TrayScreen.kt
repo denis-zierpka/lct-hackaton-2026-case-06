@@ -57,6 +57,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
@@ -136,10 +137,10 @@ private fun starPath(c: Offset, r: Float) = Path().apply {
 }
 
 @Composable
-private fun Star(size: Dp) = Canvas(Modifier.size(size)) {
+private fun Star(size: Dp, outline: Boolean = false) = Canvas(Modifier.size(size)) {
     val p = starPath(center, this.size.minDimension / 2 - 1.dp.toPx())
-    drawPath(p, G.gold)
-    drawPath(p, G.purpleDeep, style = Stroke(1.5.dp.toPx()))
+    if (!outline) drawPath(p, G.gold)
+    drawPath(p, G.purpleDeep, style = if (outline) Stroke(2.dp.toPx(), join = StrokeJoin.Round) else Stroke(1.5.dp.toPx()))
 }
 
 /** White bubble with a tail: down at the start (customer) or up at [tailX] (Borya's «?»); no tail when [tail] is false. */
@@ -411,7 +412,7 @@ private fun TrayScene(vm: GameViewModel, r: TrayRound, host: String, shown: Int,
 
 /** TalkBack ряда звёзд подноса (раунд и итог, TOWN-J1-1b1). */
 internal fun starsText(r: TrayRound) = "Обслужено ${r.results.size} из ${r.orders.size}, звёзд ${r.stars}"
-/** ★ «+1» — с первого раза, ● — обслужен, ○ — ещё придёт (раунд) / не пришёл (итог); один узел TalkBack [starsText]. */
+/** ★ «+1» — с первого раза, ☆ — обслужен без звезды (контур, № 88 б), ○ — ещё придёт (раунд) / не пришёл (итог); один узел TalkBack [starsText]. */
 @Composable internal fun StarRow(r: TrayRound) {
     Row(
         Modifier.clearAndSetSemantics { contentDescription = starsText(r) },
@@ -422,7 +423,7 @@ internal fun starsText(r: TrayRound) = "Обслужено ${r.results.size} и�
                 true -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Star(24.dp); TText("+1", style = MaterialTheme.typography.bodyMedium, color = G.purpleDeep, maxLines = 1)
                 }
-                false -> Box(Modifier.size(16.dp).background(G.purpleDeep, CircleShape))
+                false -> Star(16.dp, outline = true)
                 null -> Box(Modifier.size(16.dp).border(2.dp, G.purpleDeep, CircleShape))
             }
         }

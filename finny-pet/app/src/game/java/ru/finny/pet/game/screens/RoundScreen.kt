@@ -28,8 +28,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.boundsInParent
-import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
@@ -104,7 +104,6 @@ private fun ShiftResult(vm: GameViewModel, job: Job?, result: Line, modifier: Mo
         result.why.firstOrNull(),
         *result.why.drop(1).toTypedArray(),
     ).joinToString(" ") { dot(it) }
-    val side = !bigFont() // питомец рядом с жителем; при крупном шрифте справа места нет — перед ним (№ 63 в2)
     BoxWithConstraints(modifier.fillMaxWidth().padding(8.dp)) {
         val floor = maxHeight - 64.dp // buttons row 61 dp (56 + edge 5) + gap 3
         val f = (floor - 8.dp).coerceIn(160.dp, if (bigFont()) 216.dp else 232.dp) // ≤ 232 dp, при крупном шрифте ≤ 216 (№ 63 в3)
@@ -114,32 +113,41 @@ private fun ShiftResult(vm: GameViewModel, job: Job?, result: Line, modifier: Mo
         var residentRect by remember { mutableStateOf<Rect?>(null) }; var bubbleRect by remember { mutableStateOf<Rect?>(null) }
         vm.tc.residents.firstOrNull { it.id == job?.resident }?.let { ResidentPic(it, f, Modifier.offset(x = 8.dp - f * 0.3f, y = floor - f).onGloballyPositioned { c -> residentRect = c.boundsInParent() }.clearAndSetSemantics { testTag = "result_resident" }) }
         if (job?.game == JobGame.TRAY) Counter(Modifier.offset(y = floor - 56.dp).fillMaxWidth().height(56.dp).testTag("result_counter"))
-        vm.state.pet?.let { pet -> PetSprite(
-            speciesId = pet.speciesId, colorId = pet.colorId, stage = vm.economy.stageIndex(pet.growth), face = Face.HAPPY, animate = LocalAnimate.current,
-            modifier = Modifier.offset(x = if (side) maxWidth - 104.dp else 8.dp, y = floor - 96.dp).clearAndSetSemantics { testTag = "result_pet" }, size = 96.dp, bounceKey = vm.bounce, action = act.action, actionKey = act.key, seen = act,
-        ) }
-        SpeechBubble(
-            Modifier.layout { m, c ->
-                val pl = m.measure(c)
-                val bottom = if (side) floor - 8.dp - 104.dp else floor - 8.dp
-                val y = minOf(head.roundToPx(), bottom.roundToPx() - pl.height).coerceAtLeast(8.dp.roundToPx())
-                layout(pl.width, pl.height) { pl.place(bx.roundToPx(), y) }
-            }.onGloballyPositioned { c -> bubbleRect = c.boundsInParent() }.width(maxWidth - bx).heightIn(max = floor - 16.dp - (if (side) 104.dp else 0.dp)).clearAndSetSemantics {
-                contentDescription = desc; testTag = "job_result"
-                paneTitle = if (pay != null) "${vm.residentName(job?.resident ?: "")}: спасибо! Заработали ${pay.total}" else result.text
-            },
-            tail = false,
-        ) {
-            if (pay != null) TText("Спасибо!", style = MaterialTheme.typography.titleMedium, color = G.ink, maxLines = 1)
-            r?.let { StarRow(it) }
-            pay?.let {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    TText("✉ +${it.total}", Modifier.particleTarget(LocalParticles.current, "job_result"), style = MaterialTheme.typography.headlineMedium, color = G.purple, maxLines = 1)
-                    TText("всего", style = MaterialTheme.typography.bodyMedium, color = G.inkSoft, maxLines = 1)
+        // № 83 в: сторона питомца — по замеру облачка, не по шрифту. Облачко мерится один раз под потолком «перед жителем»
+        // (floor − 16 dp); не выше потолка справа (floor − 120 = floor − 16 − 104 dp над питомцем) — питомец справа, под
+        // облачком, иначе перед жителем. Питомец и облачко — в одном Layout: сторона и места обоих — в одном проходе.
+        Layout(contents = listOf<@Composable () -> Unit>(
+            { vm.state.pet?.let { pet -> PetSprite(
+                speciesId = pet.speciesId, colorId = pet.colorId, stage = vm.economy.stageIndex(pet.growth), face = Face.HAPPY, animate = LocalAnimate.current,
+                modifier = Modifier.clearAndSetSemantics { testTag = "result_pet" }, size = 96.dp, bounceKey = vm.bounce, action = act.action, actionKey = act.key, seen = act,
+            ) } },
+            { SpeechBubble(
+                Modifier.onGloballyPositioned { c -> bubbleRect = c.boundsInParent() }.width(maxWidth - bx).heightIn(max = floor - 16.dp).clearAndSetSemantics {
+                    contentDescription = desc; testTag = "job_result"
+                    paneTitle = if (pay != null) "${vm.residentName(job?.resident ?: "")}: спасибо! Заработали ${pay.total}" else result.text
+                },
+                tail = false,
+            ) {
+                if (pay != null) TText("Спасибо!", style = MaterialTheme.typography.titleMedium, color = G.ink, maxLines = 1)
+                r?.let { StarRow(it) }
+                pay?.let {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        TText("✉ +${it.total}", Modifier.particleTarget(LocalParticles.current, "job_result"), style = MaterialTheme.typography.headlineMedium, color = G.purple, maxLines = 1)
+                        TText("всего", style = MaterialTheme.typography.bodyMedium, color = G.inkSoft, maxLines = 1)
+                    }
                 }
+                TText(result.text, style = MaterialTheme.typography.bodyMedium, color = G.ink)
+                result.why.firstOrNull()?.let { TText(it, style = MaterialTheme.typography.bodyMedium, color = G.inkSoft) }
+            } },
+        )) { (pets, bubbles), c ->
+            val b = bubbles.first().measure(c)
+            val side = b.height <= (floor - 120.dp).roundToPx()
+            val bottom = if (side) floor - 8.dp - 104.dp else floor - 8.dp
+            val p = pets.firstOrNull()?.measure(c)
+            layout(c.maxWidth, c.maxHeight) {
+                p?.place((if (side) maxWidth - 104.dp else 8.dp).roundToPx(), (floor - 82.dp).roundToPx()) // № 87 б: лапы спрайта — 0,86 кадра, на полу
+                b.place(bx.roundToPx(), minOf(head.roundToPx(), bottom.roundToPx() - b.height).coerceAtLeast(8.dp.roundToPx()))
             }
-            TText(result.text, style = MaterialTheme.typography.bodyMedium, color = G.ink)
-            result.why.firstOrNull()?.let { TText(it, style = MaterialTheme.typography.bodyMedium, color = G.inkSoft) }
         }
         val resident = residentRect; val bubble = bubbleRect
         if (resident != null && bubble != null) with(density) {

@@ -112,7 +112,7 @@ private fun TownCard(vm: GameViewModel) {
             .clearAndSetSemantics { contentDescription = "В городке: $text" }.padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        if (card.eventId != null) Box(Modifier.size(28.dp).background(G.magenta, CircleShape), contentAlignment = Alignment.Center) {
+        if (card.eventId != null) Box(Modifier.size(28.dp).background(Color(0xFFE0004A), CircleShape), contentAlignment = Alignment.Center) {
             TText("!", style = MaterialTheme.typography.titleMedium, color = Color.White, maxLines = 1)
         }
         TText(text, style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 18.sp), modifier = Modifier.weight(1f), maxLines = 2)

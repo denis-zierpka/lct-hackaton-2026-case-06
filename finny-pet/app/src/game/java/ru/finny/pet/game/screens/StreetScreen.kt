@@ -88,7 +88,7 @@ private fun PlaceCard(vm: GameViewModel, p: Place) {
             if (resident != null) TText(resident.name, style = MaterialTheme.typography.titleSmall, maxLines = 1)
             TText(p.title, style = MaterialTheme.typography.bodyMedium, maxLines = 3, align = TextAlign.Center)
         }
-        if (event) Box(Modifier.align(Alignment.TopEnd).padding(4.dp).size(28.dp).border(2.dp, Color.White, CircleShape).background(Color(0xFFE0004A), CircleShape), contentAlignment = Alignment.Center) {
+        if (event) Box(Modifier.align(Alignment.TopEnd).padding(4.dp).size(32.dp).border(2.dp, Color.White, CircleShape).background(Color(0xFFE0004A), CircleShape), contentAlignment = Alignment.Center) {
             TText("!", style = MaterialTheme.typography.titleMedium, color = Color.White, maxLines = 1)
         }
     }
